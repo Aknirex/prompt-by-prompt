@@ -1,0 +1,41 @@
+id: "pbp.test.integration.001"
+name: "Integration Test Generator"
+description: "Generate integration tests for APIs and services"
+category: "Testing"
+tags: ["testing", "integration", "api"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "framework"
+    description: "Testing framework"
+    type: "enum"
+    values: ["jest", "mocha", "pytest", "pytest-asyncio", "testify"]
+    default: "jest"
+
+template: |
+  Generate integration tests for the following code/API.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  Framework: {{framework}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Test external API calls with mocked responses
+  2. Test database interactions
+  3. Test error handling and edge cases
+  4. Use appropriate test fixtures and setup/teardown
+  5. Test both success and failure scenarios
+  6. Include proper assertions and expectations
+  
+  Output complete, runnable integration test code.

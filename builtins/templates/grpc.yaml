@@ -1,0 +1,39 @@
+id: "pbp.code.grpc.001"
+name: "gRPC Service"
+description: "Generate gRPC service definitions and implementations"
+category: "Code Generation"
+tags: ["grpc", "protobuf", "microservices", "rpc"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "language"
+    description: "Implementation language"
+    type: "enum"
+    values: ["typescript", "go", "python", "java", "csharp"]
+    default: "typescript"
+
+template: |
+  Generate a gRPC service for the following specification.
+  
+  Language: {{language}}
+  
+  Service Specification:
+  {{selection}}
+  
+  Requirements:
+  1. Generate .proto file with service definitions
+  2. Define message types for requests/responses
+  3. Add gRPC service implementation
+  4. Include error handling
+  5. Add streaming support if needed
+  6. Include client code
+  7. Add interceptors/middleware
+  8. Include health check endpoint
+  
+  Output complete gRPC service code.

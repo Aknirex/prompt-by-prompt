@@ -1,0 +1,38 @@
+id: "pbp.code.python.001"
+name: "Python Class Generator"
+description: "Generate Python classes with proper typing and methods"
+category: "Code Generation"
+tags: ["python", "class", "oop", "typing"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "features"
+    description: "Features to include"
+    type: "enum"
+    values: ["dataclass", "pydantic", "attrs", "plain"]
+    default: "dataclass"
+
+template: |
+  Generate a Python class for the following specification.
+  
+  Features: {{features}}
+  
+  Specification:
+  {{selection}}
+  
+  Requirements:
+  1. Use {{features}} if applicable
+  2. Add type hints for all methods and attributes
+  3. Include __init__, __repr__, __eq__ methods
+  4. Add property decorators where appropriate
+  5. Include class methods and static methods
+  6. Add docstrings (Google style)
+  7. Handle edge cases
+  
+  Output complete Python class code.

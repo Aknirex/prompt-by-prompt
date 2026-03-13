@@ -1,0 +1,45 @@
+id: "pbp.code.refactor.001"
+name: "Refactoring Assistant"
+description: "Analyze code and suggest refactoring improvements following SOLID principles"
+category: "Code Generation"
+tags: ["refactoring", "clean-code", "solid"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.3
+  max_tokens: 3000
+
+variables:
+  - name: "principle"
+    description: "SOLID principle to focus on"
+    type: "enum"
+    values: ["SRP", "OCP", "LSP", "ISP", "DIP", "all"]
+    default: "all"
+
+template: |
+  You are a software architect specializing in clean code and refactoring.
+  
+  Analyze the following code and suggest refactoring improvements.
+  Focus on SOLID principle: {{principle}}
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Please provide:
+  1. **Code Smells**: Identify any code smells or anti-patterns
+  2. **SOLID Analysis**: 
+     - Single Responsibility Principle (SRP) violations
+     - Open/Closed Principle (OCP) violations
+     - Liskov Substitution Principle (LSP) violations
+     - Interface Segregation Principle (ISP) violations
+     - Dependency Inversion Principle (DIP) violations
+  3. **Refactoring Suggestions**: Specific improvements with code examples
+  4. **Refactored Code**: Complete refactored version of the code
+  5. **Benefits**: Explain the benefits of each suggested change

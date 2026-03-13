@@ -1,0 +1,44 @@
+id: "pbp.code.react.001"
+name: "React Component Generator"
+description: "Generate React components with hooks and TypeScript"
+category: "Code Generation"
+tags: ["react", "component", "typescript", "hooks"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "style"
+    description: "Styling approach"
+    type: "enum"
+    values: ["css-modules", "styled-components", "tailwind", "emotion"]
+    default: "tailwind"
+  - name: "component_type"
+    description: "Component type"
+    type: "enum"
+    values: ["functional", "form", "list", "detail", "layout"]
+    default: "functional"
+
+template: |
+  Generate a React {{component_type}} component for the following specification.
+  
+  Styling: {{style}}
+  
+  Specification:
+  {{selection}}
+  
+  Requirements:
+  1. Use TypeScript with proper types
+  2. Use React hooks (useState, useEffect, etc.)
+  3. Include prop types/interface
+  4. Add error boundaries
+  5. Include loading states
+  6. Make it accessible (a11y)
+  7. Add JSDoc comments
+  8. Use {{style}} for styling
+  
+  Output complete, production-ready component code.

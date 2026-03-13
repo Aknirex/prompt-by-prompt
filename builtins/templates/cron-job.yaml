@@ -1,0 +1,38 @@
+id: "pbp.code.cron.001"
+name: "Cron Job Scheduler"
+description: "Generate cron job scheduling code"
+category: "Development"
+tags: ["cron", "scheduler", "jobs", "automation"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "library"
+    description: "Scheduling library"
+    type: "enum"
+    values: ["node-cron", "bull", "agenda", "apscheduler", "celery"]
+    default: "node-cron"
+
+template: |
+  Generate a cron job scheduler for the following tasks.
+  
+  Library: {{library}}
+  
+  Tasks:
+  {{selection}}
+  
+  Requirements:
+  1. Define cron schedules for each task
+  2. Add error handling and retries
+  3. Include logging and monitoring
+  4. Add job locking for distributed systems
+  5. Handle timezone considerations
+  6. Add graceful shutdown
+  7. Include job status tracking
+  
+  Output complete scheduler code.

@@ -1,0 +1,39 @@
+id: "pbp.test.e2e.001"
+name: "E2E Test Generator"
+description: "Generate end-to-end tests with Playwright or Cypress"
+category: "Testing"
+tags: ["testing", "e2e", "playwright", "cypress"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "framework"
+    description: "E2E testing framework"
+    type: "enum"
+    values: ["playwright", "cypress", "puppeteer", "selenium"]
+    default: "playwright"
+
+template: |
+  Generate end-to-end tests for the following user flow.
+  
+  Framework: {{framework}}
+  
+  User Flow:
+  {{selection}}
+  
+  Requirements:
+  1. Test the complete user journey
+  2. Include assertions for each step
+  3. Handle async operations and waits
+  4. Add test data setup and cleanup
+  5. Include error scenarios
+  6. Add accessibility checks
+  7. Test responsive design
+  8. Include visual regression if applicable
+  
+  Output complete E2E test code.

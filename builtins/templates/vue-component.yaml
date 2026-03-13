@@ -1,0 +1,39 @@
+id: "pbp.code.vue.001"
+name: "Vue Component Generator"
+description: "Generate Vue 3 components with Composition API"
+category: "Code Generation"
+tags: ["vue", "component", "composition-api", "typescript"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "style"
+    description: "Styling approach"
+    type: "enum"
+    values: ["scoped-css", "tailwind", "css-modules"]
+    default: "scoped-css"
+
+template: |
+  Generate a Vue 3 component for the following specification.
+  
+  Styling: {{style}}
+  
+  Specification:
+  {{selection}}
+  
+  Requirements:
+  1. Use Composition API with <script setup>
+  2. Use TypeScript
+  3. Define props with defineProps
+  4. Define emits with defineEmits
+  5. Include computed properties and watchers
+  6. Add proper TypeScript types
+  7. Make it accessible
+  8. Use {{style}} for styling
+  
+  Output complete Vue 3 SFC (Single File Component).

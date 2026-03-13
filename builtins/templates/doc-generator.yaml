@@ -1,0 +1,43 @@
+id: "pbp.doc.api.001"
+name: "API Documentation Generator"
+description: "Generate comprehensive API documentation for functions and classes"
+category: "Documentation"
+tags: ["documentation", "api", "jsdoc", "docstring"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2000
+
+variables:
+  - name: "style"
+    description: "Documentation style"
+    type: "enum"
+    values: ["jsdoc", "docstring", "godoc", "rustdoc", "xmldoc"]
+    default: "jsdoc"
+
+template: |
+  Generate {{style}} style documentation for the following code.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Generate complete documentation for all public functions/methods/classes
+  2. Include:
+     - Description of purpose
+     - Parameter descriptions with types
+     - Return value description with type
+     - Example usage where appropriate
+     - Exception/error documentation
+  3. Follow {{style}} conventions exactly
+  4. Keep descriptions concise but informative
+  
+  Output the documented code with the documentation comments added.

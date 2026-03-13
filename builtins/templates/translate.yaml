@@ -1,0 +1,35 @@
+id: "pbp.code.translate.001"
+name: "Code Translator"
+description: "Translate code from one programming language to another"
+category: "Code Generation"
+tags: ["translate", "convert", "language"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "target_language"
+    description: "Target programming language"
+    type: "string"
+    required: true
+
+template: |
+  Translate the following code from {{lang}} to {{target_language}}.
+  
+  Source code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Maintain the same functionality and logic
+  2. Use idiomatic {{target_language}} conventions
+  3. Include appropriate imports/dependencies
+  4. Add comments explaining any significant changes
+  5. Preserve the overall structure where possible
+  
+  Output the translated code only, ready to be used.

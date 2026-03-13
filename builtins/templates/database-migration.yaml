@@ -1,0 +1,43 @@
+id: "pbp.data.migration.001"
+name: "Database Migration"
+description: "Generate database migration scripts"
+category: "Data"
+tags: ["database", "migration", "schema"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "database"
+    description: "Database type"
+    type: "enum"
+    values: ["postgresql", "mysql", "sqlite", "mongodb"]
+    default: "postgresql"
+  - name: "orm"
+    description: "ORM/Tool"
+    type: "enum"
+    values: ["prisma", "typeorm", "sequelize", "knex", "alembic", "raw-sql"]
+    default: "prisma"
+
+template: |
+  Generate a database migration for the following schema change.
+  
+  Database: {{database}}
+  ORM/Tool: {{orm}}
+  
+  Schema Change Description:
+  {{selection}}
+  
+  Requirements:
+  1. Generate both up and down migrations
+  2. Include data migration if needed
+  3. Add proper indexes
+  4. Handle foreign key constraints
+  5. Include rollback safety
+  6. Add comments explaining the changes
+  
+  Output complete migration files.

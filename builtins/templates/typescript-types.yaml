@@ -1,0 +1,36 @@
+id: "pbp.code.types.001"
+name: "TypeScript Type Generator"
+description: "Generate TypeScript types/interfaces from JSON or code"
+category: "Code Generation"
+tags: ["typescript", "types", "interface"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.1
+  max_tokens: 2000
+
+variables:
+  - name: "output_type"
+    description: "Output type format"
+    type: "enum"
+    values: ["interface", "type", "class"]
+    default: "interface"
+
+template: |
+  Generate TypeScript {{output_type}} definitions from the following input.
+  
+  Input:
+  {{selection}}
+  
+  Requirements:
+  1. Generate precise TypeScript {{output_type}} definitions
+  2. Use proper TypeScript types (string, number, boolean, Date, etc.)
+  3. Handle optional properties with `?`
+  4. Use readonly where appropriate
+  5. Add JSDoc comments for each property
+  6. Handle nested objects and arrays
+  7. Export the definitions
+  
+  Output only the TypeScript code.

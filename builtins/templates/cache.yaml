@@ -1,0 +1,45 @@
+id: "pbp.code.cache.001"
+name: "Caching Layer"
+description: "Generate caching implementation with multiple backends"
+category: "Code Generation"
+tags: ["cache", "redis", "performance", "optimization"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "backend"
+    description: "Cache backend"
+    type: "enum"
+    values: ["redis", "memcached", "memory", "file"]
+    default: "redis"
+  - name: "strategy"
+    description: "Caching strategy"
+    type: "enum"
+    values: ["cache-aside", "write-through", "write-behind", "read-through"]
+    default: "cache-aside"
+
+template: |
+  Generate a caching layer for the following data/functions.
+  
+  Backend: {{backend}}
+  Strategy: {{strategy}}
+  
+  Data/Functions to Cache:
+  {{selection}}
+  
+  Requirements:
+  1. Implement {{strategy}} caching strategy
+  2. Use {{backend}} as backend
+  3. Add TTL support
+  4. Include cache invalidation
+  5. Handle cache misses gracefully
+  6. Add cache warming
+  7. Include metrics and monitoring
+  8. Support distributed caching
+  
+  Output complete caching implementation.

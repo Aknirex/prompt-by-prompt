@@ -1,0 +1,39 @@
+id: "pbp.data.sql.001"
+name: "SQL Query Generator"
+description: "Generate SQL queries from natural language descriptions"
+category: "Data"
+tags: ["sql", "database", "query"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 1500
+
+variables:
+  - name: "dialect"
+    description: "SQL dialect"
+    type: "enum"
+    values: ["postgresql", "mysql", "sqlite", "mssql", "oracle"]
+    default: "postgresql"
+
+template: |
+  Generate a SQL query for the following request.
+  
+  SQL Dialect: {{dialect}}
+  
+  Request:
+  {{selection}}
+  
+  Requirements:
+  1. Generate optimized, idiomatic SQL for {{dialect}}
+  2. Include appropriate JOINs, WHERE clauses, and aggregations
+  3. Add comments explaining the query logic
+  4. Consider performance and use indexes appropriately
+  5. Handle edge cases (NULL values, empty results)
+  
+  Output:
+  1. The SQL query
+  2. Brief explanation of what it does
+  3. Any assumptions made about the schema

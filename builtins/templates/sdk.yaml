@@ -1,0 +1,40 @@
+id: "pbp.code.sdk.001"
+name: "SDK Generator"
+description: "Generate SDK/client library for APIs"
+category: "Code Generation"
+tags: ["sdk", "client", "api", "library"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "language"
+    description: "Target language"
+    type: "enum"
+    values: ["typescript", "python", "go", "java", "csharp"]
+    default: "typescript"
+
+template: |
+  Generate an SDK/client library for the following API.
+  
+  Language: {{language}}
+  
+  API Specification:
+  {{selection}}
+  
+  Requirements:
+  1. Generate client class with all endpoints
+  2. Include type definitions
+  3. Add authentication handling
+  4. Include error handling and retries
+  5. Add request/response interceptors
+  6. Include pagination helpers
+  7. Add comprehensive documentation
+  8. Include usage examples
+  9. Add unit tests
+  
+  Output complete SDK code.

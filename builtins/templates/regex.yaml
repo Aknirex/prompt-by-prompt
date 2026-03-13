@@ -1,0 +1,34 @@
+id: "pbp.code.regex.001"
+name: "Regex Generator"
+description: "Generate regular expressions from natural language descriptions"
+category: "Code Generation"
+tags: ["regex", "pattern", "matching"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 1000
+
+variables:
+  - name: "flavor"
+    description: "Regex flavor/engine"
+    type: "enum"
+    values: ["javascript", "python", "java", "csharp", "go", "rust"]
+    default: "javascript"
+
+template: |
+  Generate a regular expression for the following requirement.
+  
+  Regex Flavor: {{flavor}}
+  
+  Requirement:
+  {{selection}}
+  
+  Please provide:
+  1. The regular expression pattern
+  2. Explanation of each part of the pattern
+  3. Example matches and non-matches
+  4. Any flags needed (e.g., case-insensitive, multiline)
+  5. Code example showing how to use it in {{flavor}}

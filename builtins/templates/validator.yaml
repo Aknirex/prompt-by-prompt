@@ -1,0 +1,37 @@
+id: "pbp.code.validator.001"
+name: "Form Validator"
+description: "Generate form validation rules and error messages"
+category: "Code Generation"
+tags: ["validation", "forms", "input"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2000
+
+variables:
+  - name: "library"
+    description: "Validation library"
+    type: "enum"
+    values: ["zod", "yup", "joi", "react-hook-form", "formik"]
+    default: "zod"
+
+template: |
+  Generate form validation for the following form fields.
+  
+  Library: {{library}}
+  
+  Form Fields:
+  {{selection}}
+  
+  Requirements:
+  1. Define validation schema for all fields
+  2. Add custom error messages
+  3. Include cross-field validation
+  4. Add async validation where needed
+  5. Generate TypeScript types
+  6. Include form submission handling
+  
+  Output complete validation code with error handling.

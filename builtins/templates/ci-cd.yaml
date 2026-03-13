@@ -1,0 +1,47 @@
+id: "pbp.code.cicd.001"
+name: "CI/CD Pipeline"
+description: "Generate CI/CD pipeline configuration"
+category: "Development"
+tags: ["ci-cd", "github-actions", "pipeline", "deployment"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "platform"
+    description: "CI/CD platform"
+    type: "enum"
+    values: ["github-actions", "gitlab-ci", "circleci", "jenkins", "azure-pipelines"]
+    default: "github-actions"
+  - name: "project_type"
+    description: "Project type"
+    type: "enum"
+    values: ["nodejs", "python", "go", "rust", "docker"]
+    default: "nodejs"
+
+template: |
+  Generate a CI/CD pipeline for the following project.
+  
+  Platform: {{platform}}
+  Project Type: {{project_type}}
+  
+  {{#if selection}}
+  Project Context:
+  {{selection}}
+  {{/if}}
+  
+  Requirements:
+  1. Include build, test, and deploy stages
+  2. Add caching for dependencies
+  3. Include linting and type checking
+  4. Add security scanning
+  5. Include environment variables setup
+  6. Add deployment to staging and production
+  7. Include rollback capabilities
+  8. Add notifications for failures
+  
+  Output complete pipeline configuration.

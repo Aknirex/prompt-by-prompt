@@ -1,0 +1,39 @@
+id: "pbp.code.terraform.001"
+name: "Terraform Configuration"
+description: "Generate Terraform infrastructure code"
+category: "Development"
+tags: ["terraform", "infrastructure", "iac", "cloud"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "provider"
+    description: "Cloud provider"
+    type: "enum"
+    values: ["aws", "azure", "gcp", "digitalocean"]
+    default: "aws"
+
+template: |
+  Generate Terraform configuration for the following infrastructure.
+  
+  Provider: {{provider}}
+  
+  Infrastructure Requirements:
+  {{selection}}
+  
+  Requirements:
+  1. Define all required resources
+  2. Use modules for reusability
+  3. Add variables and outputs
+  4. Include security groups/firewall rules
+  5. Add tags for resource management
+  6. Include remote state configuration
+  7. Add provisioning scripts
+  8. Include cost estimation comments
+  
+  Output complete Terraform configuration.

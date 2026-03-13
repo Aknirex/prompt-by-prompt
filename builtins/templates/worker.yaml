@@ -1,0 +1,39 @@
+id: "pbp.code.worker.001"
+name: "Background Worker"
+description: "Generate background job worker implementation"
+category: "Code Generation"
+tags: ["worker", "queue", "background", "jobs"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "queue"
+    description: "Queue system"
+    type: "enum"
+    values: ["bull", "bullmq", "rabbitmq", "kafka", "sqs", "celery"]
+    default: "bullmq"
+
+template: |
+  Generate a background worker for the following jobs.
+  
+  Queue System: {{queue}}
+  
+  Job Types:
+  {{selection}}
+  
+  Requirements:
+  1. Define job processors for each type
+  2. Add retry logic with exponential backoff
+  3. Include job scheduling
+  4. Add progress tracking
+  5. Handle job failures and dead letter queue
+  6. Include job prioritization
+  7. Add concurrency control
+  8. Include monitoring and metrics
+  
+  Output complete worker implementation.

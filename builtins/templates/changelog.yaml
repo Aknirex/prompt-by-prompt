@@ -1,0 +1,40 @@
+id: "pbp.doc.changelog.001"
+name: "Changelog Generator"
+description: "Generate changelog entries from git commits or code changes"
+category: "Documentation"
+tags: ["changelog", "release", "git"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-haiku-20241022"
+  temperature: 0.3
+  max_tokens: 2000
+
+variables:
+  - name: "version"
+    description: "Version number for the release"
+    type: "string"
+    required: true
+
+template: |
+  Generate a changelog entry for version {{version}}.
+  
+  {{#if git_commit_diff}}
+  Git Diff:
+  ```
+  {{git_commit_diff}}
+  ```
+  {{/if}}
+  
+  {{#if selection}}
+  Changes:
+  {{selection}}
+  {{/if}}
+  
+  Follow the Keep a Changelog format:
+  - Group changes by type: Added, Changed, Deprecated, Removed, Fixed, Security
+  - Use clear, user-focused descriptions
+  - Include issue/PR references if available
+  
+  Output the changelog entry in markdown format.

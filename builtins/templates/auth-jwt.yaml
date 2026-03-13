@@ -1,0 +1,46 @@
+id: "pbp.code.auth.001"
+name: "Authentication System"
+description: "Generate authentication system with JWT"
+category: "Code Generation"
+tags: ["authentication", "jwt", "security", "oauth"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3500
+
+variables:
+  - name: "method"
+    description: "Authentication method"
+    type: "enum"
+    values: ["jwt", "session", "oauth", "api-key"]
+    default: "jwt"
+  - name: "framework"
+    description: "Framework"
+    type: "enum"
+    values: ["express", "fastify", "next-auth", "passport"]
+    default: "express"
+
+template: |
+  Generate an authentication system for the following requirements.
+  
+  Method: {{method}}
+  Framework: {{framework}}
+  
+  Requirements:
+  {{selection}}
+  
+  Features:
+  1. User registration and login
+  2. Password hashing and verification
+  3. JWT token generation and validation
+  4. Refresh token rotation
+  5. Password reset flow
+  6. Email verification
+  7. Rate limiting for auth endpoints
+  8. Session management
+  9. Role-based access control (RBAC)
+  
+  Output complete authentication code.

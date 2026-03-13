@@ -1,0 +1,46 @@
+id: "pbp.code.rest.001"
+name: "REST API Generator"
+description: "Generate REST API endpoints from models or specifications"
+category: "Code Generation"
+tags: ["rest", "api", "express", "fastify"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "framework"
+    description: "Web framework"
+    type: "enum"
+    values: ["express", "fastify", "koa", "hapi", "fastapi", "flask"]
+    default: "express"
+  - name: "include_validation"
+    description: "Include request validation"
+    type: "enum"
+    values: ["yes", "no"]
+    default: "yes"
+
+template: |
+  Generate REST API endpoints for the following model/specification.
+  
+  Framework: {{framework}}
+  Include Validation: {{include_validation}}
+  
+  Input:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Generate CRUD endpoints (GET, POST, PUT, DELETE)
+  2. Follow RESTful conventions
+  3. Include proper error handling
+  4. {{#eq include_validation "yes"}}Add request validation{{/eq}}
+  5. Include OpenAPI/Swagger documentation
+  6. Add authentication middleware hooks
+  7. Use framework best practices
+  
+  Output complete, production-ready API code.

@@ -1,0 +1,37 @@
+id: "pbp.code.config.001"
+name: "Configuration Schema"
+description: "Generate configuration schema and validation"
+category: "Code Generation"
+tags: ["configuration", "schema", "validation"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "format"
+    description: "Configuration format"
+    type: "enum"
+    values: ["json-schema", "zod", "joi", "yup", "pydantic"]
+    default: "zod"
+
+template: |
+  Generate configuration schema and validation for the following config structure.
+  
+  Format: {{format}}
+  
+  Config Description:
+  {{selection}}
+  
+  Requirements:
+  1. Define complete schema with types
+  2. Add validation rules
+  3. Include default values
+  4. Add descriptions for each field
+  5. Handle environment variables
+  6. Generate TypeScript types if applicable
+  
+  Output the schema and validation code.

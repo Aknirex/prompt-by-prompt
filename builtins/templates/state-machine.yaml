@@ -1,0 +1,38 @@
+id: "pbp.code.state.001"
+name: "State Machine Generator"
+description: "Generate state machine implementations"
+category: "Code Generation"
+tags: ["state-machine", "fsm", "xstate", "workflow"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "library"
+    description: "State machine library"
+    type: "enum"
+    values: ["xstate", "robot3", "custom", "python-transitions"]
+    default: "xstate"
+
+template: |
+  Generate a state machine for the following workflow.
+  
+  Library: {{library}}
+  
+  Workflow Description:
+  {{selection}}
+  
+  Requirements:
+  1. Define all states and transitions
+  2. Add guards/conditions for transitions
+  3. Include actions and side effects
+  4. Handle error states
+  5. Add entry/exit actions
+  6. Include history states if needed
+  7. Add TypeScript types
+  
+  Output complete state machine code.

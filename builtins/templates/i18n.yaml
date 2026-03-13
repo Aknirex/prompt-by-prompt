@@ -1,0 +1,42 @@
+id: "pbp.code.i18n.001"
+name: "i18n Setup"
+description: "Generate internationalization setup and translations"
+category: "Development"
+tags: ["i18n", "localization", "translations"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.3
+  max_tokens: 2500
+
+variables:
+  - name: "framework"
+    description: "i18n framework"
+    type: "enum"
+    values: ["i18next", "react-intl", "vue-i18n", "next-intl", "gettext"]
+    default: "i18next"
+  - name: "languages"
+    description: "Target languages (comma-separated)"
+    type: "string"
+    default: "en, zh, es, fr, de"
+
+template: |
+  Generate internationalization setup for the following content.
+  
+  Framework: {{framework}}
+  Languages: {{languages}}
+  
+  Content to internationalize:
+  {{selection}}
+  
+  Requirements:
+  1. Set up i18n configuration
+  2. Extract translatable strings
+  3. Generate translation files for each language
+  4. Add pluralization support
+  5. Include interpolation examples
+  6. Add date/number formatting helpers
+  
+  Output complete i18n setup with translation files.

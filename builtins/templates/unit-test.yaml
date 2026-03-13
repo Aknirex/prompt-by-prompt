@@ -1,0 +1,54 @@
+id: "pbp.test.unit.001"
+name: "Unit Test Generator"
+description: "Generate comprehensive unit tests for the selected code"
+category: "Testing"
+tags: ["testing", "unit-test", "jest", "vitest"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "framework"
+    description: "Testing framework to use"
+    type: "enum"
+    values: ["jest", "vitest", "mocha", "pytest", "unittest"]
+    default: "jest"
+  - name: "coverage"
+    description: "Coverage level"
+    type: "enum"
+    values: ["basic", "comprehensive", "edge-cases"]
+    default: "comprehensive"
+
+template: |
+  You are an expert test engineer. Generate {{coverage}} unit tests for the following code.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  Testing Framework: {{framework}}
+  
+  Code to test:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  {{#if file_content}}
+  Full file context:
+  ```{{lang}}
+  {{file_content}}
+  ```
+  {{/if}}
+  
+  Requirements:
+  1. Generate complete, runnable test code
+  2. Include test descriptions that clearly explain what is being tested
+  3. Cover happy paths and error cases
+  4. {{#eq coverage "edge-cases"}}Include edge cases and boundary conditions{{/eq}}
+  5. {{#eq coverage "comprehensive"}}Include edge cases and mock external dependencies{{/eq}}
+  6. Use appropriate assertions and matchers for {{framework}}
+  7. Add necessary imports and setup/teardown if needed
+  
+  Output only the test code, ready to be saved to a test file.

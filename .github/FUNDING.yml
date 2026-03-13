@@ -1,0 +1,11 @@
+# These owners will be the default owners for everything in the repo.
+* @your-username
+
+# Docs
+docs/ @your-username
+
+# Source code
+src/ @your-username
+
+# Templates
+builtins/ @your-username

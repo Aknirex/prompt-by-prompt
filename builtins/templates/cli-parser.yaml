@@ -1,0 +1,37 @@
+id: "pbp.code.cli.001"
+name: "CLI Argument Parser"
+description: "Generate CLI argument parsing code"
+category: "Code Generation"
+tags: ["cli", "arguments", "command-line"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2000
+
+variables:
+  - name: "library"
+    description: "CLI library to use"
+    type: "enum"
+    values: ["commander", "yargs", "argparse", "click", "argparse-python", "clap"]
+    default: "commander"
+
+template: |
+  Generate CLI argument parsing code for the following command specification.
+  
+  Library: {{library}}
+  
+  Command Description:
+  {{selection}}
+  
+  Requirements:
+  1. Parse all specified arguments and options
+  2. Include help text for each option
+  3. Add input validation
+  4. Handle invalid arguments gracefully
+  5. Support both short and long option forms
+  6. Include version flag
+  
+  Output complete CLI parsing code.

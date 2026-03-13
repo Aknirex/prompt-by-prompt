@@ -1,0 +1,41 @@
+id: "pbp.code.error.001"
+name: "Error Handler Generator"
+description: "Generate comprehensive error handling code"
+category: "Code Generation"
+tags: ["error-handling", "exceptions", "robustness"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "error_type"
+    description: "Error handling approach"
+    type: "enum"
+    values: ["try-catch", "result-type", "either", "custom-errors"]
+    default: "try-catch"
+
+template: |
+  Add comprehensive error handling to the following code.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  Error Handling Style: {{error_type}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Add appropriate try-catch/error handling blocks
+  2. Create custom error types if needed
+  3. Log errors appropriately
+  4. Provide meaningful error messages
+  5. Handle edge cases gracefully
+  6. Preserve the original functionality
+  
+  Output the code with error handling added.

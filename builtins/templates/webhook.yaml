@@ -1,0 +1,38 @@
+id: "pbp.code.webhook.001"
+name: "Webhook Handler"
+description: "Generate webhook handlers with verification"
+category: "Code Generation"
+tags: ["webhook", "api", "integration", "events"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+variables:
+  - name: "provider"
+    description: "Webhook provider"
+    type: "enum"
+    values: ["stripe", "github", "slack", "twilio", "generic"]
+    default: "generic"
+
+template: |
+  Generate a webhook handler for the following events.
+  
+  Provider: {{provider}}
+  
+  Event Types:
+  {{selection}}
+  
+  Requirements:
+  1. Verify webhook signatures
+  2. Parse and validate payload
+  3. Handle different event types
+  4. Add idempotency for replay protection
+  5. Include error handling
+  6. Add logging and monitoring
+  7. Return appropriate HTTP responses
+  
+  Output complete webhook handler code.

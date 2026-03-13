@@ -1,13 +1,200 @@
 {
   "name": "prompt-by-prompt",
-  "version": "0.1.0",
+  "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
+  "version": "0.1.0",
+  "publisher": "prompt-by-prompt",
   "private": true,
-  "scripts": {
-    "build": "echo \"build placeholder\"",
-    "lint": "echo \"lint placeholder\"",
-    "test": "echo \"test placeholder\""
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
   },
-  "author": "",
-  "license": "MIT"
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "prompt",
+    "ai",
+    "llm",
+    "ollama",
+    "openai",
+    "claude",
+    "prompt-engineering"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pbp.refreshPrompts",
+        "title": "Refresh Prompts",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pbp.createPrompt",
+        "title": "Create New Prompt",
+        "icon": "$(add)"
+      },
+      {
+        "command": "pbp.editPrompt",
+        "title": "Edit Prompt"
+      },
+      {
+        "command": "pbp.deletePrompt",
+        "title": "Delete Prompt"
+      },
+      {
+        "command": "pbp.runPrompt",
+        "title": "Run Prompt",
+        "icon": "$(play)"
+      },
+      {
+        "command": "pbp.openSettings",
+        "title": "Open Settings"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pbp-explorer",
+          "title": "Prompt by Prompt",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "pbp-explorer": [
+        {
+          "id": "pbp.promptsView",
+          "name": "Prompts"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "pbp.refreshPrompts",
+          "when": "view == pbp.promptsView",
+          "group": "navigation"
+        },
+        {
+          "command": "pbp.createPrompt",
+          "when": "view == pbp.promptsView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pbp.runPrompt",
+          "when": "view == pbp.promptsView && viewItem == prompt",
+          "group": "inline"
+        },
+        {
+          "command": "pbp.editPrompt",
+          "when": "view == pbp.promptsView && viewItem == prompt",
+          "group": "1_modification"
+        },
+        {
+          "command": "pbp.deletePrompt",
+          "when": "view == pbp.promptsView && viewItem == prompt",
+          "group": "1_modification"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "pbp.runPrompt",
+          "group": "pbp"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Prompt by Prompt",
+      "properties": {
+        "pbp.defaultModel": {
+          "type": "string",
+          "default": "ollama",
+          "enum": ["ollama", "openai", "claude", "groq"],
+          "description": "Default LLM provider"
+        },
+        "pbp.ollamaEndpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama API endpoint"
+        },
+        "pbp.ollamaModel": {
+          "type": "string",
+          "default": "llama3.2",
+          "description": "Default Ollama model"
+        },
+        "pbp.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API Key"
+        },
+        "pbp.openaiModel": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "Default OpenAI model"
+        },
+        "pbp.claudeApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic Claude API Key"
+        },
+        "pbp.claudeModel": {
+          "type": "string",
+          "default": "claude-3-5-sonnet-20241022",
+          "description": "Default Claude model"
+        },
+        "pbp.groqApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Groq API Key"
+        },
+        "pbp.groqModel": {
+          "type": "string",
+          "default": "llama-3.3-70b-versatile",
+          "description": "Default Groq model"
+        },
+        "pbp.promptsDir": {
+          "type": "string",
+          "default": ".prompts",
+          "description": "Directory name for workspace prompts"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "handlebars": "^4.7.8",
+    "js-yaml": "^4.1.0",
+    "uuid": "^9.0.0"
+  }
 }

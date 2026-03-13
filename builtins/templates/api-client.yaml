@@ -1,0 +1,42 @@
+id: "pbp.code.api.001"
+name: "API Client Generator"
+description: "Generate API client code from API specifications"
+category: "Code Generation"
+tags: ["api", "client", "http", "fetch"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "language"
+    description: "Target language"
+    type: "enum"
+    values: ["typescript", "javascript", "python", "go", "rust"]
+    default: "typescript"
+  - name: "client_type"
+    description: "HTTP client library"
+    type: "enum"
+    values: ["fetch", "axios", "ky", "got", "requests"]
+    default: "fetch"
+
+template: |
+  Generate an API client in {{language}} using {{client_type}}.
+  
+  API Specification/Description:
+  {{selection}}
+  
+  Requirements:
+  1. Generate a fully typed API client class/module
+  2. Include methods for all endpoints
+  3. Handle request/response types
+  4. Include error handling
+  5. Add request/response interceptors if applicable
+  6. Support authentication (Bearer token, API key)
+  7. Include retry logic for failed requests
+  8. Add JSDoc/docstring documentation
+  
+  Output complete, production-ready code.

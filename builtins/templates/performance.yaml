@@ -1,0 +1,38 @@
+id: "pbp.code.performance.001"
+name: "Performance Analyzer"
+description: "Analyze code for performance issues and suggest optimizations"
+category: "Code Analysis"
+tags: ["performance", "optimization", "efficiency"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+template: |
+  You are a performance optimization expert. Analyze the following code for performance issues.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Please analyze:
+  1. **Time Complexity**: Big O notation and analysis
+  2. **Space Complexity**: Memory usage analysis
+  3. **Performance Issues**: 
+     - Inefficient algorithms or data structures
+     - Unnecessary loops or iterations
+     - Memory leaks or excessive allocations
+     - I/O bottlenecks
+  4. **Optimization Suggestions**: 
+     - Specific improvements with code examples
+     - Expected performance gains
+  5. **Benchmark Ideas**: How to measure the improvements
+  
+  Provide concrete, actionable optimizations with before/after code examples.

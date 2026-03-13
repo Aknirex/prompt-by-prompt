@@ -1,0 +1,39 @@
+id: "pbp.code.bug.001"
+name: "Bug Detector"
+description: "Analyze code to find potential bugs, edge cases, and logical errors"
+category: "Code Analysis"
+tags: ["bug", "debug", "analysis"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2500
+
+template: |
+  You are an expert debugger with deep knowledge of common programming pitfalls.
+  
+  Analyze the following code for potential bugs and issues:
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Please identify:
+  1. **Potential Bugs**: Logic errors, race conditions, null/undefined issues
+  2. **Edge Cases**: Unhandled boundary conditions or inputs
+  3. **Type Issues**: Type-related problems or mismatches
+  4. **Resource Leaks**: Memory leaks, unclosed connections, file handles
+  5. **Error Handling**: Missing or improper error handling
+  6. **Concurrency Issues**: Thread safety, deadlocks, race conditions
+  
+  For each issue found, provide:
+  - Location in code
+  - Description of the problem
+  - Severity (Critical/High/Medium/Low)
+  - Suggested fix with code example

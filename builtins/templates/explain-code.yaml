@@ -1,0 +1,42 @@
+id: "pbp.code.explain.001"
+name: "Code Explainer"
+description: "Explain complex code in simple terms with line-by-line analysis"
+category: "Code Analysis"
+tags: ["explain", "learn", "understand"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.3
+  max_tokens: 3000
+
+variables:
+  - name: "detail_level"
+    description: "Level of explanation detail"
+    type: "enum"
+    values: ["brief", "detailed", "line-by-line"]
+    default: "detailed"
+
+template: |
+  Explain the following code in simple, easy-to-understand terms.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  Detail Level: {{detail_level}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Please provide:
+  1. **Overview**: A brief summary of what the code does (2-3 sentences)
+  2. **Key Concepts**: Important programming concepts used
+  3. **Detailed Explanation**: 
+     {{#eq detail_level "line-by-line"}}Line-by-line breakdown{{/eq}}
+     {{#eq detail_level "detailed"}}Section-by-section breakdown{{/eq}}
+     {{#eq detail_level "brief"}}High-level explanation{{/eq}}
+  4. **Data Flow**: How data moves through the code
+  5. **Dependencies**: External libraries or modules used
+  6. **Potential Improvements**: Any suggestions for clarity or efficiency

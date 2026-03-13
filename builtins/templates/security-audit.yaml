@@ -1,0 +1,38 @@
+id: "pbp.code.security.001"
+name: "Security Audit"
+description: "Analyze code for security vulnerabilities and provide remediation"
+category: "Code Analysis"
+tags: ["security", "vulnerability", "audit"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+template: |
+  You are a security expert. Perform a security audit of the following code.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Please analyze for:
+  1. **Injection Vulnerabilities**: SQL injection, XSS, command injection, etc.
+  2. **Authentication/Authorization Issues**: Broken auth, improper access control
+  3. **Data Exposure**: Sensitive data leakage, improper encryption
+  4. **Input Validation**: Missing or insufficient validation
+  5. **Cryptographic Issues**: Weak algorithms, improper key management
+  6. **Configuration Issues**: Debug mode, default credentials, etc.
+  
+  For each vulnerability found:
+  - Severity (Critical/High/Medium/Low)
+  - OWASP Top 10 category
+  - Description of the vulnerability
+  - Proof of concept (if applicable)
+  - Remediation steps with code examples

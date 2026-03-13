@@ -1,0 +1,40 @@
+id: "pbp.data.mock.001"
+name: "Mock Data Generator"
+description: "Generate realistic mock data for testing and development"
+category: "Data"
+tags: ["mock", "test-data", "fixtures"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.5
+  max_tokens: 3000
+
+variables:
+  - name: "format"
+    description: "Output format"
+    type: "enum"
+    values: ["json", "typescript", "python", "sql"]
+    default: "json"
+  - name: "count"
+    description: "Number of records to generate"
+    type: "string"
+    default: "10"
+
+template: |
+  Generate {{count}} records of realistic mock data.
+  
+  Format: {{format}}
+  
+  Data Schema/Description:
+  {{selection}}
+  
+  Requirements:
+  1. Generate realistic, diverse data
+  2. Follow the schema exactly
+  3. Include edge cases (empty strings, null values where appropriate)
+  4. Use appropriate data types
+  5. Make data internally consistent
+  
+  Output the mock data in {{format}} format.

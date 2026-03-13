@@ -1,0 +1,44 @@
+id: "pbp.code.rate-limit.001"
+name: "Rate Limiter"
+description: "Generate rate limiting implementation"
+category: "Code Generation"
+tags: ["rate-limit", "throttle", "api", "security"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2000
+
+variables:
+  - name: "algorithm"
+    description: "Rate limiting algorithm"
+    type: "enum"
+    values: ["token-bucket", "sliding-window", "fixed-window", "leaky-bucket"]
+    default: "sliding-window"
+  - name: "storage"
+    description: "Storage backend"
+    type: "enum"
+    values: ["memory", "redis", "memcached"]
+    default: "memory"
+
+template: |
+  Generate a rate limiter implementation.
+  
+  Algorithm: {{algorithm}}
+  Storage: {{storage}}
+  
+  Requirements:
+  {{selection}}
+  
+  Features:
+  1. Implement {{algorithm}} algorithm
+  2. Use {{storage}} for state storage
+  3. Support multiple rate limit rules
+  4. Add configurable limits per key
+  5. Include headers in responses
+  6. Handle distributed scenarios if using Redis
+  7. Add middleware for Express/Fastify
+  
+  Output complete rate limiter code.

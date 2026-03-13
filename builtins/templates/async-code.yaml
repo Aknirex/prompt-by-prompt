@@ -1,0 +1,40 @@
+id: "pbp.code.async.001"
+name: "Async Code Converter"
+description: "Convert synchronous code to asynchronous patterns"
+category: "Code Generation"
+tags: ["async", "promises", "concurrency"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "pattern"
+    description: "Async pattern to use"
+    type: "enum"
+    values: ["async-await", "promises", "callbacks", "observables"]
+    default: "async-await"
+
+template: |
+  Convert the following synchronous code to asynchronous using {{pattern}} pattern.
+  
+  File: `{{filepath}}`
+  Language: {{lang}}
+  
+  Code:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Use {{pattern}} pattern consistently
+  2. Add proper error handling for async operations
+  3. Handle race conditions if applicable
+  4. Add appropriate timeouts where needed
+  5. Maintain the original functionality
+  6. Add comments explaining async behavior
+  
+  Output the converted asynchronous code.

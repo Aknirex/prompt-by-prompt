@@ -1,0 +1,45 @@
+id: "pbp.code.review.001"
+name: "Code Review Assistant"
+description: "Perform comprehensive code review with performance and readability analysis"
+category: "Code Analysis"
+tags: ["code-quality", "review", "optimization"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.3
+  max_tokens: 3000
+
+variables:
+  - name: "focus_area"
+    description: "Specific area to focus on during review"
+    type: "enum"
+    values: ["performance", "security", "readability", "all"]
+    default: "all"
+
+template: |
+  You are a senior code reviewer with extensive experience in software development.
+  
+  Please review the following code from file `{{filepath}}`:
+  
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  {{#if file_content}}
+  Full file context:
+  ```{{lang}}
+  {{file_content}}
+  ```
+  {{/if}}
+  
+  Focus area: {{focus_area}}
+  
+  Please provide:
+  1. **Summary**: Brief overview of what the code does
+  2. **Issues Found**: List any bugs, anti-patterns, or concerns
+  3. **Performance**: Performance considerations and optimizations
+  4. **Readability**: Code style and maintainability suggestions
+  5. **Security**: Any security vulnerabilities or concerns
+  6. **Recommendations**: Specific actionable improvements with code examples

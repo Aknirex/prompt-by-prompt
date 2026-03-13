@@ -1,0 +1,38 @@
+id: "pbp.doc.openapi.001"
+name: "OpenAPI Spec Generator"
+description: "Generate OpenAPI/Swagger specification from code"
+category: "Documentation"
+tags: ["openapi", "swagger", "api", "documentation"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "version"
+    description: "API version"
+    type: "string"
+    default: "1.0.0"
+
+template: |
+  Generate an OpenAPI 3.0 specification for the following API.
+  
+  API Version: {{version}}
+  
+  API Code/Description:
+  {{selection}}
+  
+  Requirements:
+  1. Include all endpoints with methods
+  2. Define request/response schemas
+  3. Add authentication requirements
+  4. Include examples for each endpoint
+  5. Add descriptions and summaries
+  6. Define error responses
+  7. Include server configurations
+  8. Add tags for grouping
+  
+  Output complete OpenAPI YAML specification.

@@ -1,0 +1,39 @@
+id: "pbp.code.graphql.001"
+name: "GraphQL Schema Generator"
+description: "Generate GraphQL schema from types or database models"
+category: "Code Generation"
+tags: ["graphql", "schema", "api"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 3000
+
+variables:
+  - name: "include_resolvers"
+    description: "Include resolver signatures"
+    type: "enum"
+    values: ["yes", "no"]
+    default: "yes"
+
+template: |
+  Generate a GraphQL schema from the following types/models.
+  
+  Include Resolvers: {{include_resolvers}}
+  
+  Input:
+  ```{{lang}}
+  {{selection}}
+  ```
+  
+  Requirements:
+  1. Generate complete GraphQL type definitions
+  2. Include Query and Mutation types
+  3. Add input types for mutations
+  4. Include descriptions and deprecation reasons
+  5. {{#eq include_resolvers "yes"}}Generate resolver signatures{{/eq}}
+  6. Follow GraphQL best practices
+  
+  Output the GraphQL schema.

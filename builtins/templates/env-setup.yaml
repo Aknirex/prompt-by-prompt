@@ -1,0 +1,43 @@
+id: "pbp.code.env.001"
+name: "Environment Setup"
+description: "Generate environment configuration files (.env.example, docker-compose, etc.)"
+category: "Development"
+tags: ["environment", "docker", "configuration"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2000
+
+variables:
+  - name: "config_type"
+    description: "Type of configuration to generate"
+    type: "enum"
+    values: ["env-example", "docker-compose", "dockerfile", "all"]
+    default: "all"
+
+template: |
+  Generate environment configuration files for the following project.
+  
+  Project: {{project_name}}
+  Configuration Type: {{config_type}}
+  
+  {{#if selection}}
+  Project Context:
+  {{selection}}
+  {{/if}}
+  
+  {{#if file_content}}
+  Additional Context:
+  {{file_content}}
+  {{/if}}
+  
+  Generate:
+  1. `.env.example` with all required environment variables and descriptions
+  2. `docker-compose.yml` for local development
+  3. `Dockerfile` for the application
+  4. Any necessary configuration files
+  
+  Include comments explaining each configuration option.

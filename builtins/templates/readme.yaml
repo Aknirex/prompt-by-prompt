@@ -1,0 +1,49 @@
+id: "pbp.doc.readme.001"
+name: "README Generator"
+description: "Generate comprehensive README documentation for projects"
+category: "Documentation"
+tags: ["readme", "documentation", "markdown"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.3
+  max_tokens: 3000
+
+variables:
+  - name: "project_type"
+    description: "Type of project"
+    type: "enum"
+    values: ["library", "cli", "api", "web-app", "mobile-app", "general"]
+    default: "general"
+
+template: |
+  Generate a comprehensive README.md for the following project.
+  
+  Project Name: {{project_name}}
+  Project Type: {{project_type}}
+  
+  {{#if selection}}
+  Project Description/Code:
+  {{selection}}
+  {{/if}}
+  
+  {{#if file_content}}
+  Additional Context:
+  {{file_content}}
+  {{/if}}
+  
+  Include the following sections:
+  1. **Title and Badges** (build status, version, license)
+  2. **Description** (what the project does)
+  3. **Features** (key features list)
+  4. **Installation** (step-by-step instructions)
+  5. **Usage** (examples and code snippets)
+  6. **Configuration** (environment variables, options)
+  7. **API Reference** (if applicable)
+  8. **Contributing** (how to contribute)
+  9. **License** (MIT, Apache, etc.)
+  10. **Acknowledgments** (optional)
+  
+  Use proper Markdown formatting with headers, code blocks, and links.

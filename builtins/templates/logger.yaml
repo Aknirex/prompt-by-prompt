@@ -1,0 +1,41 @@
+id: "pbp.code.logger.001"
+name: "Logging Setup"
+description: "Generate comprehensive logging setup"
+category: "Development"
+tags: ["logging", "observability", "debugging"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 2000
+
+variables:
+  - name: "library"
+    description: "Logging library"
+    type: "enum"
+    values: ["winston", "pino", "bunyan", "log4js", "python-logging", "structlog"]
+    default: "winston"
+
+template: |
+  Generate a comprehensive logging setup for the following project.
+  
+  Library: {{library}}
+  Project: {{project_name}}
+  
+  {{#if selection}}
+  Context:
+  {{selection}}
+  {{/if}}
+  
+  Requirements:
+  1. Configure multiple log levels (debug, info, warn, error)
+  2. Support multiple transports (console, file, remote)
+  3. Include structured logging with context
+  4. Add request/response logging middleware
+  5. Include log rotation configuration
+  6. Add correlation IDs for tracing
+  7. Support log filtering and searching
+  
+  Output complete logging configuration and usage examples.
