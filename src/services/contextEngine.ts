@@ -177,7 +177,7 @@ export class ContextEngine {
     });
 
     Handlebars.registerHelper('capitalize', (str: string) => {
-      if (!str) return '';
+      if (!str) { return ''; }
       return str.charAt(0).toUpperCase() + str.slice(1);
     });
 
@@ -223,7 +223,6 @@ export class ContextEngine {
     }
 
     const missing: PromptVariable[] = [];
-    const contextKeys = Object.keys(context);
 
     for (const variable of template.variables) {
       // Skip if it's a builtin variable

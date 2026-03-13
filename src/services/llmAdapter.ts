@@ -3,8 +3,7 @@
  * Handles communication with various LLM providers
  */
 
-import * as vscode from 'vscode';
-import { LLMProvider, LLMConfig, LLMResponse, ResponseMetadata } from '../types/prompt';
+import { LLMProvider, LLMConfig, LLMResponse } from '../types/prompt';
 
 export interface StreamCallback {
   (chunk: string): void;
@@ -52,12 +51,13 @@ export class OllamaAdapter implements LLMAdapter {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) { break; }
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim());
+          const lines = chunk.split('\n').filter((line: string) => line.trim());
 
           for (const line of lines) {
             try {
@@ -171,16 +171,17 @@ export class OpenAIAdapter implements LLMAdapter {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) { break; }
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.startsWith('data:'));
+          const lines = chunk.split('\n').filter((line: string) => line.startsWith('data:'));
 
           for (const line of lines) {
             const data = line.replace('data: ', '').trim();
-            if (data === '[DONE]') continue;
+            if (data === '[DONE]') { continue; }
 
             try {
               const json = JSON.parse(data) as { 
@@ -302,12 +303,13 @@ export class ClaudeAdapter implements LLMAdapter {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) { break; }
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.startsWith('data:'));
+          const lines = chunk.split('\n').filter((line: string) => line.startsWith('data:'));
 
           for (const line of lines) {
             const data = line.replace('data: ', '').trim();
@@ -427,16 +429,17 @@ export class GroqAdapter implements LLMAdapter {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) { break; }
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.startsWith('data:'));
+          const lines = chunk.split('\n').filter((line: string) => line.startsWith('data:'));
 
           for (const line of lines) {
             const data = line.replace('data: ', '').trim();
-            if (data === '[DONE]') continue;
+            if (data === '[DONE]') { continue; }
 
             try {
               const json = JSON.parse(data) as {
