@@ -1,0 +1,205 @@
+```markdown
+# 🚀 PromptForge - VSCode Prompt管理插件 **设计与开发计划书**
+
+**版本**: v1.0  
+**作者**: [Your Name]  
+**日期**: 2024.10  
+**目标**: 开源精品小工具，目标GitHub 5k+ Star，成为“Prompt工程标杆”。**不为赚钱，为名誉**。
+
+---
+
+## 1. 项目概述
+
+### 🎯 愿景与定位
+- **产品名**: **PromptForge** (“锻造”高效Prompt，像铁匠工具。极客感强，易记。)
+- **Slogan**: “Forge your AI prompts in VSCode – Manage, Template, Generate.”
+- **定位**: **精品小工具**（非大而全）。体积<1MB，本地优先，零依赖。聚焦**Prompt全生命周期**：管理 + 库 + 生成。
+- **核心价值**: 一键注入代码上下文，提升开发者AI工作流。**差异化**：智能上下文抓取 + 精品模板库。
+- **目标用户**: AI开发者、Prompt工程师（VSCode 73%市场份额）。
+- **名誉ROI**: 1月1k Star → 3月Top AI插件 → 社区标杆 + 演讲邀约。
+
+### 📊 市场机会（简析）
+| 指标 | 数据 | 机会 |
+|------|------|------|
+| VSCode用户 | 73%开发者 | 巨大曝光 |
+| AI插件增长 | 200%+ (2024) | 趋势红利 |
+| 竞品痛点 | 碎片化、无生成器 | 一体化碾压 |
+| 名誉潜力 | 类似插件10w+下载 | Star收割机 |
+
+---
+
+## 2. 核心功能设计
+
+### 🔧 MVP功能（Phase 1，聚焦精品）
+1. **Prompt管理器** (TreeView侧边栏)
+   - CRUD（创建/读/更新/删除）。
+   - 搜索/标签/分类（全局/Workspace）。
+   - 导出/导入JSON/Git。
+   
+2. **模板库** (内置50+精品模板)
+   - 变量支持：`{selection}`、`{file}`、`{project}`。
+   - 每个模板：名称、内容、最佳模型、评分、示例。
+   - 一键预览/插入编辑器。
+
+3. **Prompt生成器** (命令面板 + Webview)
+   - 输入自然语言 → LLM优化（Ollama本地免费）。
+   - 自动注入上下文（选中文本、当前文件AST）。
+   - 输出：优化Prompt + 一键复制/保存。
+
+### 🎨 UI/UX设计（极简主义）
+- **侧边栏**：TreeView（模板树）+ 搜索框。
+- **Webview面板**：生成器界面（输入框 + 输出预览 + 模型切换）。
+- **快捷键**：`Ctrl+Shift+P` → "Forge Prompt"。
+- **主题适配**：暗/亮模式，无动画卡顿。
+- **Logo**：铁砧+AI火花（SVG，自制）。
+
+<details>
+<summary>功能流程图（Mermaid）</summary>
+
+```mermaid
+graph TD
+    A[打开侧边栏] --> B{选模板?}
+    B -->|是| C[一键插入 + 变量填充]
+    B -->|否| D[自然语言输入]
+    D --> E[抓上下文 + LLM生成]
+    E --> F[保存/插入/导出]
+    C --> F
+```
+
+</details>
+
+### 🏗️ 架构设计
+```
+PromptForge
+├── src/
+│   ├── manager.ts     # CRUD + 存储 (Memento/JSON)
+│   ├── templates/     # 50 JSON模板
+│   ├── generator.ts   # Ollama API + 上下文注入
+│   └── ui/            # Webview + TreeView
+├── package.json       # 激活命令/快捷键
+└── prompts.json       # 模板数据
+```
+- **存储**：`context.globalState`（本地）+ `.vscode/prompts.json`（项目级）。
+- **LLM**：Ollama（本地）> Grok/Claude API（可选）。
+
+---
+
+## 3. 模板库设计（50个精品，覆盖80%场景）
+
+**分类 & 示例**（`prompts.json`格式）：
+
+| 分类 | 数量 | 示例模板 |
+|------|------|----------|
+| **代码生成** | 15 | "用{lang}写{task}函数。基於{selection}，输出纯代码。最佳模型: Claude-3.5" |
+| **调试/修复** | 10 | "分析{file_content} Bug，给修复patch + 解释。" |
+| **重构/优化** | 8 | "重构{selection}为高效版，保持功能。" |
+| **文档/解释** | 7 | "生成{file} README.md (架构+用法)。" |
+| **测试** | 5 | "为{selection}写Jest单元测试。" |
+| **架构** | 3 | "设计{project_desc}微服务架构 (Mermaid)。" |
+| **其他** | 2 | Commit消息/翻译。 |
+
+**完整JSON示例**：
+```json
+{
+  "code-gen-react": {
+    "name": "React Hook生成器",
+    "template": "Create a custom React hook for {task} using {selection} as base. Output TSX code only.",
+    "bestModel": "claude-3.5-sonnet",
+    "rating": 4.8,
+    "vars": ["task", "selection"]
+  }
+}
+```
+
+**扩展**：GitHub贡献模板 → 社区驱动。
+
+---
+
+## 4. 开发计划（总时长：2-3月，1人）
+
+### 📅 时间表（Gantt式）
+
+| Phase | 周数 | 里程碑 | 任务 |
+|-------|------|--------|------|
+| **Phase 0: 准备** | 1 | Repo搭建 | GitHub repo + README + 脚手架(`yo code`) |
+| **Phase 1: MVP** | 2-4 | 核心功能 | 管理器(1w) + 模板库(1w) + 生成器(2w) |
+| **Phase 2:  polish** | 5-6 | 精品化 | UI精致 + 测试 + 文档 |
+| **Phase 3: 发布** | 7 | 上线 | Marketplace + 宣传 |
+| **Phase 4: 迭代** | 8+ | 名誉维护 | 社区反馈 + v1.1 |
+
+**周任务示例**：
+- **Week 1**: `extension.ts`激活 + TreeView管理器。
+- **技术栈**：TypeScript, VSCode API, Webview, Ollama Node.js。
+
+**代码质量**：
+- 100% TypeScript。
+- Jest单元测试（>80%覆盖）。
+- ESLint + Prettier。
+
+---
+
+## 5. 发布与推广计划（名誉导向）
+
+### 🚀 发布流程
+1. **GitHub**: MIT许可，精美README（GIF Demo + 表格）。
+2. **Marketplace**: `vsce package` → 审核1天。
+3. **版本**: v1.0.0 (MVP)。
+
+### 📈 名誉增长策略
+| 渠道 | 行动 | 预期 |
+|------|------|------|
+| **GitHub** | Star目标1k/月 | 高质README + Issues模板 |
+| **Twitter/X** | #vscode #promptengineering | 发Demo视频 |
+| **社区** | V2EX/Reddit r/vscode | “开源新工具，求Star” |
+| **Product Hunt** | 首发 | 目标Top5 Developer Tools |
+| **博客** | Medium: “从0建PromptForge” | SEO + 引流 |
+
+**KPI**：
+| 时间 | 下载/Star | 指标 |
+|------|-----------|------|
+| 1月 | 10k/1k | MVP反馈 |
+| 3月 | 50k/5k | v1.1上线 |
+| 6月 | 100k+/10k+ | 社区标杆 |
+
+---
+
+## 6. 风险与维护
+
+| 风险 | 概率 | 规避 |
+|------|------|------|
+| API变更 | 中 | 本地Ollama优先 |
+| 用户少 | 低 | 精品模板吸粉 |
+| 维护累 | 中 | 社区贡献 + 半年承诺 |
+| 竞品抄袭 | 高 | 先发制人 + 开源 |
+
+**维护承诺**：每月更新模板，响应Issues <48h。
+
+---
+
+## 7. 附录
+
+### Starter Code Snippet
+```typescript
+// extension.ts 示例
+import * as vscode from 'vscode';
+
+export function activate(context: vscode.ExtensionContext) {
+  const forgeCmd = vscode.commands.registerCommand('promptforge.open', () => {
+    // TreeView + Webview逻辑
+    vscode.window.showInformationMessage('PromptForge Activated!');
+  });
+  context.subscriptions.push(forgeCmd);
+}
+```
+
+### 资源
+- [VSCode Extension Docs](https://code.visualstudio.com/api)
+- [Ollama JS](https://ollama.com/blog/nodejs)
+- **下一步**: Fork此计划，立即`yo code`启动！
+
+**行动号召**：**今天建Repo，明日成王！** 👑 如需调整/代码原型，随时反馈。
+
+---
+*Powered by Grok 4.1 – Forge your future!*
+```
+```

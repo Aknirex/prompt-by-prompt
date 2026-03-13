@@ -1,0 +1,1644 @@
+# VS Code Prompt Manager 插件 - 完整设计与计划书
+
+## 📋 目录
+1. [项目概述](#项目概述)
+2. [市场分析](#市场分析)
+3. [产品设计](#产品设计)
+4. [技术方案](#技术方案)
+5. [开发计划](#开发计划)
+6. [社区运营](#社区运营)
+
+---
+
+## 项目概述
+
+### 项目名称
+**PromptFlow** - VS Code Prompt Management & Generation Toolkit
+
+### 核心定位
+为AI开发者提供"配置即代码"的Prompt管理、模板库与智能生成一体化工具。强调**本地优先、开源透明、开发者友好**。
+
+### Mission
+```
+让每个开发者都能高效管理、复用、优化AI Prompt
+成为开源社区中"Prompt工程的标准工具"
+```
+
+### 目标用户
+- **AI工程师** - 需要管理多个LLM的Prompt
+- **Prompt工程师** - 需要标准化、版本控制Prompt
+- **内容创作者** - 使用ChatGPT/Claude的开发者
+- **DevOps工程师** - 需要自动化Prompt流程
+
+### 核心价值主张
+```
+❌ 不是又一个Prompt存储工具
+✅ 而是完整的Prompt工程工作流平台
+```
+
+| 传统方案 | PromptFlow |
+|---------|-----------|
+| 手动复制粘贴 | 一键调用Prompt |
+| 无版本控制 | Git集成+版本追踪 |
+| 模板不标准 | 结构化YAML配置 |
+| 无法测试优化 | 多模型A/B测试 |
+| 隐私担忧 | 完全本地+开源 |
+
+---
+
+## 市场分析
+
+### 市场现状
+
+#### 用户痛点研究
+```
+痛点1: Prompt管理混乱
+  ├─ 散落在笔记、浏览器历史、Notion
+  ├─ 难以搜索和复用
+  └─ 工作流割裂
+
+痛点2: 模板库不专业
+  ├─ 现有库质量参差不齐
+  ├─ 无使用指导
+  └─ 难以持续维护
+
+痛点3: Prompt优化困难
+  ├─ 手动A/B测试低效
+  ├─ 无法追踪效果
+  └─ 版本迭代混乱
+
+痛点4: 团队协作缺陷
+  ├─ 无标准的Prompt规范
+  ├─ 无法共享最佳实践
+  └─ 知识沉淀困难
+```
+
+#### 竞品分析
+
+```
+┌──────────────────────────────────────────────────────┐
+│                     竞品对标表                        │
+├──────────────────────────────────────────────────────┤
+│ 插件名          │ 评分 │ 主要功能 │ 不足         │
+├──────────────────────────────────────────────────────┤
+│ Continue        │ 8/10 │ AI助手   │ 非专注管理   │
+│ AIPRM           │ 6/10 │ Prompt库 │ 非IDE工具    │
+│ Prompts         │ 5/10 │ 库存储   │ 功能残缺     │
+│ AI Prompt Mgr   │ 4/10 │ 基础管理 │ UI差，无生成 │
+│ CodeGPT         │ 7/10 │ 库+聊天  │ 付费+API绑定 │
+├──────────────────────────────────────────────────────┤
+│ PromptFlow(我们) │ 9/10 │ 全栈    │ 开源+本地优先│
+└──────────────────────────────────────────────────────┘
+```
+
+### 市场机遇
+
+```
+✅ 趋势驱动
+   └─ AI工具链快速演进，标准化需求迫切
+
+✅ 用户基数
+   └─ VSCode月活1000w+，用户覆盖广
+
+✅ 社区热度
+   └─ GitHub #prompt 仓库star增长200%/年
+
+✅ 技术成熟
+   └─ VSCode Extension API完善，开发友好
+
+✅ 无竞品垄断
+   └─ 市场仍是蓝海，先发优势明显
+```
+
+---
+
+## 产品设计
+
+### 产品架构图
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   PromptFlow 产品架构                    │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │   UI Layer   │  │  Command     │  │  File Sys    │   │
+│  │  (Webview)   │  │  Palette     │  │  (YAML)      │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘   │
+│         │                  │                  │            │
+│         └──────────┬───────┴──────────┬───────┘            │
+│                    │                  │                     │
+│              ┌─────▼──────────────────▼──────┐            │
+│              │   Prompt Manager Core          │            │
+│              │  ├─ CRUD Operations            │            │
+│              │  ├─ Search & Filter            │            │
+│              │  ├─ Version Control            │            │
+│              │  └─ Variable Injection         │            │
+│              └─────┬──────────────────────────┘            │
+│                    │                                        │
+│         ┌──────────┼──────────┬──────────┐                │
+│         │          │          │          │                │
+│    ┌────▼──┐  ┌───▼───┐  ┌──▼───┐  ┌──▼────┐           │
+│    │Generator││ Multi  │  │Local │  │Plugin │           │
+│    │(AI)    ││ Model  │  │LLM   │  │Bridge │           │
+│    │        ││ Test   │  │(Ollama)  │       │           │
+│    └────────┘  └───────┘  └──────┘  └───────┘           │
+│                                                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 功能模块设计
+
+#### 模块1：Prompt 管理器（核心）
+
+```yaml
+# 功能清单
+Module: Prompt Manager
+├─ Create
+│  ├─ 新建Prompt(交互式)
+│  ├─ 从模板快速创建
+│  └─ 导入URL/GitHub
+├─ Read
+│  ├─ 列表视图(树形/表格)
+│  ├─ 全文搜索
+│  ├─ 标签过滤
+│  └─ 预览(侧边栏)
+├─ Update
+│  ├─ 编辑Prompt
+│  ├─ 批量编辑
+│  └─ 元数据管理
+├─ Delete
+│  ├─ 单个删除
+│  ├─ 批量删除
+│  └─ 回收站恢复
+└─ Advanced
+   ├─ 版本历史(Git集成)
+   ├─ 性能指标
+   └─ 标签管理
+
+存储格式 (YAML):
+---
+id: "uuid"
+name: "Code Review Assistant"
+description: "高效的代码审查提示词"
+category: "development"
+tags: [code-quality, review, optimization]
+created_at: "2024-01-15T10:30:00Z"
+updated_at: "2024-01-16T14:22:00Z"
+version: 3
+author: "user@example.com"
+
+template: |
+  你是一个资深的代码审查专家。
+  请审查以下代码：
+  
+  {{file_content}}
+  
+  重点关注：
+  - 性能问题
+  - 代码可读性
+  - 潜在bug
+  
+  使用难度：{{difficulty}}
+  
+parameters:
+  model: "claude-3.5-sonnet"
+  temperature: 0.5
+  max_tokens: 2000
+  top_p: 0.9
+
+variables:
+  - name: "file_content"
+    description: "待审查的代码片段"
+    type: "string"
+    required: true
+  - name: "difficulty"
+    description: "审查难度等级"
+    type: "enum"
+    values: [easy, medium, hard]
+    default: "medium"
+
+statistics:
+  usage_count: 42
+  avg_satisfaction: 4.5
+  success_rate: 0.92
+
+metadata:
+  is_public: true
+  license: "MIT"
+  source_url: "https://..."
+```
+
+#### 模块2：模板库（Template Marketplace）
+
+```yaml
+# 官方模板分类
+PromptFlow Official Templates:
+
+Code Development:
+  ├─ Code Review (50+ star)
+  ├─ Unit Test Generator
+  ├─ Bug Detector
+  ├─ Refactoring Assistant
+  └─ API Documentation
+
+Writing & Content:
+  ├─ Blog Post Writer
+  ├─ Technical Documentation
+  ├─ SEO Optimizer
+  ├─ Email Assistant
+  └─ Social Media Manager
+
+Analysis & Research:
+  ├─ Market Research
+  ├─ Paper Summary
+  ├─ Competitor Analysis
+  └─ Data Insights
+
+DevOps & Operations:
+  ├─ Deployment Planning
+  ├─ Performance Analysis
+  ├─ Security Audit
+  └─ Architecture Review
+
+AI & ML:
+  ├─ Prompt Optimization
+  ├─ Training Data Preparation
+  └─ Model Evaluation
+
+Community Templates:
+  ├─ Top Contributed
+  ├─ This Week's Popular
+  ├─ Search Community
+  └─ My Contributions
+```
+
+#### 模块3：智能生成器（AI Generator）
+
+```typescript
+// 功能流程
+Generator Workflow:
+
+1. Input Phase
+   ├─ 自然语言输入
+   │  └─ "生成一个用于代码审查的prompt"
+   ├─ 选择模型
+   │  └─ GPT-4, Claude, Ollama(本地)
+   └─ 配置参数
+      └─ temperature, max_tokens等
+
+2. Processing Phase
+   ├─ 解析用户意图
+   ├─ 调用生成模型
+   ├─ 应用最佳实践规则
+   └─ 格式化输出
+
+3. Output Phase
+   ├─ 展示生成结果
+   ├─ 对比原模板(可选)
+   ├─ 允许用户迭代修改
+   └─ 保存为新Prompt
+
+4. Optimization Phase
+   ├─ 性能评分
+   ├─ 改进建议
+   └─ A/B测试建议
+```
+
+#### 模块4：多模型测试（Model Testing）
+
+```yaml
+# A/B 测试框架
+Testing Framework:
+
+Test Configuration:
+  ├─ Select Prompt
+  ├─ Select Models (多选)
+  │  └─ OpenAI GPT-4o
+  │  └─ Claude 3.5 Sonnet
+  │  └─ Gemini Pro
+  │  └─ Ollama (local)
+  ├─ Input Cases
+  │  ├─ Single Input
+  │  ├─ Batch Input
+  │  └─ Load from File
+  └─ Evaluation Metrics
+     ├─ Speed
+     ├─ Quality Score
+     ├─ Token Usage
+     └─ Cost
+
+Test Results Display:
+  ├─ Comparison Table
+  ├─ Performance Chart
+  ├─ Detailed Logs
+  └─ Export Report
+
+Saved Tests:
+  ├─ Test History
+  ├─ Trend Analysis
+  └─ Recommendation Engine
+```
+
+#### 模块5：集成与扩展
+
+```yaml
+# 插件生态
+Integration Points:
+
+Version Control:
+  ├─ Git Integration
+  │  ├─ Commit Prompt Changes
+  │  ├─ View History
+  │  └─ Diff Prompts
+  └─ GitHub Sync
+     ├─ Public Template Repo
+     └─ Team Prompts
+
+External APIs:
+  ├─ OpenAI
+  ├─ Anthropic (Claude)
+  ├─ Google Gemini
+  ├─ Groq
+  └─ Local (Ollama)
+
+IDE Integration:
+  ├─ Copilot Integration
+  ├─ IntelliSense
+  ├─ Custom Commands
+  └─ Keybindings
+
+File Support:
+  ├─ YAML (.prompt.yml)
+  ├─ JSON (.prompt.json)
+  ├─ CSV (Batch Import)
+  └─ Markdown (.prompt.md)
+```
+
+### UI/UX 设计
+
+#### 主界面布局
+
+```
+┌─────────────────────────────────────────────────┐
+│  File   Edit   View   Run   Help                │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│ ┌──────────────┐  ┌────────────────────────┐   │
+│ │   SIDEBAR    │  │      MAIN EDITOR       │   │
+│ │              │  │                        │   │
+│ │ 📁 Prompts   │  │  📝 Prompt Editor      │   │
+│ │ ├─ 🔥 Recent │  │  ┌──────────────────┐ │   │
+│ │ ├─ 📂 Code   │  │  │ name:            │ │   │
+│ │ ├─ 📂 Write  │  │  │ Code Review      │ │   │
+│ │ ├─ 📂 Data   │  │  │                  │ │   │
+│ │ ├─ 🔎 Search │  │  │ {{file_content}} │ │   │
+│ │ └─ ⭐ Favs   │  │  │ ...              │ │   │
+│ │              │  │  └──────────────────┘ │   │
+│ │ 🎯 Templates │  │                        │   │
+│ │ ├─ Official  │  │  [Save] [Test] [Gen]  │   │
+│ │ ├─ Community │  │                        │   │
+│ │ └─ My Custom │  │                        │   │
+│ │              │  │                        │   │
+│ │ 🧪 Testing   │  │                        │   │
+│ │ 🔧 Settings  │  │                        │   │
+│ │              │  │                        │   │
+│ └──────────────┘  └────────────────────────┘   │
+│                                                  │
+├─────────────────────────────────────────────────┤
+│ 📊 Output Panel: [Results] [Logs] [Tips]       │
+└─────────────────────────────────────────────────┘
+```
+
+#### 快捷操作流
+
+```
+核心操作速度目标: 5 clicks or less
+
+1. 使用Prompt
+   Ctrl+K > "Run Prompt" > Select > Execute
+   (约3秒)
+
+2. 创建新Prompt
+   Cmd+Shift+P > "Prompt: Create" > Fill > Save
+   (约10秒)
+
+3. 快速生成
+   选中代码 > Cmd+Shift+G > "Generate Review Prompt"
+   (约2秒)
+
+4. 测试Prompt
+   Cmd+Shift+T > Select Models > Run > Compare
+   (约20秒)
+```
+
+#### 配色与视觉设计
+
+```
+Design System:
+
+Color Palette:
+  Primary:    #3B82F6 (Blue)     - Actions, Focus
+  Success:    #10B981 (Green)    - Success, Pass
+  Warning:    #F59E0B (Amber)    - Attention
+  Danger:     #EF4444 (Red)      - Error, Delete
+  Neutral:    #6B7280 (Gray)     - Background
+
+Typography:
+  Heading 1: 24px, bold, #1F2937
+  Heading 2: 20px, semibold, #374151
+  Body:      14px, regular, #4B5563
+  Code:      13px, monospace, #1E293B
+
+Spacing System:
+  xs: 4px,   sm: 8px,    md: 16px,   lg: 24px
+  xl: 32px,  2xl: 48px
+
+Icon Design:
+  Use: Feather Icons (VS Code native style)
+  Size: 16px (normal), 20px (large)
+  Style: Stroke-based, minimal
+
+Dark Mode:
+  Fully supported (follow VSCode theme)
+```
+
+---
+
+## 技术方案
+
+### 技术栈选择
+
+```
+Frontend:
+  ├─ VS Code Extension API (TypeScript)
+  ├─ Webview (React + Vite)
+  ├─ TailwindCSS (UI styling)
+  └─ VSCode Webview UI Toolkit
+
+Backend:
+  ├─ 完全本地存储 (无后端)
+  ├─ 文件系统 API
+  └─ 可选: Supabase (云同步)
+
+LLM Integration:
+  ├─ OpenAI API
+  ├─ Anthropic API
+  ├─ Groq API
+  ├─ Ollama (本地)
+  └─ LangChain.js (通用框架)
+
+DevOps & QA:
+  ├─ GitHub Actions (CI/CD)
+  ├─ Jest (单元测试)
+  ├─ Playwright (E2E测试)
+  ├─ ESLint + Prettier (代码质量)
+  └─ SonarQube (代码扫描)
+
+Package Management:
+  └─ pnpm (更快的安装)
+```
+
+### 项目结构
+
+```
+promptflow/
+├── src/
+│   ├── extension.ts              # 插件入口点
+│   ├── commands/
+│   │   ├── createPrompt.ts
+│   │   ├── runPrompt.ts
+│   │   ├── generatePrompt.ts
+│   │   ├── testPrompt.ts
+│   │   └── index.ts
+│   ├── views/
+│   │   ├── promptTreeView.ts     # 侧边栏树形视图
+│   │   ├── webview/
+│   │   │   ├── editor.html
+│   │   │   ├── editor.tsx
+│   │   │   ├── components/
+│   │   │   │   ├── PromptForm.tsx
+│   │   │   │   ├── TemplateLibrary.tsx
+│   │   │   │   ├── TestPanel.tsx
+│   │   │   │   └─ Generator.tsx
+│   │   │   └── styles/
+│   │   │       └── index.css
+│   │   └── statusBar.ts
+│   ├── core/
+│   │   ├── promptManager.ts      # 核心管理逻辑
+│   │   ├── storageService.ts
+│   │   ├── fileService.ts
+│   │   ├── gitService.ts
+│   │   ├── templateManager.ts
+│   │   └── variableInjector.ts
+│   ├── integrations/
+│   │   ├── llm/
+│   │   │   ├── openaiProvider.ts
+│   │   │   ├── claudeProvider.ts
+│   │   │   ├── ollamaProvider.ts
+│   │   │   ├── groqProvider.ts
+│   │   │   └── baseLLMProvider.ts
+│   │   ├── git/
+│   │   │   └── gitAdapter.ts
+│   │   └── vscode/
+│   │       ├── contextProvider.ts # 上下文注入
+│   │       └── codeAnalyzer.ts
+│   ├── services/
+│   │   ├── testingService.ts
+│   │   ├── generatorService.ts
+│   │   ├── searchService.ts
+│   │   └── metricsService.ts
+│   ├── models/
+│   │   ├── prompt.ts
+│   │   ├── template.ts
+│   │   ├── config.ts
+│   │   └── testResult.ts
+│   ├── utils/
+│   │   ├── logger.ts
+│   │   ├── parser.ts
+│   │   ├── validator.ts
+│   │   └── formatter.ts
+│   └── config/
+│       ├── constants.ts
+│       └── defaults.ts
+├── tests/
+│   ├── unit/
+│   │   ├── promptManager.test.ts
+│   │   ├── storageService.test.ts
+│   │   └── variableInjector.test.ts
+│   ├── integration/
+│   │   └── llmProvider.test.ts
+│   └── e2e/
+│       └── workflow.test.ts
+├── templates/
+│   ├── official/
+│   │   ├── code-review.yml
+│   │   ├── unit-test.yml
+│   │   ├── api-docs.yml
+│   │   └── ...
+│   └── schema.json
+├── media/
+│   ├── icon.svg
+│   ├── logo.png
+│   └── screenshots/
+├── docs/
+│   ├── README.md
+│   ├── CONTRIBUTING.md
+│   ├── USER_GUIDE.md
+│   ├── API_REFERENCE.md
+│   └── DEVELOPMENT.md
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   ├── release.yml
+│   │   └── codeql.yml
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
+├── package.json
+├── pnpm-lock.yaml
+├── tsconfig.json
+├── vite.config.ts
+├── eslint.config.js
+├── prettier.config.js
+├── .gitignore
+├── LICENSE (MIT)
+└── CHANGELOG.md
+```
+
+### 核心代码示例
+
+#### 1. Extension 入口点
+
+```typescript
+// src/extension.ts
+import * as vscode from 'vscode';
+import { PromptManager } from './core/promptManager';
+import { PromptTreeViewProvider } from './views/promptTreeView';
+import { registerCommands } from './commands';
+import { Logger } from './utils/logger';
+
+const logger = new Logger('PromptFlow');
+let promptManager: PromptManager;
+
+export async function activate(context: vscode.ExtensionContext) {
+  logger.info('PromptFlow 激活中...');
+
+  try {
+    // 初始化核心服务
+    promptManager = new PromptManager(context);
+    await promptManager.initialize();
+
+    // 注册侧边栏树形视图
+    const treeViewProvider = new PromptTreeViewProvider(promptManager);
+    vscode.window.registerTreeDataProvider('promptflow.promptView', treeViewProvider);
+
+    // 注册所有命令
+    registerCommands(context, promptManager);
+
+    // 注册状态栏
+    const statusBarItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      100
+    );
+    statusBarItem.command = 'promptflow.showPromptPalette';
+    statusBarItem.text = '$(magic) PromptFlow';
+    statusBarItem.show();
+    context.subscriptions.push(statusBarItem);
+
+    logger.info('PromptFlow 激活成功');
+  } catch (error) {
+    logger.error('初始化失败:', error);
+    vscode.window.showErrorMessage(`PromptFlow 初始化失败: ${error}`);
+  }
+}
+
+export function deactivate() {
+  logger.info('PromptFlow 停用');
+}
+```
+
+#### 2. Prompt 管理器核心
+
+```typescript
+// src/core/promptManager.ts
+import * as vscode from 'vscode';
+import { StorageService } from './storageService';
+import { TemplateManager } from './templateManager';
+import { Prompt, PromptFilter } from '../models/prompt';
+
+export class PromptManager {
+  private storage: StorageService;
+  private templates: TemplateManager;
+  private onPromptChanged = new vscode.EventEmitter<Prompt>();
+
+  constructor(private context: vscode.ExtensionContext) {
+    this.storage = new StorageService(context);
+    this.templates = new TemplateManager();
+  }
+
+  async initialize(): Promise<void> {
+    await this.storage.loadPrompts();
+    await this.templates.loadOfficialTemplates();
+  }
+
+  // 创建Prompt
+  async createPrompt(data: Partial<Prompt>): Promise<Prompt> {
+    const prompt = new Prompt({
+      ...data,
+      id: this.generateId(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      version: 1,
+    });
+
+    await this.storage.savePrompt(prompt);
+    this.onPromptChanged.fire(prompt);
+    return prompt;
+  }
+
+  // 获取所有Prompts
+  getAllPrompts(): Prompt[] {
+    return this.storage.getAll();
+  }
+
+  // 搜索Prompts
+  searchPrompts(query: string, filters?: PromptFilter): Prompt[] {
+    return this.storage.search(query, filters);
+  }
+
+  // 更新Prompt
+  async updatePrompt(id: string, updates: Partial<Prompt>): Promise<Prompt> {
+    const prompt = await this.storage.getPrompt(id);
+    if (!prompt) {
+      throw new Error(`Prompt ${id} 不存在`);
+    }
+
+    const updated = {
+      ...prompt,
+      ...updates,
+      updated_at: new Date().toISOString(),
+      version: prompt.version + 1,
+    };
+
+    await this.storage.savePrompt(updated);
+    this.onPromptChanged.fire(updated);
+    return updated;
+  }
+
+  // 删除Prompt
+  async deletePrompt(id: string): Promise<void> {
+    await this.storage.deletePrompt(id);
+    this.onPromptChanged.fire();
+  }
+
+  // 获取Prompt的Git历史
+  async getPromptHistory(id: string): Promise<any[]> {
+    // Git集成逻辑
+    return [];
+  }
+
+  private generateId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  get onPromptUpdated() {
+    return this.onPromptChanged.event;
+  }
+}
+```
+
+#### 3. 变量注入器
+
+```typescript
+// src/core/variableInjector.ts
+import { TextEncoder } from 'util';
+
+export class VariableInjector {
+  // 支持的变量类型
+  private static readonly VARIABLE_PATTERN = /\{\{(\w+)\}\}/g;
+
+  /**
+   * 注入变量到模板中
+   * @param template 模板字符串
+   * @param variables 变量映射
+   * @returns 填充后的字符串
+   */
+  static inject(template: string, variables: Record<string, any>): string {
+    return template.replace(this.VARIABLE_PATTERN, (match, key) => {
+      const value = variables[key];
+      if (value === undefined) {
+        return match; // 保留原始变量
+      }
+      return String(value);
+    });
+  }
+
+  /**
+   * 提取模板中的所有变量
+   */
+  static extractVariables(template: string): string[] {
+    const matches = template.match(this.VARIABLE_PATTERN);
+    if (!matches) return [];
+    
+    return [...new Set(
+      matches.map(m => m.replace(/[{}]/g, ''))
+    )];
+  }
+
+  /**
+   * 验证变量是否完整
+   */
+  static validateVariables(
+    template: string,
+    variables: Record<string, any>
+  ): { valid: boolean; missing: string[] } {
+    const required = this.extractVariables(template);
+    const missing = required.filter(v => !(v in variables));
+    
+    return {
+      valid: missing.length === 0,
+      missing,
+    };
+  }
+}
+
+// 使用示例
+const template = `
+请审查以下{{language}}代码：
+
+\`\`\`
+{{code}}
+\`\`\`
+
+重点关注：{{focus}}
+`;
+
+const variables = {
+  language: 'Python',
+  code: 'def hello(): pass',
+  focus: '性能优化',
+};
+
+const result = VariableInjector.inject(template, variables);
+// =>
+// 请审查以下Python代码：
+// ```
+// def hello(): pass
+// ```
+// 重点关注：性能优化
+```
+
+#### 4. LLM Provider 基类
+
+```typescript
+// src/integrations/llm/baseLLMProvider.ts
+export interface LLMMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface LLMResponse {
+  content: string;
+  tokens_used: number;
+  cost?: number;
+  model: string;
+  timestamp: number;
+}
+
+export interface LLMConfig {
+  apiKey: string;
+  baseUrl?: string;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+}
+
+export abstract class BaseLLMProvider {
+  protected config: LLMConfig;
+  protected model: string;
+
+  constructor(config: LLMConfig, model: string) {
+    this.config = config;
+    this.model = model;
+  }
+
+  abstract chat(messages: LLMMessage[]): Promise<LLMResponse>;
+
+  abstract generateEmbeddings(text: string): Promise<number[]>;
+
+  // 公共方法
+  protected async handleRateLimit(
+    fn: () => Promise<any>,
+    maxRetries: number = 3
+  ): Promise<any> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        if (error.status === 429 && i < maxRetries - 1) {
+          const delay = Math.pow(2, i) * 1000; // 指数退避
+          await new Promise(r => setTimeout(r, delay));
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  protected calculateCost(tokensUsed: number): number {
+    // 子类实现具体费用计算
+    return 0;
+  }
+}
+```
+
+#### 5. OpenAI Provider 实现
+
+```typescript
+// src/integrations/llm/openaiProvider.ts
+import OpenAI from 'openai';
+import { BaseLLMProvider, LLMMessage, LLMResponse, LLMConfig } from './baseLLMProvider';
+
+export class OpenAIProvider extends BaseLLMProvider {
+  private client: OpenAI;
+
+  constructor(config: LLMConfig) {
+    super(config, 'gpt-4-turbo');
+    this.client = new OpenAI({
+      apiKey: config.apiKey,
+      baseURL: config.baseUrl,
+    });
+  }
+
+  async chat(messages: LLMMessage[]): Promise<LLMResponse> {
+    return this.handleRateLimit(async () => {
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: messages as any,
+        temperature: this.config.temperature ?? 0.7,
+        max_tokens: this.config.maxTokens ?? 2000,
+        top_p: this.config.topP ?? 1,
+      });
+
+      const content = response.choices[0]?.message?.content || '';
+      const tokensUsed = response.usage?.total_tokens || 0;
+
+      return {
+        content,
+        tokens_used: tokensUsed,
+        cost: this.calculateCost(tokensUsed),
+        model: this.model,
+        timestamp: Date.now(),
+      };
+    });
+  }
+
+  async generateEmbeddings(text: string): Promise<number[]> {
+    const response = await this.client.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text,
+    });
+
+    return response.data[0]?.embedding ?? [];
+  }
+
+  protected calculateCost(tokensUsed: number): number {
+    // GPT-4 Turbo: $0.01 per 1K input tokens, $0.03 per 1K output tokens
+    // 简化估算
+    return (tokensUsed / 1000) * 0.015;
+  }
+}
+```
+
+---
+
+## 开发计划
+
+### 时间规划（6 个月）
+
+#### Phase 1：MVP 开发（第 1-2 月）
+
+```
+Week 1-2: 项目搭建 + 基础框架
+├─ 初始化项目结构
+├─ 配置开发环境 (TypeScript, Vite)
+├─ 建立 CI/CD 流程
+└─ 完成基础 UI 框架
+
+Week 3-4: 核心功能 - Prompt 管理
+├─ 实现 CRUD 操作
+├─ 本地存储服务
+├─ 侧边栏树形视图
+├─ 基础搜索功能
+└─ 单元测试覆盖
+
+Week 5-6: 集成 LLM
+├─ OpenAI 集成
+├─ Claude 集成
+├─ 基础生成器
+├─ API Key 管理
+└─ 错误处理
+
+Week 7-8: 打磨和测试
+├─ 功能完整性测试
+├─ 性能优化
+├─ 文档编写
+├─ Bug 修复
+└─ Beta 版本发布
+
+MVP 功能清单:
+✅ Prompt 增删改查
+✅ 本地 YAML 存储
+✅ 20+ 官方模板
+✅ 基础搜索过滤
+✅ 单模型生成
+✅ 简单 UI
+✅ 基础文档
+```
+
+**Milestone 1: Beta 版本上线** (Week 8 结束)
+- Marketplace 发布
+- 公开 GitHub 仓库
+- 发布首篇技术博客
+
+---
+
+#### Phase 2：功能完善（第 3-4 月）
+
+```
+Week 9-10: 高级管理功能
+├─ 版本控制 (Git 集成)
+├─ 性能指标追踪
+├─ 标签和分类系统
+├─ 批量操作
+└─ 导入/导出
+
+Week 11-12: 多模型支持
+├─ Groq 集成
+├─ Ollama 本地支持
+├─ Claude 3.5 Sonnet
+├─ 模型切换器
+└─ 成本追踪
+
+Week 13-14: 测试框架
+├─ 多模型对比
+├─ A/B 测试面板
+├─ 性能评分
+├─ 结果导出
+└─ 测试历史
+
+Week 15-16: 社区功能
+├─ 社区模板上传
+├─ 评分和评论
+├─ 贡献者榜单
+├─ 模板市场
+└─ 知识库
+
+重点任务:
+✅ 50+ 高质量官方模板
+✅ Git 版本控制
+✅ 多模型 A/B 测试
+✅ 社区贡献机制
+✅ 性能优化
+✅ 代码覆盖率 > 80%
+```
+
+**Milestone 2: v1.0 稳定版** (Week 16 结束)
+- 标准功能完整
+- 1000+ GitHub Star 目标
+- 用户反馈收集
+
+---
+
+#### Phase 3：高级功能（第 5-6 月）
+
+```
+Week 17-18: 工作流自动化
+├─ Prompt 链式调用
+├─ 自定义工作流编辑器
+├─ 触发条件系统
+└─ 定时执行
+
+Week 19-20: 团队协作
+├─ 共享模板库
+├─ 权限管理
+├─ 团队评论
+└─ 知识同步
+
+Week 21-22: 可视化和分析
+├─ 性能仪表板
+├─ 使用统计
+├─ 趋势分析
+├─ 成本分析
+└─ 导出报告
+
+Week 23-24: 生态集成
+├─ VS Code 设置同步
+├─ GitHub Actions 插件
+├─ LangChain 集成
+├─ 其他 IDE 适配 (Cursor, etc.)
+└─ REST API
+
+重点任务:
+✅ Prompt 链式工作流
+✅ 100+ 社区模板
+✅ 完整的分析仪表板
+✅ 5000+ GitHub Star
+✅ 国际化 (英文优先)
+✅ 充分的文档和教程
+```
+
+**Milestone 3: v1.5 生态版** (Week 24 结束)
+- 生态集成完成
+- 社区高度活跃
+- 获得行业认可
+
+---
+
+### 开发流程
+
+#### Git Workflow
+
+```
+main (生产)
+  ↑
+  │
+release/v1.0 (预发布)
+  ↑
+  │
+develop (开发主线)
+  ↑
+  ├─ feature/prompt-manager (功能分支)
+  ├─ feature/llm-integration
+  ├─ fix/bug-xxx (修复分支)
+  └─ docs/readme (文档分支)
+
+提交规范 (Conventional Commits):
+  feat: 新功能
+  fix: 修复
+  docs: 文档
+  style: 格式
+  refactor: 重构
+  perf: 性能
+  test: 测试
+  chore: 构建/工具
+
+例:
+  git commit -m "feat: add multi-model testing framework"
+  git commit -m "fix: resolve variable injection bug"
+```
+
+#### Code Review 流程
+
+```
+1. 创建 Pull Request
+   ├─ 填写 PR 模板
+   ├─ 关联相关 Issue
+   └─ 自动运行 CI
+
+2. Automated Checks
+   ├─ Unit Tests (Jest)
+   ├─ Linting (ESLint)
+   ├─ Type Check (TypeScript)
+   ├─ Code Coverage (Codecov)
+   └─ Security Scan (Snyk)
+
+3. 代码审查
+   ├─ 至少 1 个批准
+   ├─ 核心功能需 2 个批准
+   └─ 安全相关需 3 个批准
+
+4. 合并
+   ├─ Squash commits
+   ├─ 自动更新 CHANGELOG
+   └─ 触发部署
+```
+
+#### 测试策略
+
+```
+测试金字塔:
+
+        /\
+       /  \  E2E (Playwright)
+      /────\
+     /      \  集成测试 (Integration)
+    /────────\
+   /          \  单元测试 (Jest)
+  /────────────\
+
+目标覆盖率:
+├─ 单元测试: > 80%
+├─ 集成测试: > 60%
+├─ E2E 测试: > 40%
+└─ 总体: > 75%
+
+测试分类:
+├─ Unit Tests (快速, 单个函数)
+│  └─ promptManager.test.ts
+│  └─ variableInjector.test.ts
+│
+├─ Integration Tests (中速, 多个模块)
+│  └─ llmProvider.integration.test.ts
+│  └─ storage.integration.test.ts
+│
+└─ E2E Tests (慢, 完整流程)
+   └─ workflow.e2e.test.ts
+   └─ ui.e2e.test.ts
+```
+
+---
+
+### 发布策略
+
+#### 版本控制
+
+```
+语义化版本 (Semantic Versioning):
+MAJOR.MINOR.PATCH
+
+v0.1.0 (Alpha)
+  ├─ MVP 版本
+  └─ 不稳定，可能有大改
+
+v1.0.0 (Stable)
+  ├─ 第一个稳定版本
+  ├─ 完整的核心功能
+  └─ 长期支持
+
+v1.1.0 (Minor)
+  ├─ 新增功能
+  └─ 向后兼容
+
+v1.0.1 (Patch)
+  ├─ Bug 修复
+  └─ 安全更新
+
+发布周期:
+- Week 1-8: Daily builds (Alpha)
+- Week 9-16: Weekly releases (Beta → v1.0)
+- v1.0 后: Monthly releases
+```
+
+#### 发布清单
+
+```
+发布前检查:
+□ 所有测试通过 (100% 转绿)
+□ 代码审查完成
+□ 文档更新
+□ CHANGELOG 编写
+□ 版本号更新
+□ 标签创建
+
+发布流程:
+1. 创建 Release PR
+2. 等待 CI 通过
+3. 发布到 GitHub Releases
+4. 自动发布到 Marketplace
+5. 发布博客文章
+6. 社交媒体宣传
+
+发布物资:
+├─ VSIX 文件 (VS Code 扩展)
+├─ Release Notes
+├─ Changelog
+├─ 博客文章
+├─ 演示 GIF/视频
+└─ 贡献者致谢
+```
+
+---
+
+### 里程碑和关键指标
+
+```
+目标指标追踪:
+
+Phase 1 (Month 2):
+├─ 1000+ 下载
+├─ 100+ GitHub Star
+├─ 10+ 开发者反馈
+└─ 代码覆盖率 > 75%
+
+Phase 2 (Month 4):
+├─ 50k+ 下载
+├─ 1000+ GitHub Star
+├─ 100+ 社区贡献
+├─ 5+ 技术文章发布
+└─ 代码覆盖率 > 80%
+
+Phase 3 (Month 6):
+├─ 200k+ 下载
+├─ 5000+ GitHub Star
+├─ 500+ 社区贡献
+├─ 技术演讲邀请
+├─ 被其他工具集成
+└─ 获得行业认可
+
+成功标志:
+✅ Marketplace Top 100 插件
+✅ GitHub Trending
+✅ Hacker News 首页
+✅ Product Hunt 热门
+✅ 技术社区活跃讨论
+```
+
+---
+
+## 社区运营
+
+### 社区建设策略
+
+#### 1. 开源社区
+
+```
+GitHub 社区结构:
+
+Issues:
+├─ Bug Report (模板)
+├─ Feature Request (模板)
+├─ Discussion (Q&A)
+└─ Help Wanted (入门任务)
+
+Discussions:
+├─ 📢 Announcements (更新通知)
+├─ 💡 Ideas (功能建议)
+├─ 🤔 Q&A (问答区)
+├─ 🎉 Show and Tell (展示作品)
+└─ 🗳️ Polls (投票)
+
+Wiki 页面:
+├─ 使用指南
+├─ FAQ
+├─ 贡献指南
+├─ 开发指南
+└─ 最佳实践
+
+Labels 分类:
+├─ bug (高优先级-红)
+├─ enhancement (蓝)
+├─ documentation (绿)
+├─ good first issue (黄，新手友好)
+├─ help wanted (紫)
+└─ blocked (灰，被阻止)
+```
+
+#### 2. 贡献者激励
+
+```
+贡献梯级制:
+
+Level 1: 新贡献者
+├─ 5+ 贡献
+├─ 获得"Contributor"徽章
+└─ 在 README 中列出
+
+Level 2: 活跃贡献者
+├─ 20+ 贡献
+├─ 获得"Core Contributor"
+├─ GitHub 写入权限
+└─ 特殊福利 (资源访问)
+
+Level 3: 维护者
+├─ 50+ 贡献 + 主要功能
+├─ 获得"Maintainer"
+├─ 代码审查权限
+├─ 参与决策
+
+激励方式:
+├─ 🏆 贡献者排行榜
+├─ 💎 特殊徽章和认可
+├─ 📝 在官网展示故事
+├─ 🎁 赞助和支持
+├─ 🎤 演讲机会邀请
+└─ 🤝 建立核心团队
+```
+
+#### 3. 内容策略
+
+```
+博客系列文章 (Medium + 个人博客):
+
+第 1-2 周:
+  "PromptFlow: 为 VS Code 打造的 Prompt 工程工具"
+  (产品介绍 + 演示)
+
+第 3-4 周:
+  "Prompt 工程最佳实践"
+  (深度指南，内含 PromptFlow 用法)
+
+第 5-6 周:
+  "在 IDE 中管理 AI 工作流的未来"
+  (思想领导力文章)
+
+第 7-8 周:
+  "开源之路：从 0 到 1000 Star"
+  (技术总结 + 社区建设经验)
+
+后续:
+  "集成 Ollama 的本地 AI 工作流"
+  "Prompt A/B 测试完全指南"
+  "与 LangChain 打造 AI 应用"
+  等等...
+
+发布渠道:
+├─ Dev.to (开发者社区)
+├─ Medium (长文)
+├─ Hashnode (技术博客)
+├─ 个人博客 (SEO)
+├─ 掘金 (中文)
+├─ V2EX (讨论)
+└─ Reddit (r/webdev, r/vscode)
+```
+
+### 营销计划
+
+#### 第一周：Beta 发布
+
+```
+Day 1-2: 准备物资
+├─ README 精美化
+├─ 演示 GIF/视频
+├─ Logo 设计
+├─ 社交媒体卡片
+└─ 新闻稿
+
+Day 3: 正式发布
+├─ GitHub 仓库公开
+├─ VSCode Marketplace 上架
+├─ 官方网站上线 (简单版)
+└─ 初始文档完成
+
+Day 4-5: 社区宣传
+├─ Product Hunt 发布
+├─ Hacker News 提交
+├─ Twitter 宣传
+├─ Reddit 发帖 (r/vscode, r/programming)
+├─ 开发者论坛 (V2EX, 掘金)
+└─ Discord/Slack 社区
+
+Day 6-7: 内容发布
+├─ 发布首篇博客
+├─ 制作快速开始视频
+├─ 撰写使用案例
+└─ 组织 AMA (Ask Me Anything)
+```
+
+#### 第二周-第四周：持续曝光
+
+```
+周计划:
+
+Week 2: 媒体覆盖
+├─ 技术博客采访
+├─ 播客出现
+├─ 新闻稿发布
+└─ 行业媒体联系
+
+Week 3: 社区运营
+├─ GitHub Discussions 活跃
+├─ Issue 快速回复
+├─ 社区贡献指导
+└─ 定期同步会议
+
+Week 4: 内容深化
+├─ 详细教程发布
+├─ 对标竞品对比
+├─ 最佳实践指南
+└─ 开发路线图公布
+```
+
+### 用户获取和留存
+
+```
+用户漏斗:
+
+发现 (Discovery)
+  ├─ Search (Google: "vscode prompt manager")
+  ├─ Marketplace Browse (VSCode)
+  ├─ Social Media (Twitter, Reddit)
+  ├─ Product Hunt
+  └─ 技术文章链接
+
+安装 (Installation)
+  ├─ VSCode Marketplace (一键安装)
+  ├─ GitHub Releases (手动)
+  └─ npm 包 (命令行)
+
+激活 (Activation)
+  ├─ 快速开始指南
+  ├─ 交互式教程
+  ├─ 示例 Prompt
+  └─ 模板库浏览
+
+活跃 (Engagement)
+  ├─ 创建第一个 Prompt
+  ├─ 使用模板生成
+  ├─ 运行测试
+  └─ 与社区互动
+
+留存 (Retention)
+  ├─ 定期更新
+  ├─ 新功能发布
+  ├─ 社区故事分享
+  └─ 用户反馈融入
+
+留存指标:
+├─ DAU (Daily Active Users)
+├─ WAU (Weekly Active Users)
+├─ MAU (Monthly Active Users)
+├─ Churn Rate (流失率)
+└─ NPS (净推荐值)
+
+目标:
+├─ Month 1: DAU > 100
+├─ Month 3: DAU > 1000
+├─ Month 6: DAU > 10000
+└─ Churn Rate < 5% (首月后)
+```
+
+### 反馈和迭代
+
+```
+用户反馈循环:
+
+收集渠道:
+├─ GitHub Issues (技术)
+├─ Discussions (讨论)
+├─ Twitter DM (社交)
+├─ Email (正式反馈)
+├─ 用户调查 (问卷)
+└─ 使用数据 (分析)
+
+处理流程:
+1. 分类标签化
+2. 优先级评分
+3. 指派处理
+4. 定期总结报告
+5. 路线图更新
+
+反馈回应:
+├─ Bug 报告：24h 内回复
+├─ 功能建议：定期投票
+├─ 问题：48h 内解答
+└─ 每月：发布社区总结
+
+持续改进:
+├─ 月度 Retrospective
+├─ 用户访谈 (深度)
+├─ 竞品分析
+├─ 技术趋势监测
+└─ 路线图调整
+```
+
+---
+
+## 成功标志和里程碑总结
+
+```
+Timeline Overview:
+
+Month 1-2 (MVP):
+  │
+  ├─ ✅ Beta 发布
+  ├─ ✅ 1000+ Star
+  ├─ ✅ 1000+ 下载
+  └─ Milestone: Beta 稳定版
+
+Month 3-4 (功能完善):
+  │
+  ├─ ✅ v1.0 稳定版
+  ├─ ✅ 1000+ Star → 5000+ Star
+  ├─ ✅ 50+ 官方模板
+  ├─ ✅ 社区贡献开始
+  └─ Milestone: 生产就绪
+
+Month 5-6 (生态建设):
+  │
+  ├─ ✅ 多模型支持
+  ├─ ✅ 团队协作
+  ├─ ✅ 5000+ Star → 10000+ Star
+  ├─ ✅ 行业认可
+  └─ Milestone: 行业标准
+
+长期愿景 (Year 2+):
+  │
+  ├─ ✅ 被大公司采用
+  ├─ ✅ Prompt 工程的标准工具
+  ├─ ✅ 100k+ 下载
+  ├─ ✅ 100+ 维护者和贡献者
+  └─ Milestone: 行业影响力
+```
+
+---
+
+## 附录：资源和参考
+
+### 开发资源
+
+```
+官方文档:
+├─ VS Code Extension API: https://code.visualstudio.com/api
+├─ Webview 文档: https://code.visualstudio.com/api/extension-guides/webview
+└─ Extension 市场: https://marketplace.visualstudio.com/
+
+技术参考:
+├─ TypeScript: https://www.typescriptlang.org/
+├─ React: https://react.dev/
+├─ Vite: https://vitejs.dev/
+├─ Tailwind CSS: https://tailwindcss.com/
+└─ LangChain.js: https://js.langchain.com/
+
+示例项目:
+├─ VS Code REST Client (参考 UI)
+├─ Continue.dev (参考 LLM 集成)
+└─ Thunder Client (参考 Marketplace 运营)
+```
+
+### 社区资源
+
+```
+开发者社区:
+├─ VS Code Insiders: https://github.com/microsoft/vscode
+├─ Stack Overflow (tag: visual-studio-code)
+├─ Reddit: r/vscode, r/webdev
+└─ Discord: VSCode Community
+
+活跃平台:
+├─ GitHub Trending
+├─ Hacker News
+├─ Product Hunt
+├─ Dev.to
+└─ Medium
+
+中文社区:
+├─ V2EX
+├─ 掘金
+├─ 知乎
+├─ 牛客网
+└─ 稀土掘金
+```
+
+---
+
+## 最后的话
+
+这个项目代表了**开源与名誉驱动的完美案例**。通过精心的产品设计、持续的社区运营和高质量的技术输出，PromptFlow 有潜力成为 AI 工具链中不可或缺的一环。
+
+**关键成功因素：**
+1. ✨ 极致的开发者体验
+2. 🤝 活跃的社区运营
+3. 📝 高质量的内容输出
+4. 🔄 快速的反馈循环
+5. 🎯 清晰的长期愿景
+
+**记住：为名誉而做的项目，往往更容易获得成功，因为你不用被商业压力束缚，可以专注于创造真正的价值。**
+
+🚀 **让我们开始这段旅程吧！**
+
+```
+
+---
+
+完成！这份 Markdown 代码块包含了完整的项目设计和计划书。你可以直接复制使用或根据需要定制。

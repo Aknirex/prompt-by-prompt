@@ -1,0 +1,100 @@
+这是一份为你量身定制的《PromptCraft》项目架构设计与执行计划书。这份文档的目标是**以工程美学为核心**，建立开发者社区中的影响力。
+
+```markdown
+# 项目名称：PromptCraft (代号：PC0)
+**愿景**：成为 VS Code 生态中“Prompt 工程化”的事实标准，将 Prompt 视为代码（Prompt as Code）进行治理。
+
+---
+
+## 1. 核心设计哲学 (The Philosophy)
+*   **配置即代码 (CaC)**：Prompt 不应存储在数据库中，而应存储在项目仓库的 `.promptcraft/` 目录里。
+*   **工具链中立**：不绑定闭源服务，用户可选择 OpenAI, Claude, Groq 或本地 Ollama。
+*   **极致轻量**：安装包极小，启动速度快，无后台常驻进程。
+*   **上下文感知**：能够精准提取当前编辑器选区、文件名、Git 分支和项目结构的上下文。
+
+---
+
+## 2. 核心架构设计
+
+### 目录结构规范 (`.promptcraft/`)
+```text
+.promptcraft/
+├── manifests.yaml       # Prompt定义集
+├── templates/           # 复杂的 Handlebars 模板
+└── workflows.json       # 链式调用的逻辑定义
+```
+
+### 核心功能模块
+1.  **Registry (注册中心)**：
+    - 支持 `Global`（存储于 VS Code 全局配置）和 `Workspace`（存储于项目根目录）双层级。
+2.  **Context Engine (上下文引擎)**：
+    - 预定义变量：`{{selection}}`, `{{filepath}}`, `{{git_commit_diff}}`, `{{project_files}}`。
+3.  **Generator (生成/调试面板)**：
+    - 采用 Webview Panel，实时预览 Prompt 的最终渲染效果。
+    - **A/B Testing**：对比不同模型对同一 Prompt 的响应速度与质量。
+
+---
+
+## 3. 开发行动路线图 (Roadmap)
+
+<details>
+<summary><b>点击展开：三个阶段执行计划</b></summary>
+
+### 第一阶段：MVP (Weeks 1-3) —— "可用的极客工具"
+*   **目标**：实现读取本地配置文件并执行 Prompt。
+*   **动作**：
+    1. 使用 TypeScript 编写 VS Code 扩展框架。
+    2. 实现 `.promptcraft/` 目录的自动发现逻辑。
+    3. 核心 API：调用 LLM 模型（支持 API Key 配置）。
+    4. 输出：控制台或简单的 Webview 展示响应。
+
+### 第二阶段：工程优化 (Weeks 4-6) —— "定义行业标准"
+*   **目标**：引入 Context Engine 和变量注入。
+*   **动作**：
+    1. 开发复杂的变量替换逻辑（Handlebars 支持）。
+    2. 集成 VS Code 活动窗口上下文提取功能。
+    3. 文档撰写：撰写《PromptCraft 规范》，定义 YAML 格式标准。
+
+### 第三阶段：社区与声望 (Weeks 7-8) —— "构建影响力"
+*   **目标**：发布并在社区建立技术名誉。
+*   **动作**：
+    1. 发布至 VS Code Marketplace 并获得首批 User 声望。
+    2. 撰写博客：在 Dev.to/Medium 发表关于“代码化管理 Prompt”的思考。
+    3. 创建 Awesome Prompt 仓库供用户 fork。
+</details>
+
+---
+
+## 4. 技术栈选型 (高审美标准)
+*   **Language**: `TypeScript` (严格类型检查 `strict: true`)
+*   **UI/UX**: `React` + `TailwindCSS` (追求极其简洁的 VS Code 原生 UI 风格)
+*   **Core**: `vscode-languageclient` (用于处理代码上下文)
+*   **Template Engine**: `Handlebars.js` (逻辑处理能力强，轻量)
+*   **Testing**: `Vitest` (用于单元测试 Prompt 模板的渲染结果)
+
+---
+
+## 5. “名誉”防御性保障 (Quality Assurance)
+为了确保你的名誉，项目必须做到：
+1.  **零 Crash 率**：所有 API 请求必须包裹在严格的 `try-catch` 中并返回优雅的 UI 提示。
+2.  **极速响应**：不要在代码中进行任何阻塞式 IO 操作。
+3.  **开源透明**：详细的 `CONTRIBUTING.md`。如果别人想贡献代码，你的文档必须让他一目了然。
+4.  **无隐私风险**：在 README 中大字注明：**"Your Prompts, Your Data - Nothing touches our servers."** (极客们非常看重这一点)。
+
+---
+
+## 6. 指标评估
+*   **成功指标**：
+    *   GitHub Stars > 500 (标志着在技术圈获得初步认可)
+    *   VS Code Marketplace 下载量 > 10,000
+    *   收到至少 10 个以上高质量的 Pull Request (标志着项目架构被认可)
+
+---
+
+**最后建议**：
+现在，前往 GitHub 创建仓库，README 的第一行请写下：
+> **PromptCraft: Standardizing LLM workflows in VS Code.** 
+> *Treating your prompts as first-class code.*
+
+这不仅是一个插件，这可能成为你职业生涯的一个**核心卖点**。你准备好初始化项目了吗？
+```

@@ -1,0 +1,13 @@
+{
+  "name": "prompt-by-prompt",
+  "version": "0.1.0",
+  "description": "VS Code 插件：将 Prompt 工程化（Prompt as Code）",
+  "private": true,
+  "scripts": {
+    "build": "echo \"build placeholder\"",
+    "lint": "echo \"lint placeholder\"",
+    "test": "echo \"test placeholder\""
+  },
+  "author": "",
+  "license": "MIT"
+}
