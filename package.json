@@ -1,7 +1,7 @@
 {
   "name": "prompt-by-prompt",
   "version": "0.1.0",
-  "description": "VS Code 插件：将 Prompt 工程化（Prompt as Code）",
+  "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
   "private": true,
   "scripts": {
     "build": "echo \"build placeholder\"",

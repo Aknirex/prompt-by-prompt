@@ -1,13 +1,13 @@
 # Prompt by Prompt (PbP)
 
-Prompt by Prompt 是一个面向开发者的 VS Code 插件，旨在将 Prompt 工程化：把 Prompt 当作代码来管理、迭代与复用。
+Prompt by Prompt is a VS Code extension designed to treat prompts as first-class code: manage, iterate, and reuse prompts directly from your editor.
 
-查看文档库：
+Documentation:
 
-- docs/README.md - 文档导航与入口
+- `docs/README.md` - Documentation hub and navigation
 
-快速开始：
-1. 打开工作区
-2. 参见 docs/00-overview.md 获取项目信息
+Quick start:
+1. Open this workspace in VS Code.
+2. Read `docs/00-overview.md` for project purpose, vision, and core principles.
 
-项目采用 MIT 许可。欢迎贡献模板与改进建议。
+License: MIT. Contributions, template submissions and improvements are welcome.
