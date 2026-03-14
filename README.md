@@ -17,10 +17,11 @@ A VS Code extension that brings **Prompt Engineering** to your development workf
 - **Variable Injection**: Use `{{selection}}`, `{{filepath}}`, `{{file_content}}` in templates
 - **Handlebars Templates**: Full template engine with conditionals and helpers
 
-### 🤖 LLM Integration
-- **Multiple Providers**: Support for Ollama (local), OpenAI, Claude, and Groq
-- **Streaming Responses**: Real-time streaming output in webview panel
-- **A/B Testing**: Compare responses from different models (coming soon)
+### 🤖 Agent Integration
+- **Multiple Agents**: Send prompts to Cline, Roo Code, GitHub Copilot Chat, Continue
+- **Clipboard Fallback**: Universal fallback for any agent
+- **Status Bar**: Quick view and switch current agent
+- **Smart Detection**: Auto-detect installed agents
 
 ### 📚 Built-in Templates
 50+ curated templates for common development tasks:
@@ -48,17 +49,23 @@ Then press F5 in VS Code to launch the extension in development mode.
 
 ## 🚀 Quick Start
 
-### 1. Configure Your LLM Provider
+### 1. Configure Your Agent
 
 Open VS Code settings and search for "Prompt by Prompt":
 
 ```json
 {
-  "pbp.defaultModel": "ollama",
-  "pbp.ollamaEndpoint": "http://localhost:11434",
-  "pbp.ollamaModel": "llama3.2"
+  "pbp.defaultAgent": "clipboard",
+  "pbp.rememberLastAgent": true
 }
 ```
+
+Supported agents:
+- **Cline** - Autonomous AI coding assistant
+- **Roo Code** - Cline fork with enhanced features
+- **GitHub Copilot Chat** - GitHub's AI assistant
+- **Continue** - Open-source AI code assistant
+- **Clipboard** - Universal fallback (copy to clipboard)
 
 ### 2. Create Your First Prompt
 
@@ -85,8 +92,13 @@ template: |
 
 1. Select code in the editor
 2. Click on a prompt in the sidebar
-3. Click "Run" or use the play button
-4. View the streaming response in the Generator panel
+3. Click the play button (▶️) to run
+4. Select an agent to send the prompt to
+5. The prompt will be sent to your chosen agent
+
+**Status Bar**: The current agent is shown in the status bar. Click to change.
+
+**Keyboard Shortcut**: Use the command palette (`Ctrl+Shift+P`) and search for "Prompt by Prompt: Run Prompt".
 
 ## 📁 Project Structure
 
