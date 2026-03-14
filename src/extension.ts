@@ -334,11 +334,11 @@ async function selectAgent(): Promise<AgentType | undefined> {
   });
   
   // Determine default selection
-  let defaultAgent = agentConfig.defaultAgent;
+  let _defaultAgent = agentConfig.defaultAgent;
   if (agentConfig.rememberLastAgent) {
     const lastAgent = extensionContext.globalState.get<AgentType>(STATE_KEY_LAST_AGENT);
     if (lastAgent && availableAgents.includes(lastAgent)) {
-      defaultAgent = lastAgent;
+      _defaultAgent = lastAgent;
     }
   }
   
@@ -377,7 +377,7 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
         prompt: variable.description,
         placeHolder: defaultValue,
         value: defaultValue,
-        validateInput: (input) => {
+        validateInput: (_input) => {
           // Allow empty input - don't block
           return null;
         }

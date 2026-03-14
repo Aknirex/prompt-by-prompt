@@ -152,12 +152,12 @@ export class PromptEditorPanel {
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
   }
 
-  private _getHtmlForWebview(webview: vscode.Webview): string {
+  private _getHtmlForWebview(_webview: vscode.Webview): string {
     const prompt = this._existingPrompt;
     const isNew = !prompt;
     const providers = this._aiService.getAvailableProviders();
     const defaultProvider = this._aiService.getDefaultProvider();
-    const defaultModel = this._aiService.getDefaultModel();
+    const _defaultModel = this._aiService.getDefaultModel();
     
     return `<!DOCTYPE html>
 <html lang="en">

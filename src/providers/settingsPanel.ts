@@ -221,7 +221,7 @@ export class SettingsPanel {
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
   }
 
-  private _getHtmlForWebview(webview: vscode.Webview): string {
+  private _getHtmlForWebview(_webview: vscode.Webview): string {
     const settings = this._getSettings();
     
     return `<!DOCTYPE html>
