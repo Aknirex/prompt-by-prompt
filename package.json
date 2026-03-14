@@ -129,7 +129,18 @@
         "pbp.defaultModel": {
           "type": "string",
           "default": "ollama",
-          "enum": ["anthropic", "azure", "deepseek", "google", "groq", "mistral", "ollama", "openai", "openrouter", "xai"],
+          "enum": [
+            "anthropic",
+            "azure",
+            "deepseek",
+            "google",
+            "groq",
+            "mistral",
+            "ollama",
+            "openai",
+            "openrouter",
+            "xai"
+          ],
           "description": "Default AI provider for prompt generation"
         },
         "pbp.ollamaEndpoint": {
@@ -244,7 +255,14 @@
         },
         "pbp.defaultAgent": {
           "type": "string",
-          "enum": ["ask", "cline", "roo-code", "copilot", "continue", "clipboard"],
+          "enum": [
+            "ask",
+            "cline",
+            "roo-code",
+            "copilot",
+            "continue",
+            "clipboard"
+          ],
           "default": "ask",
           "description": "Default agent to send prompts to. 'ask' will prompt every time."
         },
@@ -255,7 +273,10 @@
         },
         "pbp.defaultTarget": {
           "type": "string",
-          "enum": ["workspace", "global"],
+          "enum": [
+            "workspace",
+            "global"
+          ],
           "default": "global",
           "description": "Default save location for new prompts"
         },
@@ -287,6 +308,7 @@
     "@vscode/vsce": "^2.22.0",
     "eslint": "^8.54.0",
     "ovsx": "^0.8.0",
+    "sharp": "^0.34.5",
     "typescript": "^5.3.2",
     "vitest": "^1.0.0"
   },
