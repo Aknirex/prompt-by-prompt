@@ -4,7 +4,7 @@
 
 import * as vscode from 'vscode';
 import { PromptTemplate, PromptVariable } from '../types/prompt';
-import { AIService } from '../services/aiService';
+import { AIService, AIProvider } from '../services/aiService';
 
 /**
  * Result from the prompt editor
@@ -106,7 +106,7 @@ export class PromptEditorPanel {
             this._panel.dispose();
             break;
           case 'generate':
-            await this._handleGenerate(message.data.description);
+            await this._handleGenerate(message.data);
             break;
         }
       },
@@ -115,20 +115,11 @@ export class PromptEditorPanel {
     );
   }
 
-  private async _handleGenerate(description: string): Promise<void> {
-    if (!description || !description.trim()) {
+  private async _handleGenerate(data: { description: string; provider: AIProvider; model: string }): Promise<void> {
+    if (!data.description || !data.description.trim()) {
       this._panel.webview.postMessage({
         command: 'generateResult',
         error: 'Please enter a description for the prompt you want to generate.'
-      });
-      return;
-    }
-
-    // Check if AI provider is configured
-    if (!this._aiService.hasConfiguredProvider()) {
-      this._panel.webview.postMessage({
-        command: 'generateResult',
-        error: `No AI provider configured. Please configure your API key in Settings (click the gear icon in the toolbar).`
       });
       return;
     }
@@ -138,8 +129,10 @@ export class PromptEditorPanel {
     });
 
     const result = await this._aiService.generatePrompt({
-      userDescription: description,
-      systemPrompt: ''
+      userDescription: data.description,
+      systemPrompt: '',
+      provider: data.provider,
+      model: data.model
     });
 
     if (result.success && result.prompt) {
@@ -162,7 +155,9 @@ export class PromptEditorPanel {
   private _getHtmlForWebview(webview: vscode.Webview): string {
     const prompt = this._existingPrompt;
     const isNew = !prompt;
-    const providerName = this._aiService.getProviderName();
+    const providers = this._aiService.getAvailableProviders();
+    const defaultProvider = this._aiService.getDefaultProvider();
+    const defaultModel = this._aiService.getDefaultModel();
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -171,9 +166,7 @@ export class PromptEditorPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${isNew ? 'New Prompt' : 'Edit Prompt'}</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     
     body {
       font-family: var(--vscode-font-family);
@@ -183,10 +176,7 @@ export class PromptEditorPanel {
       margin: 0;
     }
     
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
+    .container { max-width: 900px; margin: 0 auto; }
     
     h1 {
       margin-bottom: 20px;
@@ -195,9 +185,12 @@ export class PromptEditorPanel {
       padding-bottom: 10px;
     }
     
-    .form-group {
-      margin-bottom: 16px;
+    h2 {
+      font-size: 1.1em;
+      margin: 0 0 12px 0;
     }
+    
+    .form-group { margin-bottom: 16px; }
     
     label {
       display: block;
@@ -224,9 +217,7 @@ export class PromptEditorPanel {
       font-family: var(--vscode-editor-font-family);
     }
     
-    textarea.template {
-      min-height: 300px;
-    }
+    textarea.template { min-height: 300px; }
     
     .hint {
       font-size: 0.85em;
@@ -281,11 +272,6 @@ export class PromptEditorPanel {
       border-radius: 4px;
     }
     
-    .variables-section h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-    }
-    
     .variable-item {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
@@ -294,14 +280,7 @@ export class PromptEditorPanel {
       align-items: center;
     }
     
-    .variable-item input {
-      padding: 6px 10px;
-    }
-    
-    .add-variable-btn {
-      padding: 6px 12px;
-      font-size: 0.9em;
-    }
+    .variable-item input { padding: 6px 10px; }
     
     .remove-variable-btn {
       padding: 4px 8px;
@@ -314,9 +293,7 @@ export class PromptEditorPanel {
       gap: 16px;
     }
     
-    .row .form-group {
-      flex: 1;
-    }
+    .row .form-group { flex: 1; }
     
     .target-select {
       display: flex;
@@ -332,9 +309,7 @@ export class PromptEditorPanel {
       cursor: pointer;
     }
     
-    .target-select input[type="radio"] {
-      width: auto;
-    }
+    .target-select input[type="radio"] { width: auto; }
     
     .generator-section {
       margin-bottom: 24px;
@@ -342,15 +317,6 @@ export class PromptEditorPanel {
       background-color: var(--vscode-editor-inactiveSelectionBackground);
       border-radius: 8px;
       border-left: 4px solid var(--vscode-textLink-foreground);
-    }
-    
-    .generator-section h2 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      font-size: 1.1em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
     
     .generator-input-row {
@@ -365,18 +331,15 @@ export class PromptEditorPanel {
       resize: vertical;
     }
     
-    .generator-input-row button {
-      white-space: nowrap;
+    .generator-input-row button { white-space: nowrap; }
+    
+    .provider-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
     }
     
-    .provider-badge {
-      font-size: 0.8em;
-      padding: 2px 8px;
-      background-color: var(--vscode-badge-background);
-      color: var(--vscode-badge-foreground);
-      border-radius: 10px;
-      margin-left: 8px;
-    }
+    .provider-row .form-group { flex: 1; margin-bottom: 0; }
     
     .loading {
       display: none;
@@ -386,9 +349,7 @@ export class PromptEditorPanel {
       color: var(--vscode-descriptionForeground);
     }
     
-    .loading.active {
-      display: flex;
-    }
+    .loading.active { display: flex; }
     
     .spinner {
       width: 16px;
@@ -399,9 +360,7 @@ export class PromptEditorPanel {
       animation: spin 1s linear infinite;
     }
     
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     
     .error-message {
       display: none;
@@ -413,27 +372,36 @@ export class PromptEditorPanel {
       font-size: 0.9em;
     }
     
-    .error-message.active {
-      display: block;
-    }
+    .error-message.active { display: block; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>${isNew ? '✨ New Prompt' : `✏️ Edit: ${prompt?.name || ''}`}</h1>
+    <h1>${isNew ? 'New Prompt' : 'Edit: ' + (prompt?.name || '')}</h1>
     
     ${isNew ? `
     <div class="generator-section">
-      <h2>
-        🤖 AI Generate
-        <span class="provider-badge">${providerName}</span>
-      </h2>
+      <h2>AI Generate</h2>
       <div class="hint" style="margin-bottom: 12px;">
         Describe what you want the prompt to do in natural language. The AI will generate a prompt template for you.
       </div>
+      <div class="provider-row">
+        <div class="form-group">
+          <label for="genProvider">Provider</label>
+          <select id="genProvider" onchange="updateModels()">
+            ${providers.map(p => `<option value="${p.id}" ${p.id === defaultProvider ? 'selected' : ''}>${p.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="genModel">Model</label>
+          <select id="genModel">
+            <option value="">Default</option>
+          </select>
+        </div>
+      </div>
       <div class="generator-input-row">
         <textarea id="generateInput" placeholder="e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks..."></textarea>
-        <button type="button" class="primary" id="generateBtn" onclick="generatePrompt()">✨ Generate</button>
+        <button type="button" class="primary" id="generateBtn" onclick="generatePrompt()">Generate</button>
       </div>
       <div class="loading" id="loadingIndicator">
         <div class="spinner"></div>
@@ -486,16 +454,16 @@ Selected code:
 
 Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
       <div class="hint">
-        Use <code>{{variable}}</code> for variables. Available context: <code>{{selection}}</code>, <code>{{filepath}}</code>, <code>{{lang}}</code>, <code>{{file_content}}</code>, <code>{{project_name}}</code>
+        Use <code>{{variable}}</code> for variables. Available: <code>{{selection}}</code>, <code>{{filepath}}</code>, <code>{{lang}}</code>, <code>{{file_content}}</code>, <code>{{project_name}}</code>
       </div>
     </div>
     
     <div class="variables-section">
-      <h3>🔧 Custom Variables</h3>
+      <h3>Custom Variables</h3>
       <div id="variables-list">
         ${this._getVariablesHtml(prompt?.variables || [])}
       </div>
-      <button type="button" class="add-variable-btn secondary" onclick="addVariable()">+ Add Variable</button>
+      <button type="button" class="secondary" onclick="addVariable()">+ Add Variable</button>
     </div>
     
     <div class="form-group">
@@ -514,14 +482,34 @@ Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
     </div>
     
     <div class="buttons">
-      <button type="button" class="primary" onclick="save()">💾 Save</button>
+      <button type="button" class="primary" onclick="save()">Save</button>
       <button type="button" class="secondary" onclick="cancel()">Cancel</button>
     </div>
   </div>
   
   <script>
-    let variableCount = ${prompt?.variables?.length || 0};
     const vscode = acquireVsCodeApi();
+    const providers = ${JSON.stringify(providers)};
+    let variableCount = ${prompt?.variables?.length || 0};
+    
+    // Initialize models on load
+    document.addEventListener('DOMContentLoaded', updateModels);
+    
+    function updateModels() {
+      const providerId = document.getElementById('genProvider').value;
+      const modelSelect = document.getElementById('genModel');
+      const provider = providers.find(p => p.id === providerId);
+      
+      modelSelect.innerHTML = '<option value="">Default</option>';
+      if (provider && provider.models) {
+        provider.models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          modelSelect.appendChild(opt);
+        });
+      }
+    }
     
     // Handle messages from extension
     window.addEventListener('message', event => {
@@ -548,9 +536,11 @@ Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
     
     function generatePrompt() {
       const description = document.getElementById('generateInput').value.trim();
+      const provider = document.getElementById('genProvider').value;
+      const model = document.getElementById('genModel').value;
       vscode.postMessage({
         command: 'generate',
-        data: { description }
+        data: { description, provider, model }
       });
     }
     
@@ -563,22 +553,20 @@ Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
       div.innerHTML = \`
         <input type="text" placeholder="Variable name" class="var-name">
         <input type="text" placeholder="Description" class="var-desc">
-        <button type="button" class="remove-variable-btn" onclick="removeVariable('var-\${variableCount}')">✕</button>
+        <button type="button" class="remove-variable-btn" onclick="removeVariable('var-\${variableCount}')">X</button>
       \`;
       list.appendChild(div);
     }
     
     function removeVariable(id) {
       const element = document.getElementById(id);
-      if (element) {
-        element.remove();
-      }
+      if (element) { element.remove(); }
     }
     
     function getVariables() {
       const items = document.querySelectorAll('.variable-item');
       const variables = [];
-      items.forEach((item, index) => {
+      items.forEach(item => {
         const name = item.querySelector('.var-name')?.value?.trim();
         const desc = item.querySelector('.var-desc')?.value?.trim();
         if (name) {
@@ -597,42 +585,22 @@ Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
       const name = document.getElementById('name').value.trim();
       const description = document.getElementById('description').value.trim();
       const category = document.getElementById('category').value;
-      const tags = document.getElementById('tags').value
-        .split(',')
-        .map(t => t.trim())
-        .filter(t => t);
+      const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
       const template = document.getElementById('template').value;
       const target = document.querySelector('input[name="target"]:checked').value;
       const variables = getVariables();
       
-      if (!name) {
-        alert('Please enter a name for the prompt');
-        return;
-      }
-      
-      if (!template) {
-        alert('Please enter a template for the prompt');
-        return;
-      }
+      if (!name) { alert('Please enter a name for the prompt'); return; }
+      if (!template) { alert('Please enter a template for the prompt'); return; }
       
       vscode.postMessage({
         command: 'save',
-        data: {
-          name,
-          description,
-          category,
-          tags,
-          template,
-          variables: variables.length > 0 ? variables : undefined,
-          target
-        }
+        data: { name, description, category, tags, template, variables: variables.length > 0 ? variables : undefined, target }
       });
     }
     
     function cancel() {
-      vscode.postMessage({
-        command: 'cancel'
-      });
+      vscode.postMessage({ command: 'cancel' });
     }
   </script>
 </body>
@@ -649,29 +617,22 @@ Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
   }
 
   private _getVariablesHtml(variables: PromptVariable[]): string {
-    if (variables.length === 0) {
-      return '';
-    }
-    
+    if (variables.length === 0) { return ''; }
     return variables.map((v, i) => `
       <div class="variable-item" id="var-${i}">
         <input type="text" class="var-name" value="${this._escapeHtml(v.name)}" placeholder="Variable name">
         <input type="text" class="var-desc" value="${this._escapeHtml(v.description)}" placeholder="Description">
-        <button type="button" class="remove-variable-btn" onclick="removeVariable('var-${i}')">✕</button>
+        <button type="button" class="remove-variable-btn" onclick="removeVariable('var-${i}')">X</button>
       </div>
     `).join('');
   }
 
   public dispose(): void {
     PromptEditorPanel.currentPanel = undefined;
-
     this._panel.dispose();
-
     while (this._disposables.length) {
       const x = this._disposables.pop();
-      if (x) {
-        x.dispose();
-      }
+      if (x) { x.dispose(); }
     }
   }
 }

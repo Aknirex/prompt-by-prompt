@@ -125,8 +125,8 @@
         "pbp.defaultModel": {
           "type": "string",
           "default": "ollama",
-          "enum": ["ollama", "openai", "claude", "groq"],
-          "description": "Default LLM provider"
+          "enum": ["ollama", "openai", "claude", "groq", "gemini", "openrouter"],
+          "description": "Default AI provider for prompt generation"
         },
         "pbp.ollamaEndpoint": {
           "type": "string",
@@ -168,6 +168,26 @@
           "default": "llama-3.3-70b-versatile",
           "description": "Default Groq model"
         },
+        "pbp.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Google Gemini API Key"
+        },
+        "pbp.geminiModel": {
+          "type": "string",
+          "default": "gemini-2.0-flash",
+          "description": "Default Gemini model"
+        },
+        "pbp.openrouterApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenRouter API Key"
+        },
+        "pbp.openrouterModel": {
+          "type": "string",
+          "default": "anthropic/claude-3.5-sonnet",
+          "description": "Default OpenRouter model (format: provider/model)"
+        },
         "pbp.promptsDir": {
           "type": "string",
           "default": ".prompts",
@@ -184,12 +204,6 @@
           "default": true,
           "description": "Remember the last used agent"
         },
-        "pbp.executionMode": {
-          "type": "string",
-          "enum": ["ask", "direct", "preview"],
-          "default": "ask",
-          "description": "Default execution mode: ask (show options), direct (send immediately), preview (always show preview first)"
-        },
         "pbp.defaultTarget": {
           "type": "string",
           "enum": ["workspace", "global"],
@@ -200,12 +214,6 @@
           "type": "string",
           "default": ".prompts/output",
           "description": "Directory for generated markdown files (relative to workspace or absolute path)"
-        },
-        "pbp.outputAction": {
-          "type": "string",
-          "enum": ["copy", "send", "append", "create-file"],
-          "default": "copy",
-          "description": "Default output action: copy to clipboard, send to agent, append to agent input, or create markdown file"
         }
       }
     }
