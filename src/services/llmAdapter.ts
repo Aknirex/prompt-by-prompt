@@ -23,8 +23,15 @@ export class OllamaAdapter implements LLMAdapter {
     const startTime = Date.now();
     const endpoint = config.endpoint || 'http://localhost:11434';
     
+    console.log(`[DEBUG] OllamaAdapter.generate called`);
+    console.log(`[DEBUG] endpoint: ${endpoint}`);
+    console.log(`[DEBUG] model: ${config.model}`);
+    
     try {
-      const response = await fetch(`${endpoint}/api/generate`, {
+      const url = `${endpoint}/api/generate`;
+      console.log(`[DEBUG] Fetching: ${url}`);
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -537,9 +544,16 @@ export class LLMService {
     config: LLMConfig,
     onStream?: StreamCallback
   ): Promise<LLMResponse> {
+    console.log(`[DEBUG] LLMService.generate called`);
+    console.log(`[DEBUG] provider: ${config.provider}`);
+    console.log(`[DEBUG] model: ${config.model}`);
+    console.log(`[DEBUG] endpoint: ${config.endpoint}`);
+    console.log(`[DEBUG] apiKey exists: ${!!config.apiKey}`);
+    
     const adapter = this.adapters.get(config.provider);
     
     if (!adapter) {
+      console.log(`[DEBUG] No adapter found for provider: ${config.provider}`);
       return {
         status: 'error',
         rawResponse: '',
@@ -553,10 +567,11 @@ export class LLMService {
     }
 
     if (!adapter.validateConfig(config)) {
+      console.log(`[DEBUG] Invalid config for provider: ${config.provider}`);
       return {
         status: 'error',
         rawResponse: '',
-        error: `Invalid configuration for provider: ${config.provider}`,
+        error: `Invalid configuration for provider: ${config.provider}. Check if API key is set or endpoint is reachable.`,
         metadata: {
           latencyMs: 0,
           modelName: config.model,
@@ -565,7 +580,10 @@ export class LLMService {
       };
     }
 
-    return adapter.generate(prompt, config, onStream);
+    console.log(`[DEBUG] Calling adapter.generate...`);
+    const result = await adapter.generate(prompt, config, onStream);
+    console.log(`[DEBUG] adapter.generate result: ${result.status}, error: ${result.error || 'none'}`);
+    return result;
   }
 
   /**

@@ -166,6 +166,17 @@
           "type": "string",
           "default": ".prompts",
           "description": "Directory name for workspace prompts"
+        },
+        "pbp.defaultAgent": {
+          "type": "string",
+          "enum": ["cline", "roo-code", "copilot", "continue", "clipboard"],
+          "default": "clipboard",
+          "description": "Default agent to send prompts to"
+        },
+        "pbp.rememberLastAgent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remember the last used agent"
         }
       }
     }

@@ -17,6 +17,16 @@ let contextEngine: ContextEngine;
 let llmService: LLMService;
 let treeProvider: PromptsTreeProvider;
 let extensionContext: vscode.ExtensionContext;
+let outputChannel: vscode.OutputChannel;
+
+function debugLog(message: string): void {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+  console.log(logMessage);
+  if (outputChannel) {
+    outputChannel.appendLine(logMessage);
+  }
+}
 
 /**
  * Get extension configuration
@@ -77,6 +87,9 @@ function getLLMConfig(extensionConfig: ExtensionConfig): LLMConfig {
  * Extension activation
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Create output channel first
+  outputChannel = vscode.window.createOutputChannel('Prompt by Prompt');
+  outputChannel.appendLine('Prompt by Prompt is activating...');
   console.log('Prompt by Prompt is activating...');
   
   // Store extension context globally
@@ -190,9 +203,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     
     // Run prompt
-    vscode.commands.registerCommand('pbp.runPrompt', async (prompt: PromptTemplate) => {
+    vscode.commands.registerCommand('pbp.runPrompt', async (arg: unknown) => {
+      debugLog(`pbp.runPrompt called with arg type: ${typeof arg}`);
+      debugLog(`arg keys: ${arg && typeof arg === 'object' ? Object.keys(arg).join(', ') : 'N/A'}`);
+      
+      let prompt: PromptTemplate | undefined;
+      
+      // Check if arg is a PromptItem (from tree view) or PromptTemplate
+      if (arg && typeof arg === 'object') {
+        // Check if it's a PromptItem with a prompt property
+        if ('prompt' in arg) {
+          debugLog(`Arg is PromptItem, extracting prompt`);
+          prompt = (arg as { prompt: PromptTemplate }).prompt;
+        } else if ('id' in arg && 'template' in arg) {
+          // It's already a PromptTemplate
+          debugLog(`Arg is PromptTemplate`);
+          prompt = arg as PromptTemplate;
+        }
+      }
+      
       if (!prompt) {
         // Show quick pick to select a prompt
+        debugLog(`No prompt found, showing quick pick`);
         const prompts = promptManager.getAllPrompts();
         const selected = await vscode.window.showQuickPick(
           prompts.map(p => ({ label: p.name, description: p.description, prompt: p })),
@@ -225,6 +257,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
  * Execute a prompt
  */
 async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): Promise<void> {
+  debugLog(`executePrompt called`);
+  debugLog(`prompt id: ${prompt?.id}`);
+  debugLog(`prompt name: ${prompt?.name}`);
+  debugLog(`prompt.template type: ${typeof prompt?.template}`);
+  debugLog(`prompt.template value (first 200 chars): ${String(prompt?.template || '').substring(0, 200)}`);
+  
   // Extract editor context
   const editorContext = await contextEngine.extractContext();
   
@@ -255,14 +293,17 @@ async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): P
   
   // Render template
   const renderedPrompt = await contextEngine.renderTemplate(prompt, editorContext, customVariables);
+  debugLog(`Template rendered, length: ${renderedPrompt.length}`);
   
   // Show preview
+  debugLog(`Showing preview dialog...`);
   const preview = await vscode.window.showInformationMessage(
     `Run prompt "${prompt.name}"?`,
     'Run',
     'Preview',
     'Cancel'
   );
+  debugLog(`User selected: ${preview}`);
   
   if (preview === 'Preview') {
     // Show preview in a new document
@@ -275,11 +316,14 @@ async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): P
   }
   
   if (preview !== 'Run') {
+    debugLog(`User cancelled, exiting`);
     return;
   }
   
   // Get LLM config
   const llmConfig = getLLMConfig(config);
+  debugLog(`LLM config - provider: ${llmConfig.provider}, model: ${llmConfig.model}`);
+  debugLog(`LLM config - endpoint: ${llmConfig.endpoint}, apiKey exists: ${!!llmConfig.apiKey}`);
   
   // Override with prompt-specific parameters if available
   if (prompt.parameters) {
