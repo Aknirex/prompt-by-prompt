@@ -177,10 +177,25 @@ npm run watch
 npm test
 ```
 
+
+## 发布到 VS Code Marketplace
+
+The [`release`](.github/workflows/release.yml) workflow compiles the extension, packages a
+`.vsix`, and publishes it to the VS Code Marketplace whenever a GitHub release is published or
+the workflow is triggered manually via **Run workflow**.
+
+1. Generate a Personal Access Token (PAT) scoped to Visual Studio Marketplace:
+   - Go to https://marketplace.visualstudio.com/manage/aknirex/prompt-by-prompt
+   - Create a token with **All accessible accounts** and **Publish** permissions.
+2. Add the token to this repository as the secret `VSCE_PAT`.
+3. Draft a release (`gh release create vX.Y.Z`) or click **Run workflow** on the **Release** workflow
+   page in GitHub Actions. The workflow will publish the extension with the `publisher` set in `package.json`.
+
+The workflow also attaches the generated `.vsix` artifact to the GitHub release for download.
+
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
+GPL v3 License - see [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 - Inspired by the need for better prompt engineering tools
