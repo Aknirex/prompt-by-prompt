@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "prompt-by-prompt",
   "private": true,
   "license": "MIT",
@@ -56,7 +56,8 @@
       },
       {
         "command": "pbp.openSettings",
-        "title": "Open Settings"
+        "title": "Open Settings",
+        "icon": "$(gear)"
       }
     ],
     "viewsContainers": {
@@ -81,12 +82,17 @@
         {
           "command": "pbp.refreshPrompts",
           "when": "view == pbp.promptsView",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "pbp.createPrompt",
           "when": "view == pbp.promptsView",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "pbp.openSettings",
+          "when": "view == pbp.promptsView",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -177,6 +183,29 @@
           "type": "boolean",
           "default": true,
           "description": "Remember the last used agent"
+        },
+        "pbp.executionMode": {
+          "type": "string",
+          "enum": ["ask", "direct", "preview"],
+          "default": "ask",
+          "description": "Default execution mode: ask (show options), direct (send immediately), preview (always show preview first)"
+        },
+        "pbp.defaultTarget": {
+          "type": "string",
+          "enum": ["workspace", "global"],
+          "default": "global",
+          "description": "Default save location for new prompts"
+        },
+        "pbp.outputDirectory": {
+          "type": "string",
+          "default": ".prompts/output",
+          "description": "Directory for generated markdown files (relative to workspace or absolute path)"
+        },
+        "pbp.outputAction": {
+          "type": "string",
+          "enum": ["copy", "send", "append", "create-file"],
+          "default": "copy",
+          "description": "Default output action: copy to clipboard, send to agent, append to agent input, or create markdown file"
         }
       }
     }

@@ -1,6 +1,6 @@
 /**
  * Prompt by Prompt - VS Code Extension Entry Point
- * 
+ *
  * Main extension module that initializes all services and registers commands
  */
 
@@ -9,6 +9,8 @@ import { PromptManager } from './services/promptManager';
 import { ContextEngine } from './services/contextEngine';
 import { AgentService } from './services/agentService';
 import { PromptsTreeProvider } from './providers/promptsTreeProvider';
+import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
+import { SettingsPanel } from './providers/settingsPanel';
 import { ExtensionConfig, PromptTemplate } from './types/prompt';
 import { AgentType } from './types/agent';
 
@@ -163,56 +165,67 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.window.showInformationMessage('Prompts refreshed');
     }),
     
-    // Create new prompt
+    // Create new prompt - use editor panel
     vscode.commands.registerCommand('pbp.createPrompt', async () => {
-      const name = await vscode.window.showInputBox({
-        prompt: 'Enter prompt name',
-        placeHolder: 'My Prompt'
-      });
-      
-      if (!name) {
-        return;
-      }
-      
-      const description = await vscode.window.showInputBox({
-        prompt: 'Enter prompt description',
-        placeHolder: 'Description of what this prompt does'
-      }) || '';
-      
-      const category = await vscode.window.showQuickPick(
-        ['Development', 'Code Analysis', 'Code Generation', 'Documentation', 'Testing', 'Data', 'General'],
-        { placeHolder: 'Select category' }
-      ) || 'General';
-      
-      const template = await vscode.window.showInputBox({
-        prompt: 'Enter prompt template (use {{variable}} for variables)',
-        placeHolder: 'You are a helpful assistant. {{selection}}'
-      }) || '';
-      
-      try {
-        await promptManager.createPrompt({
-          name,
-          description,
-          category,
-          template,
-          tags: []
-        });
-        
-        vscode.window.showInformationMessage(`Prompt "${name}" created`);
-      } catch (error) {
-        vscode.window.showErrorMessage(`Failed to create prompt: ${error}`);
-      }
+      PromptEditorPanel.createOrShow(
+        extensionContext.extensionUri,
+        extensionContext,
+        undefined,
+        async (result: PromptEditorResult) => {
+          try {
+            await promptManager.createPrompt({
+              name: result.name,
+              description: result.description,
+              category: result.category,
+              template: result.template,
+              tags: result.tags,
+              variables: result.variables
+            }, result.target);
+            
+            vscode.window.showInformationMessage(`Prompt "${result.name}" created`);
+          } catch (error) {
+            vscode.window.showErrorMessage(`Failed to create prompt: ${error}`);
+          }
+        }
+      );
     }),
     
-    // Edit prompt
+    // Edit prompt - use editor panel for global prompts, open file for workspace prompts
     vscode.commands.registerCommand('pbp.editPrompt', async (prompt: PromptTemplate) => {
-      if (!prompt || !prompt.filePath) {
-        vscode.window.showErrorMessage('Cannot edit this prompt');
+      if (!prompt) {
+        vscode.window.showErrorMessage('No prompt selected');
         return;
       }
       
-      const document = await vscode.workspace.openTextDocument(prompt.filePath);
-      await vscode.window.showTextDocument(document);
+      // For workspace prompts with file path, open the file directly
+      if (prompt.source === 'workspace' && prompt.filePath) {
+        const document = await vscode.workspace.openTextDocument(prompt.filePath);
+        await vscode.window.showTextDocument(document);
+        return;
+      }
+      
+      // For global prompts or prompts without file path, use the editor panel
+      PromptEditorPanel.createOrShow(
+        extensionContext.extensionUri,
+        extensionContext,
+        prompt,
+        async (result: PromptEditorResult) => {
+          try {
+            await promptManager.updatePrompt(prompt.id, {
+              name: result.name,
+              description: result.description,
+              category: result.category,
+              template: result.template,
+              tags: result.tags,
+              variables: result.variables
+            });
+            
+            vscode.window.showInformationMessage(`Prompt "${result.name}" updated`);
+          } catch (error) {
+            vscode.window.showErrorMessage(`Failed to update prompt: ${error}`);
+          }
+        }
+      );
     }),
     
     // Delete prompt
@@ -270,9 +283,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await executePrompt(prompt);
     }),
     
-    // Open settings
+    // Open settings panel
     vscode.commands.registerCommand('pbp.openSettings', () => {
-      vscode.commands.executeCommand('workbench.action.openSettings', 'pbp');
+      SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext);
     })
   ];
   
@@ -358,29 +371,50 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
         placeHolder: variable.description
       });
     } else {
+      // Use default value if available, otherwise empty string
+      const defaultValue = variable.default?.toString() || '';
       value = await vscode.window.showInputBox({
         prompt: variable.description,
-        placeHolder: variable.default?.toString() || ''
+        placeHolder: defaultValue,
+        value: defaultValue,
+        validateInput: (input) => {
+          // Allow empty input - don't block
+          return null;
+        }
       });
     }
     
-    if (value) {
-      customVariables[variable.name] = value;
+    // If user cancelled the input (pressed Escape), abort the whole operation
+    if (value === undefined) {
+      log('User cancelled variable input, aborting prompt execution');
+      return;
     }
+    
+    // Use the value (even if empty) or default
+    customVariables[variable.name] = value || variable.default?.toString() || '';
   }
   
   // Render template
   const renderedPrompt = await contextEngine.renderTemplate(prompt, editorContext, customVariables);
   
-  // Show preview option
-  const preview = await vscode.window.showInformationMessage(
+  // Check if rendered prompt is empty
+  if (!renderedPrompt || !renderedPrompt.trim()) {
+    vscode.window.showWarningMessage('The rendered prompt is empty. Please check your template and variables.');
+    return;
+  }
+  
+  log(`Rendered prompt (${renderedPrompt.length} chars): ${renderedPrompt.substring(0, 100)}...`);
+  
+  // Show preview option with more actions
+  const action = await vscode.window.showInformationMessage(
     `Run prompt "${prompt.name}"?`,
     'Run',
     'Preview',
+    'Copy',
     'Cancel'
   );
   
-  if (preview === 'Preview') {
+  if (action === 'Preview') {
     // Show preview in a new document
     const doc = await vscode.workspace.openTextDocument({
       content: renderedPrompt,
@@ -390,13 +424,21 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
     return;
   }
   
-  if (preview !== 'Run') {
+  if (action === 'Copy') {
+    // Copy to clipboard directly
+    await vscode.env.clipboard.writeText(renderedPrompt);
+    vscode.window.showInformationMessage('Prompt copied to clipboard!');
+    return;
+  }
+  
+  if (action !== 'Run') {
     return;
   }
   
   // Select agent
   const agentType = await selectAgent();
   if (!agentType) {
+    log('No agent selected, aborting');
     return;
   }
   
@@ -406,11 +448,15 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
     await extensionContext.globalState.update(STATE_KEY_LAST_AGENT, agentType);
   }
   
+  log(`Sending prompt to agent: ${agentType}`);
+  
   // Send to agent
   const result = await agentService.sendToAgent(renderedPrompt, agentType);
   
   if (!result.success) {
     vscode.window.showErrorMessage(`Failed to send prompt: ${result.message}`);
+  } else {
+    log(`Prompt sent successfully to ${agentType}`);
   }
 }
 

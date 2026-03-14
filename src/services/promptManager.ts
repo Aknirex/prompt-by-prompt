@@ -296,7 +296,12 @@ export class PromptManager {
       source: target
     };
 
-    if (target === 'global') {
+    // If target is workspace but no workspace is open, fall back to global
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const hasWorkspace = workspaceFolders && workspaceFolders.length > 0;
+    
+    if (target === 'global' || !hasWorkspace) {
+      newPrompt.source = 'global';
       await this.saveGlobalPrompt(newPrompt);
     } else {
       await this.saveWorkspacePrompt(newPrompt);
