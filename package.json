@@ -8,6 +8,7 @@
     "type": "git",
     "url": "https://github.com/Aknirex/prompt-by-prompt.git"
   },
+  "homepage": "https://github.com/Aknirex/prompt-by-prompt#readme",
   "license": "GPL-3.0",
   "icon": "media/icon.png",
   "engines": {
