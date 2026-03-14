@@ -200,11 +200,6 @@ export class ContextEngine {
     context: EditorContext,
     customVariables?: Record<string, string>
   ): Promise<string> {
-    console.log(`[DEBUG] renderTemplate called`);
-    console.log(`[DEBUG] template object keys: ${Object.keys(template || {}).join(', ')}`);
-    console.log(`[DEBUG] template.template type: ${typeof template?.template}`);
-    console.log(`[DEBUG] template.template value: ${template?.template}`);
-    
     // Combine context with custom variables
     const variables: Record<string, unknown> = {
       ...context,

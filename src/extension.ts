@@ -25,14 +25,11 @@ let statusBarItem: vscode.StatusBarItem;
 const STATE_KEY_LAST_AGENT = 'pbp.lastAgent';
 
 /**
- * Debug logging utility
+ * Log message to output channel
  */
-function debugLog(message: string): void {
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] ${message}`;
-  console.log(logMessage);
+function log(message: string): void {
   if (outputChannel) {
-    outputChannel.appendLine(logMessage);
+    outputChannel.appendLine(message);
   }
 }
 
@@ -125,7 +122,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.extensions.onDidChange(() => {
       agentService.invalidateCache();
-      debugLog('Extension change detected, agent cache invalidated');
       updateStatusBar();
     })
   );
@@ -243,27 +239,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     
     // Run prompt
     vscode.commands.registerCommand('pbp.runPrompt', async (arg: unknown) => {
-      debugLog(`pbp.runPrompt called with arg type: ${typeof arg}`);
-      debugLog(`arg keys: ${arg && typeof arg === 'object' ? Object.keys(arg).join(', ') : 'N/A'}`);
-      
       let prompt: PromptTemplate | undefined;
       
       // Check if arg is a PromptItem (from tree view) or PromptTemplate
       if (arg && typeof arg === 'object') {
         // Check if it's a PromptItem with a prompt property
         if ('prompt' in arg) {
-          debugLog('Arg is PromptItem, extracting prompt');
           prompt = (arg as { prompt: PromptTemplate }).prompt;
         } else if ('id' in arg && 'template' in arg) {
           // It's already a PromptTemplate
-          debugLog('Arg is PromptTemplate');
           prompt = arg as PromptTemplate;
         }
       }
       
       if (!prompt) {
         // Show quick pick to select a prompt
-        debugLog('No prompt found, showing quick pick');
         const prompts = promptManager.getAllPrompts();
         const selected = await vscode.window.showQuickPick(
           prompts.map(p => ({ label: p.name, description: p.description, prompt: p })),
@@ -299,8 +289,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 async function selectAgent(): Promise<AgentType | undefined> {
   const agentConfig = getAgentConfig();
   const availableAgents = await agentService.getAvailableAgents();
-  
-  debugLog(`Available agents: ${availableAgents.join(', ')}`);
   
   if (availableAgents.length === 0) {
     // Should never happen since clipboard is always available
@@ -353,12 +341,6 @@ async function selectAgent(): Promise<AgentType | undefined> {
  * Execute a prompt
  */
 async function executePrompt(prompt: PromptTemplate): Promise<void> {
-  debugLog(`executePrompt called`);
-  debugLog(`prompt id: ${prompt?.id}`);
-  debugLog(`prompt name: ${prompt?.name}`);
-  debugLog(`prompt.template type: ${typeof prompt?.template}`);
-  debugLog(`prompt.template value (first 200 chars): ${String(prompt?.template || '').substring(0, 200)}`);
-  
   // Extract editor context
   const editorContext = await contextEngine.extractContext();
   
@@ -389,17 +371,14 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   
   // Render template
   const renderedPrompt = await contextEngine.renderTemplate(prompt, editorContext, customVariables);
-  debugLog(`Template rendered, length: ${renderedPrompt.length}`);
   
   // Show preview option
-  debugLog('Showing preview dialog...');
   const preview = await vscode.window.showInformationMessage(
     `Run prompt "${prompt.name}"?`,
     'Run',
     'Preview',
     'Cancel'
   );
-  debugLog(`User selected: ${preview}`);
   
   if (preview === 'Preview') {
     // Show preview in a new document
@@ -412,14 +391,12 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   }
   
   if (preview !== 'Run') {
-    debugLog('User cancelled, exiting');
     return;
   }
   
   // Select agent
   const agentType = await selectAgent();
   if (!agentType) {
-    debugLog('No agent selected, exiting');
     return;
   }
   
@@ -430,13 +407,9 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   }
   
   // Send to agent
-  debugLog(`Sending to agent: ${agentType}`);
   const result = await agentService.sendToAgent(renderedPrompt, agentType);
   
-  if (result.success) {
-    debugLog('Prompt sent successfully');
-  } else {
-    debugLog(`Failed to send prompt: ${result.reason} - ${result.message}`);
+  if (!result.success) {
     vscode.window.showErrorMessage(`Failed to send prompt: ${result.message}`);
   }
 }

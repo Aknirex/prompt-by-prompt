@@ -163,18 +163,10 @@ export class PromptManager {
   private async loadPromptFromFile(filePath: string, source: 'workspace' | 'global' | 'builtin'): Promise<PromptTemplate | null> {
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      console.log(`[DEBUG] Loading prompt from: ${filePath}`);
-      console.log(`[DEBUG] Raw content length: ${content.length}`);
-      
       const parsed = yaml.load(content) as Partial<PromptTemplate>;
-      console.log(`[DEBUG] Parsed keys: ${Object.keys(parsed || {}).join(', ')}`);
-      console.log(`[DEBUG] Parsed name: ${parsed?.name}`);
-      console.log(`[DEBUG] Parsed template type: ${typeof parsed?.template}`);
-      console.log(`[DEBUG] Parsed template value (first 100 chars): ${String(parsed?.template).substring(0, 100)}`);
       
       if (!parsed.name || !parsed.template) {
-        console.warn(`[DEBUG] Invalid prompt file ${filePath}: missing required fields`);
-        console.warn(`[DEBUG] parsed.name = ${parsed.name}, parsed.template = ${parsed.template}`);
+        console.warn(`Invalid prompt file ${filePath}: missing required fields`);
         return null;
       }
       
