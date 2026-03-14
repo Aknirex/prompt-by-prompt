@@ -7,18 +7,25 @@
 import * as vscode from 'vscode';
 import { PromptManager } from './services/promptManager';
 import { ContextEngine } from './services/contextEngine';
-import { LLMService } from './services/llmAdapter';
+import { AgentService } from './services/agentService';
 import { PromptsTreeProvider } from './providers/promptsTreeProvider';
-import { GeneratorPanel } from './providers/generatorPanel';
-import { ExtensionConfig, PromptTemplate, LLMConfig } from './types/prompt';
+import { ExtensionConfig, PromptTemplate } from './types/prompt';
+import { AgentType } from './types/agent';
 
+// Global service instances
 let promptManager: PromptManager;
 let contextEngine: ContextEngine;
-let llmService: LLMService;
+let agentService: AgentService;
 let treeProvider: PromptsTreeProvider;
 let extensionContext: vscode.ExtensionContext;
 let outputChannel: vscode.OutputChannel;
 
+// State keys
+const STATE_KEY_LAST_AGENT = 'pbp.lastAgent';
+
+/**
+ * Debug logging utility
+ */
 function debugLog(message: string): void {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message}`;
@@ -49,38 +56,14 @@ function getConfig(): ExtensionConfig {
 }
 
 /**
- * Get LLM config from extension config
+ * Get agent configuration
  */
-function getLLMConfig(extensionConfig: ExtensionConfig): LLMConfig {
-  const provider = extensionConfig.defaultModel;
-  
-  const config: LLMConfig = {
-    provider,
-    model: '',
-    temperature: 0.7,
-    maxTokens: 2000
+function getAgentConfig(): { defaultAgent: AgentType; rememberLastAgent: boolean } {
+  const config = vscode.workspace.getConfiguration('pbp');
+  return {
+    defaultAgent: (config.get('defaultAgent') || 'clipboard') as AgentType,
+    rememberLastAgent: config.get('rememberLastAgent') ?? true
   };
-  
-  switch (provider) {
-    case 'ollama':
-      config.model = extensionConfig.ollamaModel;
-      config.endpoint = extensionConfig.ollamaEndpoint;
-      break;
-    case 'openai':
-      config.model = extensionConfig.openaiModel;
-      config.apiKey = extensionConfig.openaiApiKey;
-      break;
-    case 'claude':
-      config.model = extensionConfig.claudeModel;
-      config.apiKey = extensionConfig.claudeApiKey;
-      break;
-    case 'groq':
-      config.model = extensionConfig.groqModel;
-      config.apiKey = extensionConfig.groqApiKey;
-      break;
-  }
-  
-  return config;
 }
 
 /**
@@ -100,7 +83,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Initialize services
   promptManager = new PromptManager(context, config);
   contextEngine = new ContextEngine();
-  llmService = new LLMService();
+  agentService = new AgentService();
   treeProvider = new PromptsTreeProvider();
   
   // Initialize prompt manager
@@ -113,6 +96,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   promptManager.onDidChange(() => {
     treeProvider.setPrompts(promptManager.getAllPrompts());
   });
+  
+  // Listen for extension changes (install/uninstall) to invalidate agent cache
+  context.subscriptions.push(
+    vscode.extensions.onDidChange(() => {
+      agentService.invalidateCache();
+      debugLog('Extension change detected, agent cache invalidated');
+    })
+  );
   
   // Register tree view
   const treeView = vscode.window.createTreeView('pbp.promptsView', {
@@ -213,18 +204,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (arg && typeof arg === 'object') {
         // Check if it's a PromptItem with a prompt property
         if ('prompt' in arg) {
-          debugLog(`Arg is PromptItem, extracting prompt`);
+          debugLog('Arg is PromptItem, extracting prompt');
           prompt = (arg as { prompt: PromptTemplate }).prompt;
         } else if ('id' in arg && 'template' in arg) {
           // It's already a PromptTemplate
-          debugLog(`Arg is PromptTemplate`);
+          debugLog('Arg is PromptTemplate');
           prompt = arg as PromptTemplate;
         }
       }
       
       if (!prompt) {
         // Show quick pick to select a prompt
-        debugLog(`No prompt found, showing quick pick`);
+        debugLog('No prompt found, showing quick pick');
         const prompts = promptManager.getAllPrompts();
         const selected = await vscode.window.showQuickPick(
           prompts.map(p => ({ label: p.name, description: p.description, prompt: p })),
@@ -238,7 +229,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         prompt = selected.prompt;
       }
       
-      await executePrompt(prompt, config);
+      await executePrompt(prompt);
     }),
     
     // Open settings
@@ -250,13 +241,70 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Add to subscriptions
   context.subscriptions.push(treeView, ...commands);
   
+  outputChannel.appendLine('Prompt by Prompt is now active');
   console.log('Prompt by Prompt is now active');
+}
+
+/**
+ * Select an agent using QuickPick
+ */
+async function selectAgent(): Promise<AgentType | undefined> {
+  const agentConfig = getAgentConfig();
+  const availableAgents = await agentService.getAvailableAgents();
+  
+  debugLog(`Available agents: ${availableAgents.join(', ')}`);
+  
+  if (availableAgents.length === 0) {
+    // Should never happen since clipboard is always available
+    vscode.window.showErrorMessage('No agents available');
+    return undefined;
+  }
+  
+  // If only clipboard is available, use it directly
+  if (availableAgents.length === 1 && availableAgents[0] === 'clipboard') {
+    return 'clipboard';
+  }
+  
+  // Build QuickPick items with proper typing
+  interface AgentQuickPickItem extends vscode.QuickPickItem {
+    agentType: AgentType;
+  }
+  
+  const items: AgentQuickPickItem[] = availableAgents.map(type => {
+    const adapter = agentService.getAdapter(type)!;
+    return {
+      label: `$(${adapter.getIcon().id}) ${adapter.name}`,
+      description: adapter.capabilities.canSendDirectly
+        ? 'Direct send'
+        : 'Copy to clipboard',
+      detail: adapter.capabilities.requiresConfirmation
+        ? '⚠️ Requires manual paste'
+        : undefined,
+      agentType: type,
+    };
+  });
+  
+  // Determine default selection
+  let defaultAgent = agentConfig.defaultAgent;
+  if (agentConfig.rememberLastAgent) {
+    const lastAgent = extensionContext.globalState.get<AgentType>(STATE_KEY_LAST_AGENT);
+    if (lastAgent && availableAgents.includes(lastAgent)) {
+      defaultAgent = lastAgent;
+    }
+  }
+  
+  const selected = await vscode.window.showQuickPick(items, {
+    placeHolder: 'Select agent to send prompt',
+    title: 'Send Prompt To...',
+  });
+  
+  return (selected as AgentQuickPickItem | undefined)?.agentType;
 }
 
 /**
  * Execute a prompt
  */
-async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): Promise<void> {
+async function executePrompt(prompt: PromptTemplate): Promise<void> {
   debugLog(`executePrompt called`);
   debugLog(`prompt id: ${prompt?.id}`);
   debugLog(`prompt name: ${prompt?.name}`);
@@ -295,8 +343,8 @@ async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): P
   const renderedPrompt = await contextEngine.renderTemplate(prompt, editorContext, customVariables);
   debugLog(`Template rendered, length: ${renderedPrompt.length}`);
   
-  // Show preview
-  debugLog(`Showing preview dialog...`);
+  // Show preview option
+  debugLog('Showing preview dialog...');
   const preview = await vscode.window.showInformationMessage(
     `Run prompt "${prompt.name}"?`,
     'Run',
@@ -316,51 +364,32 @@ async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): P
   }
   
   if (preview !== 'Run') {
-    debugLog(`User cancelled, exiting`);
+    debugLog('User cancelled, exiting');
     return;
   }
   
-  // Get LLM config
-  const llmConfig = getLLMConfig(config);
-  debugLog(`LLM config - provider: ${llmConfig.provider}, model: ${llmConfig.model}`);
-  debugLog(`LLM config - endpoint: ${llmConfig.endpoint}, apiKey exists: ${!!llmConfig.apiKey}`);
-  
-  // Override with prompt-specific parameters if available
-  if (prompt.parameters) {
-    if (prompt.parameters.model) {
-      llmConfig.model = prompt.parameters.model;
-    }
-    if (prompt.parameters.temperature !== undefined) {
-      llmConfig.temperature = prompt.parameters.temperature;
-    }
-    if (prompt.parameters.max_tokens !== undefined) {
-      llmConfig.maxTokens = prompt.parameters.max_tokens;
-    }
+  // Select agent
+  const agentType = await selectAgent();
+  if (!agentType) {
+    debugLog('No agent selected, exiting');
+    return;
   }
   
-  // Create generator panel
-  const panel = GeneratorPanel.createOrShow(extensionContext.extensionUri);
-  panel.startStreaming(prompt.name);
+  // Save last used agent
+  const agentConfig = getAgentConfig();
+  if (agentConfig.rememberLastAgent) {
+    await extensionContext.globalState.update(STATE_KEY_LAST_AGENT, agentType);
+  }
   
-  // Execute with streaming
-  try {
-    const response = await llmService.generate(
-      renderedPrompt,
-      llmConfig,
-      (chunk: string) => {
-        panel.appendChunk(chunk);
-      }
-    );
-    
-    if (response.status === 'success') {
-      panel.complete(response);
-    } else {
-      panel.showError(response.error || 'Unknown error');
-      vscode.window.showErrorMessage(`Prompt failed: ${response.error}`);
-    }
-  } catch (error) {
-    panel.showError(String(error));
-    vscode.window.showErrorMessage(`Prompt failed: ${error}`);
+  // Send to agent
+  debugLog(`Sending to agent: ${agentType}`);
+  const result = await agentService.sendToAgent(renderedPrompt, agentType);
+  
+  if (result.success) {
+    debugLog('Prompt sent successfully');
+  } else {
+    debugLog(`Failed to send prompt: ${result.reason} - ${result.message}`);
+    vscode.window.showErrorMessage(`Failed to send prompt: ${result.message}`);
   }
 }
 
@@ -369,4 +398,5 @@ async function executePrompt(prompt: PromptTemplate, config: ExtensionConfig): P
  */
 export function deactivate(): void {
   promptManager?.dispose();
+  outputChannel?.dispose();
 }
