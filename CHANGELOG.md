@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-03-14
+
+### Changed
+- Remove all emojis from UI for cleaner interface
+- Add "Ask Every Time" as default agent option
+- Sort AI providers alphabetically in settings
+- Rename provider names for consistency (e.g., "Claude" -> "Anthropic", "Gemini" -> "Google AI")
+
+### Added
+- New AI providers: DeepSeek, Mistral AI, xAI (Grok), Azure OpenAI
+- Total 10 AI providers now supported: Anthropic, Azure OpenAI, DeepSeek, Google AI, Groq, Mistral AI, Ollama, OpenAI, OpenRouter, xAI
+- Independent provider/model selection in AI Generate section
+
 ## [0.2.0] - 2025-03-14
 
 ### Added

@@ -32,6 +32,15 @@ export interface SettingsConfig {
   geminiModel: string;
   openrouterApiKey: string;
   openrouterModel: string;
+  deepseekApiKey: string;
+  deepseekModel: string;
+  mistralApiKey: string;
+  mistralModel: string;
+  xaiApiKey: string;
+  xaiModel: string;
+  azureApiKey: string;
+  azureEndpoint: string;
+  azureModel: string;
   
   // Generator system prompt
   generatorSystemPrompt: string;
@@ -119,9 +128,6 @@ export class SettingsPanel {
           case 'save':
             await this._saveSettings(message.data);
             break;
-          case 'reset':
-            this._update();
-            break;
         }
       },
       null,
@@ -154,6 +160,15 @@ export class SettingsPanel {
       await config.update('geminiModel', data.geminiModel, vscode.ConfigurationTarget.Global);
       await config.update('openrouterApiKey', data.openrouterApiKey, vscode.ConfigurationTarget.Global);
       await config.update('openrouterModel', data.openrouterModel, vscode.ConfigurationTarget.Global);
+      await config.update('deepseekApiKey', data.deepseekApiKey, vscode.ConfigurationTarget.Global);
+      await config.update('deepseekModel', data.deepseekModel, vscode.ConfigurationTarget.Global);
+      await config.update('mistralApiKey', data.mistralApiKey, vscode.ConfigurationTarget.Global);
+      await config.update('mistralModel', data.mistralModel, vscode.ConfigurationTarget.Global);
+      await config.update('xaiApiKey', data.xaiApiKey, vscode.ConfigurationTarget.Global);
+      await config.update('xaiModel', data.xaiModel, vscode.ConfigurationTarget.Global);
+      await config.update('azureApiKey', data.azureApiKey, vscode.ConfigurationTarget.Global);
+      await config.update('azureEndpoint', data.azureEndpoint, vscode.ConfigurationTarget.Global);
+      await config.update('azureModel', data.azureModel, vscode.ConfigurationTarget.Global);
       
       // Generator system prompt
       await this._context.globalState.update('pbp.generatorSystemPrompt', data.generatorSystemPrompt);
@@ -172,7 +187,7 @@ export class SettingsPanel {
     const config = vscode.workspace.getConfiguration('pbp');
     
     return {
-      defaultAgent: config.get('defaultAgent') || 'clipboard',
+      defaultAgent: config.get('defaultAgent') || 'ask',
       rememberLastAgent: config.get('rememberLastAgent') ?? true,
       defaultTarget: config.get('defaultTarget') || 'global',
       defaultModel: (config.get('defaultModel') || 'ollama') as AIProvider,
@@ -188,6 +203,15 @@ export class SettingsPanel {
       geminiModel: config.get('geminiModel') || 'gemini-2.0-flash',
       openrouterApiKey: config.get('openrouterApiKey') || '',
       openrouterModel: config.get('openrouterModel') || 'anthropic/claude-3.5-sonnet',
+      deepseekApiKey: config.get('deepseekApiKey') || '',
+      deepseekModel: config.get('deepseekModel') || 'deepseek-chat',
+      mistralApiKey: config.get('mistralApiKey') || '',
+      mistralModel: config.get('mistralModel') || 'mistral-large-latest',
+      xaiApiKey: config.get('xaiApiKey') || '',
+      xaiModel: config.get('xaiModel') || 'grok-beta',
+      azureApiKey: config.get('azureApiKey') || '',
+      azureEndpoint: config.get('azureEndpoint') || '',
+      azureModel: config.get('azureModel') || 'gpt-4o',
       generatorSystemPrompt: this._context.globalState.get('pbp.generatorSystemPrompt') || DEFAULT_GENERATOR_SYSTEM_PROMPT,
       outputDirectory: config.get('outputDirectory') || '.prompts/output',
     };
@@ -333,8 +357,8 @@ export class SettingsPanel {
     
     .provider-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
     }
     
     .provider-card {
@@ -346,34 +370,25 @@ export class SettingsPanel {
     
     .provider-card h3 {
       margin: 0 0 10px 0;
-      font-size: 1em;
+      font-size: 0.95em;
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-    
-    .provider-card.configured h3::before {
-      content: "";
-    }
-    
-    .provider-card.not-configured h3::before {
-      content: "";
+      justify-content: space-between;
     }
     
     .status-badge {
-      font-size: 0.75em;
+      font-size: 0.7em;
       padding: 2px 6px;
       border-radius: 10px;
-      margin-left: auto;
     }
     
     .status-badge.configured {
-      background-color: var(--vscode-testing-iconPassed);
+      background-color: #2ea043;
       color: white;
     }
     
     .status-badge.not-configured {
-      background-color: var(--vscode-testing-iconQueued);
+      background-color: #6e7681;
       color: white;
     }
     
@@ -402,6 +417,14 @@ export class SettingsPanel {
     .tab-content { display: none; }
     
     .tab-content.active { display: block; }
+    
+    .provider-card .form-group {
+      margin-bottom: 8px;
+    }
+    
+    .provider-card .form-group:last-child {
+      margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
@@ -422,6 +445,7 @@ export class SettingsPanel {
         <div class="form-group">
           <label for="defaultAgent">Default Agent</label>
           <select id="defaultAgent">
+            <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>Ask Every Time</option>
             <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>Copy to Clipboard</option>
             <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
             <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
@@ -516,18 +540,27 @@ export class SettingsPanel {
         rememberLastAgent: document.getElementById('rememberLastAgent').checked,
         defaultTarget: document.getElementById('defaultTarget').value,
         defaultModel: document.getElementById('defaultModel').value,
-        ollamaEndpoint: document.getElementById('ollamaEndpoint').value,
-        ollamaModel: document.getElementById('ollamaModel').value,
-        openaiApiKey: document.getElementById('openaiApiKey').value,
-        openaiModel: document.getElementById('openaiModel').value,
-        claudeApiKey: document.getElementById('claudeApiKey').value,
-        claudeModel: document.getElementById('claudeModel').value,
-        groqApiKey: document.getElementById('groqApiKey').value,
-        groqModel: document.getElementById('groqModel').value,
-        geminiApiKey: document.getElementById('geminiApiKey').value,
-        geminiModel: document.getElementById('geminiModel').value,
-        openrouterApiKey: document.getElementById('openrouterApiKey').value,
-        openrouterModel: document.getElementById('openrouterModel').value,
+        ollamaEndpoint: document.getElementById('ollamaEndpoint')?.value || 'http://localhost:11434',
+        ollamaModel: document.getElementById('ollamaModel')?.value || 'llama3.2',
+        openaiApiKey: document.getElementById('openaiApiKey')?.value || '',
+        openaiModel: document.getElementById('openaiModel')?.value || 'gpt-4o-mini',
+        claudeApiKey: document.getElementById('claudeApiKey')?.value || '',
+        claudeModel: document.getElementById('claudeModel')?.value || 'claude-3-5-sonnet-20241022',
+        groqApiKey: document.getElementById('groqApiKey')?.value || '',
+        groqModel: document.getElementById('groqModel')?.value || 'llama-3.3-70b-versatile',
+        geminiApiKey: document.getElementById('geminiApiKey')?.value || '',
+        geminiModel: document.getElementById('geminiModel')?.value || 'gemini-2.0-flash',
+        openrouterApiKey: document.getElementById('openrouterApiKey')?.value || '',
+        openrouterModel: document.getElementById('openrouterModel')?.value || 'anthropic/claude-3.5-sonnet',
+        deepseekApiKey: document.getElementById('deepseekApiKey')?.value || '',
+        deepseekModel: document.getElementById('deepseekModel')?.value || 'deepseek-chat',
+        mistralApiKey: document.getElementById('mistralApiKey')?.value || '',
+        mistralModel: document.getElementById('mistralModel')?.value || 'mistral-large-latest',
+        xaiApiKey: document.getElementById('xaiApiKey')?.value || '',
+        xaiModel: document.getElementById('xaiModel')?.value || 'grok-beta',
+        azureApiKey: document.getElementById('azureApiKey')?.value || '',
+        azureEndpoint: document.getElementById('azureEndpoint')?.value || '',
+        azureModel: document.getElementById('azureModel')?.value || 'gpt-4o',
         generatorSystemPrompt: document.getElementById('generatorSystemPrompt').value,
         outputDirectory: document.getElementById('outputDirectory').value
       };
@@ -547,35 +580,39 @@ export class SettingsPanel {
 
   private _getProviderCardsHtml(settings: SettingsConfig): string {
     const providers = [
-      { id: 'ollama', name: 'Ollama (Local)', endpoint: true, apiKey: false, model: settings.ollamaModel, modelId: 'ollamaModel', endpointValue: settings.ollamaEndpoint },
-      { id: 'openai', name: 'OpenAI', endpoint: false, apiKey: true, model: settings.openaiModel, modelId: 'openaiModel', apiKeyValue: settings.openaiApiKey },
-      { id: 'claude', name: 'Anthropic Claude', endpoint: false, apiKey: true, model: settings.claudeModel, modelId: 'claudeModel', apiKeyValue: settings.claudeApiKey },
-      { id: 'groq', name: 'Groq', endpoint: false, apiKey: true, model: settings.groqModel, modelId: 'groqModel', apiKeyValue: settings.groqApiKey },
-      { id: 'gemini', name: 'Google Gemini', endpoint: false, apiKey: true, model: settings.geminiModel, modelId: 'geminiModel', apiKeyValue: settings.geminiApiKey },
-      { id: 'openrouter', name: 'OpenRouter', endpoint: false, apiKey: true, model: settings.openrouterModel, modelId: 'openrouterModel', apiKeyValue: settings.openrouterApiKey }
+      { id: 'anthropic', name: 'Anthropic', apiKey: settings.claudeApiKey, model: settings.claudeModel, modelId: 'claudeModel', apiKeyId: 'claudeApiKey' },
+      { id: 'azure', name: 'Azure OpenAI', apiKey: settings.azureApiKey, model: settings.azureModel, modelId: 'azureModel', apiKeyId: 'azureApiKey', hasEndpoint: true, endpoint: settings.azureEndpoint },
+      { id: 'deepseek', name: 'DeepSeek', apiKey: settings.deepseekApiKey, model: settings.deepseekModel, modelId: 'deepseekModel', apiKeyId: 'deepseekApiKey' },
+      { id: 'google', name: 'Google AI', apiKey: settings.geminiApiKey, model: settings.geminiModel, modelId: 'geminiModel', apiKeyId: 'geminiApiKey' },
+      { id: 'groq', name: 'Groq', apiKey: settings.groqApiKey, model: settings.groqModel, modelId: 'groqModel', apiKeyId: 'groqApiKey' },
+      { id: 'mistral', name: 'Mistral AI', apiKey: settings.mistralApiKey, model: settings.mistralModel, modelId: 'mistralModel', apiKeyId: 'mistralApiKey' },
+      { id: 'ollama', name: 'Ollama (Local)', apiKey: '', model: settings.ollamaModel, modelId: 'ollamaModel', apiKeyId: '', hasEndpoint: true, endpoint: settings.ollamaEndpoint, isLocal: true },
+      { id: 'openai', name: 'OpenAI', apiKey: settings.openaiApiKey, model: settings.openaiModel, modelId: 'openaiModel', apiKeyId: 'openaiApiKey' },
+      { id: 'openrouter', name: 'OpenRouter', apiKey: settings.openrouterApiKey, model: settings.openrouterModel, modelId: 'openrouterModel', apiKeyId: 'openrouterApiKey' },
+      { id: 'xai', name: 'xAI (Grok)', apiKey: settings.xaiApiKey, model: settings.xaiModel, modelId: 'xaiModel', apiKeyId: 'xaiApiKey' }
     ];
     
     return providers.map(p => {
-      const isConfigured = p.id === 'ollama' || !!p.apiKeyValue;
+      const isConfigured = p.isLocal || !!p.apiKey;
       const statusClass = isConfigured ? 'configured' : 'not-configured';
       const statusText = isConfigured ? 'Configured' : 'Not Configured';
       
       return `
-        <div class="provider-card ${statusClass}">
+        <div class="provider-card">
           <h3>
             ${p.name}
             <span class="status-badge ${statusClass}">${statusText}</span>
           </h3>
-          ${p.endpoint ? `
+          ${p.hasEndpoint ? `
             <div class="form-group">
-              <label for="ollamaEndpoint">Endpoint</label>
-              <input type="text" id="ollamaEndpoint" value="${this._escapeHtml(p.endpointValue || '')}" placeholder="http://localhost:11434">
+              <label for="${p.isLocal ? 'ollamaEndpoint' : 'azureEndpoint'}">Endpoint</label>
+              <input type="text" id="${p.isLocal ? 'ollamaEndpoint' : 'azureEndpoint'}" value="${this._escapeHtml(p.endpoint || '')}" placeholder="${p.isLocal ? 'http://localhost:11434' : 'https://your-resource.openai.azure.com'}">
             </div>
           ` : ''}
-          ${p.apiKey ? `
+          ${!p.isLocal ? `
             <div class="form-group">
-              <label for="${p.id}ApiKey">API Key</label>
-              <input type="password" id="${p.id}ApiKey" class="api-key-input" value="${this._escapeHtml(p.apiKeyValue || '')}" placeholder="Enter API key">
+              <label for="${p.apiKeyId}">API Key</label>
+              <input type="password" id="${p.apiKeyId}" class="api-key-input" value="${this._escapeHtml(p.apiKey || '')}" placeholder="Enter API key">
             </div>
           ` : ''}
           <div class="form-group">

@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "prompt-by-prompt",
   "private": true,
   "license": "MIT",
@@ -125,7 +125,7 @@
         "pbp.defaultModel": {
           "type": "string",
           "default": "ollama",
-          "enum": ["ollama", "openai", "claude", "groq", "gemini", "openrouter"],
+          "enum": ["anthropic", "azure", "deepseek", "google", "groq", "mistral", "ollama", "openai", "openrouter", "xai"],
           "description": "Default AI provider for prompt generation"
         },
         "pbp.ollamaEndpoint": {
@@ -151,12 +151,12 @@
         "pbp.claudeApiKey": {
           "type": "string",
           "default": "",
-          "description": "Anthropic Claude API Key"
+          "description": "Anthropic API Key"
         },
         "pbp.claudeModel": {
           "type": "string",
           "default": "claude-3-5-sonnet-20241022",
-          "description": "Default Claude model"
+          "description": "Default Anthropic model"
         },
         "pbp.groqApiKey": {
           "type": "string",
@@ -171,12 +171,12 @@
         "pbp.geminiApiKey": {
           "type": "string",
           "default": "",
-          "description": "Google Gemini API Key"
+          "description": "Google AI API Key"
         },
         "pbp.geminiModel": {
           "type": "string",
           "default": "gemini-2.0-flash",
-          "description": "Default Gemini model"
+          "description": "Default Google AI model"
         },
         "pbp.openrouterApiKey": {
           "type": "string",
@@ -188,6 +188,51 @@
           "default": "anthropic/claude-3.5-sonnet",
           "description": "Default OpenRouter model (format: provider/model)"
         },
+        "pbp.deepseekApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "DeepSeek API Key"
+        },
+        "pbp.deepseekModel": {
+          "type": "string",
+          "default": "deepseek-chat",
+          "description": "Default DeepSeek model"
+        },
+        "pbp.mistralApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Mistral AI API Key"
+        },
+        "pbp.mistralModel": {
+          "type": "string",
+          "default": "mistral-large-latest",
+          "description": "Default Mistral AI model"
+        },
+        "pbp.xaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "xAI (Grok) API Key"
+        },
+        "pbp.xaiModel": {
+          "type": "string",
+          "default": "grok-beta",
+          "description": "Default xAI model"
+        },
+        "pbp.azureApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Azure OpenAI API Key"
+        },
+        "pbp.azureEndpoint": {
+          "type": "string",
+          "default": "",
+          "description": "Azure OpenAI endpoint URL"
+        },
+        "pbp.azureModel": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "Default Azure OpenAI deployment name"
+        },
         "pbp.promptsDir": {
           "type": "string",
           "default": ".prompts",
@@ -195,9 +240,9 @@
         },
         "pbp.defaultAgent": {
           "type": "string",
-          "enum": ["cline", "roo-code", "copilot", "continue", "clipboard"],
-          "default": "clipboard",
-          "description": "Default agent to send prompts to"
+          "enum": ["ask", "cline", "roo-code", "copilot", "continue", "clipboard"],
+          "default": "ask",
+          "description": "Default agent to send prompts to. 'ask' will prompt every time."
         },
         "pbp.rememberLastAgent": {
           "type": "boolean",
