@@ -19,6 +19,7 @@ let agentService: AgentService;
 let treeProvider: PromptsTreeProvider;
 let extensionContext: vscode.ExtensionContext;
 let outputChannel: vscode.OutputChannel;
+let statusBarItem: vscode.StatusBarItem;
 
 // State keys
 const STATE_KEY_LAST_AGENT = 'pbp.lastAgent';
@@ -67,6 +68,29 @@ function getAgentConfig(): { defaultAgent: AgentType; rememberLastAgent: boolean
 }
 
 /**
+ * Update status bar with current agent
+ */
+function updateStatusBar(): void {
+  const agentConfig = getAgentConfig();
+  let currentAgent = agentConfig.defaultAgent;
+  
+  if (agentConfig.rememberLastAgent) {
+    const lastAgent = extensionContext.globalState.get<AgentType>(STATE_KEY_LAST_AGENT);
+    if (lastAgent) {
+      currentAgent = lastAgent;
+    }
+  }
+  
+  const adapter = agentService.getAdapter(currentAgent);
+  if (adapter) {
+    statusBarItem.text = `$(${adapter.getIcon().id}) ${adapter.name}`;
+    statusBarItem.show();
+  } else {
+    statusBarItem.hide();
+  }
+}
+
+/**
  * Extension activation
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -102,8 +126,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.extensions.onDidChange(() => {
       agentService.invalidateCache();
       debugLog('Extension change detected, agent cache invalidated');
+      updateStatusBar();
     })
   );
+  
+  // Create status bar item for current agent
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  statusBarItem.command = 'pbp.selectAgent';
+  statusBarItem.tooltip = 'Click to change agent';
+  context.subscriptions.push(statusBarItem);
+  
+  // Register command to select agent from status bar
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pbp.selectAgent', async () => {
+      const agentType = await selectAgent();
+      if (agentType) {
+        const agentConfig = getAgentConfig();
+        if (agentConfig.rememberLastAgent) {
+          await extensionContext.globalState.update(STATE_KEY_LAST_AGENT, agentType);
+        }
+        updateStatusBar();
+      }
+    })
+  );
+  
+  // Initialize status bar
+  updateStatusBar();
   
   // Register tree view
   const treeView = vscode.window.createTreeView('pbp.promptsView', {
