@@ -103,6 +103,8 @@ jobs:
   create-release:
     needs: [build, publish-marketplace, publish-openvsx]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: startsWith(github.ref, 'refs/tags/')
     
     steps:

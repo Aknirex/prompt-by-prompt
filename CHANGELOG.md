@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-03-15
+
+### Fixed
+- Fix GitHub Actions permission issue by granting `contents: write` to the `create-release` job so it can generate release notes
+
 ## [0.3.8] - 2026-03-15
 
 ### Fixed
