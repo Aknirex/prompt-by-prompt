@@ -7,10 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-03-15
+
+### Fixed
+- Fix vsce publish command to use `--skip-duplicate` instead of unsupported `--prepublish` option
+
+## [0.3.5] - 2026-03-15
+
+### Fixed
+- Fix prepublish script configuration in vsce publish workflow
+
+## [0.3.4] - 2026-03-15
+
+### Changed
+- Update version number to 0.3.3 in package configuration files
+
 ## [0.3.3] - 2026-03-15
 
-### Release
-- Published to VS Code Marketplace and Open VSX Registry
+### Fixed
+- Fix prepublish script execution during publish process
 
 ## [0.2.1] - 2025-03-14
 
