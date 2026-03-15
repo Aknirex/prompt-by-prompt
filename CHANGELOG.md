@@ -1,5 +1,17 @@
 # Changelog
 
+# [1.2.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.1.0...v1.2.0) (2026-03-15)
+
+
+### Bug Fixes
+
+* add activation events for prompts and rules views ([3f307a5](https://github.com/Aknirex/prompt-by-prompt/commit/3f307a508966def35ecb802a00e5bdd1b8dd1e1e))
+
+
+### Features
+
+* add more rule files and default rule file setting ([3859881](https://github.com/Aknirex/prompt-by-prompt/commit/3859881d4bf6c5cdaec66932e7532b55c6ad9f4b))
+
 ## [1.1.1](https://github.com/Aknirex/prompt-by-prompt/compare/v1.1.0...v1.1.1) (2026-03-15)
 
 
