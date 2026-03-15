@@ -63,6 +63,20 @@
         "command": "pbp.openSettings",
         "title": "Open Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "pbp.refreshRules",
+        "title": "Refresh Rules",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pbp.addRule",
+        "title": "Add Rule",
+        "icon": "$(add)"
+      },
+      {
+        "command": "pbp.deleteRule",
+        "title": "Delete Rule"
       }
     ],
     "viewsContainers": {
@@ -79,6 +93,11 @@
         {
           "id": "pbp.promptsView",
           "name": "Prompts",
+          "icon": "media/icon.svg"
+        },
+        {
+          "id": "pbp.rulesView",
+          "name": "Project Rules",
           "icon": "media/icon.svg"
         }
       ]
@@ -101,6 +120,33 @@
           "group": "navigation@3"
         }
       ],
+      "view/title": [
+        {
+          "command": "pbp.refreshPrompts",
+          "when": "view == pbp.promptsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pbp.createPrompt",
+          "when": "view == pbp.promptsView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pbp.openSettings",
+          "when": "view == pbp.promptsView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "pbp.refreshRules",
+          "when": "view == pbp.rulesView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pbp.addRule",
+          "when": "view == pbp.rulesView",
+          "group": "navigation@2"
+        }
+      ],
       "view/item/context": [
         {
           "command": "pbp.runPrompt",
@@ -115,6 +161,11 @@
         {
           "command": "pbp.deletePrompt",
           "when": "view == pbp.promptsView && viewItem == prompt",
+          "group": "1_modification"
+        },
+        {
+          "command": "pbp.deleteRule",
+          "when": "view == pbp.rulesView && viewItem == rule",
           "group": "1_modification"
         }
       ],

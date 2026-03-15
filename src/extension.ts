@@ -9,16 +9,20 @@ import { PromptManager } from './services/promptManager';
 import { ContextEngine } from './services/contextEngine';
 import { AgentService } from './services/agentService';
 import { PromptsTreeProvider } from './providers/promptsTreeProvider';
+import { RulesTreeProvider } from './providers/rulesTreeProvider';
 import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
 import { SettingsPanel } from './providers/settingsPanel';
 import { ExtensionConfig, PromptTemplate } from './types/prompt';
 import { AgentType } from './types/agent';
+import { RuleManager, KNOWN_RULE_FILES } from './services/ruleManager';
 
 // Global service instances
 let promptManager: PromptManager;
 let contextEngine: ContextEngine;
 let agentService: AgentService;
 let treeProvider: PromptsTreeProvider;
+let rulesTreeProvider: RulesTreeProvider;
+let ruleManager: RuleManager;
 let extensionContext: vscode.ExtensionContext;
 let outputChannel: vscode.OutputChannel;
 let statusBarItem: vscode.StatusBarItem;
@@ -101,15 +105,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Store extension context globally
   extensionContext = context;
   
+  // Initialize services
   const config = getConfig();
   
-  // Initialize services
   promptManager = new PromptManager(context, config);
   contextEngine = new ContextEngine();
   agentService = new AgentService();
+  ruleManager = new RuleManager(context);
   treeProvider = new PromptsTreeProvider();
+  rulesTreeProvider = new RulesTreeProvider(ruleManager);
   
-  // Initialize prompt manager
+  // Wait for prompt manager to load
   await promptManager.initialize();
   
   // Set initial prompts in tree view
@@ -154,6 +160,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register tree view
   const treeView = vscode.window.createTreeView('pbp.promptsView', {
     treeDataProvider: treeProvider,
+    showCollapseAll: true
+  });
+  
+  const rulesTreeView = vscode.window.createTreeView('pbp.rulesView', {
+    treeDataProvider: rulesTreeProvider,
     showCollapseAll: true
   });
   
@@ -286,11 +297,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Open settings panel
     vscode.commands.registerCommand('pbp.openSettings', () => {
       SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext);
+    }),
+    
+    // Refresh rules
+    vscode.commands.registerCommand('pbp.refreshRules', () => {
+      rulesTreeProvider.refresh();
+    }),
+    
+    // Add rule
+    vscode.commands.registerCommand('pbp.addRule', async () => {
+      const options = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules'];
+      const selected = await vscode.window.showQuickPick(options, { placeHolder: 'Select rule file to create' });
+      if (selected) {
+        await ruleManager.createRuleFile(selected, '# New Rule File');
+      }
+    }),
+    
+    // Delete rule
+    vscode.commands.registerCommand('pbp.deleteRule', async (item: any) => {
+      if (item && item.rule) {
+        await ruleManager.deleteRuleFile(vscode.Uri.file(item.rule.path));
+      }
     })
   ];
   
   // Add to subscriptions
-  context.subscriptions.push(treeView, ...commands);
+  context.subscriptions.push(treeView, rulesTreeView, ...commands);
   
   outputChannel.appendLine('Prompt by Prompt is now active');
   console.log('Prompt by Prompt is now active');
