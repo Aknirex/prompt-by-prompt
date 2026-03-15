@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "publisher": "aknirex",
   "repository": {
     "type": "git",
@@ -301,7 +301,7 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.0.0",
+    "@types/node": "^20.17.0",
     "@types/uuid": "^10.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.7.1",
