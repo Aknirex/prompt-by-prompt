@@ -78,7 +78,8 @@
       "pbp-explorer": [
         {
           "id": "pbp.promptsView",
-          "name": "Prompts"
+          "name": "Prompts",
+          "icon": "media/icon.svg"
         }
       ]
     },
