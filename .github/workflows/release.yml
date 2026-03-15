@@ -71,8 +71,11 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Publish to Open VSX Registry
-        run: npx ovsx publish *.vsix --pat "${{ secrets.OVSX_PAT }}" --no-dependencies
+        run: npx ovsx publish *.vsix --pat "${{ secrets.OVSX_PAT }}"
 
   publish-marketplace:
     needs: build
@@ -91,8 +94,11 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Publish to VS Code Marketplace
-        run: SKIP_COMPILE=1 npx @vscode/vsce publish *.vsix --pat "${{ secrets.VSCE_PAT }}" --no-dependencies
+        run: npx @vscode/vsce publish *.vsix --pat "${{ secrets.VSCE_PAT }}"
 
   create-release:
     needs: [build, publish-marketplace, publish-openvsx]
