@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-03-15
+
+### Fixed
+- Fix vsce package command to use baseContentUrl and baseImagesUrl for proper README asset resolution
+
 ## [0.3.6] - 2026-03-15
 
 ### Fixed
