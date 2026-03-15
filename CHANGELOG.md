@@ -1,5 +1,12 @@
 # Changelog
 
+# [1.3.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.2.0...v1.3.0) (2026-03-15)
+
+
+### Features
+
+* new icon ([d09a612](https://github.com/Aknirex/prompt-by-prompt/commit/d09a61254e0e5aa844be2fe5a04c029c30853e66))
+
 # [1.2.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.1.0...v1.2.0) (2026-03-15)
 
 
