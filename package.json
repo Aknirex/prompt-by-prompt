@@ -322,6 +322,11 @@
           "type": "string",
           "default": ".prompts/output",
           "description": "Directory for generated markdown files (relative to workspace or absolute path)"
+        },
+        "pbp.defaultRuleFile": {
+          "type": "string",
+          "default": "ask",
+          "description": "Default rule file to create. 'ask' will prompt every time."
         }
       }
     }

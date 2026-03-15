@@ -306,8 +306,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     
     // Add rule
     vscode.commands.registerCommand('pbp.addRule', async () => {
-      const options = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules'];
-      const selected = await vscode.window.showQuickPick(options, { placeHolder: 'Select rule file to create' });
+      const config = vscode.workspace.getConfiguration('pbp');
+      const defaultRuleFile = config.get<string>('defaultRuleFile') || 'ask';
+      const options = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules', '.aiderrules', '.codeiumrules'];
+      
+      let selected: string | undefined;
+      if (defaultRuleFile === 'ask' || !options.includes(defaultRuleFile)) {
+        selected = await vscode.window.showQuickPick(options, { placeHolder: 'Select rule file to create' });
+      } else {
+        selected = defaultRuleFile;
+      }
+      
       if (selected) {
         await ruleManager.createRuleFile(selected, '# New Rule File');
       }

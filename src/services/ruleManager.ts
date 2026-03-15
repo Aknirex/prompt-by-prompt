@@ -12,7 +12,16 @@ export interface RuleFile {
     content: string;
 }
 
-export const KNOWN_RULE_FILES = ['.clinerules', '.cursorrules', '.windsurfrules', 'AGENTS.md'];
+export const KNOWN_RULE_FILES = [
+    'AGENTS.md',
+    '.clinerules',
+    '.cursorrules',
+    '.windsurfrules',
+    '.aiderrules',
+    '.codeiumrules',
+    '.cursorrules',
+    '.windsurfrules'
+];
 
 export class RuleManager {
     private onDidChangeRules: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
@@ -29,7 +38,7 @@ export class RuleManager {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(
                 vscode.workspace.workspaceFolders[0],
-                '{.clinerules,.cursorrules,.windsurfrules,AGENTS.md}'
+                '{AGENTS.md,.clinerules,.cursorrules,.windsurfrules,.aiderrules,.codeiumrules}'
             )
         );
 
