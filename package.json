@@ -297,10 +297,12 @@
     "lint": "eslint src",
     "test": "echo \"No tests to run\"",
     "test:watch": "vitest",
-    "package": "vsce package"
+    "package": "vsce package",
+    "release": "release-it"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@release-it/conventional-changelog": "^10.0.6",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
     "@types/uuid": "^10.0.0",
@@ -308,6 +310,7 @@
     "@vscode/vsce": "^3.7.1",
     "eslint": "^10.0.3",
     "ovsx": "^0.10.0",
+    "release-it": "^19.2.4",
     "sharp": "^0.34.5",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.0",
