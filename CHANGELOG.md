@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/Aknirex/prompt-by-prompt/compare/v1.1.0...v1.1.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* add activation events for prompts and rules views ([3f307a5](https://github.com/Aknirex/prompt-by-prompt/commit/3f307a508966def35ecb802a00e5bdd1b8dd1e1e))
+
 # [1.1.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.0.3...v1.1.0) (2026-03-15)
 
 
