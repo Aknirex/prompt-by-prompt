@@ -1,0 +1,17 @@
+
+src/
+docs/
+scripts/
+.github/
+.vscode/
+.gitignore
+tsconfig.json
+eslint.config.mjs
+vitest.config.ts
+*.test.ts
+.debug.log/
+*.vsix
+.DS_Store
+test/
+.git/
+plans/
