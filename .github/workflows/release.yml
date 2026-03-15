@@ -72,7 +72,7 @@ jobs:
           node-version: 20.x
 
       - name: Publish to Open VSX Registry
-        run: npx ovsx publish *.vsix --pat "${{ secrets.OVSX_PAT }}"
+        run: npx ovsx publish *.vsix --pat "${{ secrets.OVSX_PAT }}" --no-dependencies
 
   publish-marketplace:
     needs: build
@@ -92,7 +92,7 @@ jobs:
           node-version: 20.x
 
       - name: Publish to VS Code Marketplace
-        run: npx vsce publish *.vsix --pat "${{ secrets.VSCE_PAT }}"
+        run: npx @vscode/vsce publish *.vsix --pat "${{ secrets.VSCE_PAT }}" --no-dependencies
 
   create-release:
     needs: [build, publish-marketplace, publish-openvsx]
