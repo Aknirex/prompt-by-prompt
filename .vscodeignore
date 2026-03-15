@@ -15,3 +15,7 @@ vitest.config.ts
 test/
 .git/
 plans/
+node_modules/
+tests/
+test/
+.release-it.json
