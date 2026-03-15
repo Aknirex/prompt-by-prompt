@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-03-15
+
+### Fixed
+- Fix vsce publish command to use `--packagePath` argument to correctly publish the pre-packaged vsix file
+- Add `--skip-duplicate` to ovsx publish command to handle duplicate releases safely
+
 ## [0.3.7] - 2026-03-15
 
 ### Fixed

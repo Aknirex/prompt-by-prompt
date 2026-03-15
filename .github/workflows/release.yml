@@ -75,7 +75,7 @@ jobs:
         run: npm ci
 
       - name: Publish to Open VSX Registry
-        run: npx ovsx publish *.vsix --pat "${{ secrets.OVSX_PAT }}"
+        run: npx ovsx publish *.vsix --pat "${{ secrets.OVSX_PAT }}" --skip-duplicate
 
   publish-marketplace:
     needs: build
@@ -98,7 +98,7 @@ jobs:
         run: npm ci
 
       - name: Publish to VS Code Marketplace
-        run: npx @vscode/vsce publish *.vsix --pat "${{ secrets.VSCE_PAT }}" --skip-duplicate
+        run: npx @vscode/vsce publish --packagePath *.vsix --pat "${{ secrets.VSCE_PAT }}" --skip-duplicate
 
   create-release:
     needs: [build, publish-marketplace, publish-openvsx]
