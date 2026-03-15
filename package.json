@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "publisher": "aknirex",
   "repository": {
     "type": "git",
@@ -103,23 +103,6 @@
       ]
     },
     "menus": {
-      "view/title": [
-        {
-          "command": "pbp.refreshPrompts",
-          "when": "view == pbp.promptsView",
-          "group": "navigation@1"
-        },
-        {
-          "command": "pbp.createPrompt",
-          "when": "view == pbp.promptsView",
-          "group": "navigation@2"
-        },
-        {
-          "command": "pbp.openSettings",
-          "when": "view == pbp.promptsView",
-          "group": "navigation@3"
-        }
-      ],
       "view/title": [
         {
           "command": "pbp.refreshPrompts",

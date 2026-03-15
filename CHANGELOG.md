@@ -1,5 +1,12 @@
 # Changelog
 
+# [1.1.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.0.3...v1.1.0) (2026-03-15)
+
+
+### Features
+
+* add rule manager ([bb1e735](https://github.com/Aknirex/prompt-by-prompt/commit/bb1e735151cad0679dd94b9d46af4661aa2b05d4))
+
 ## [1.0.3](https://github.com/Aknirex/prompt-by-prompt/compare/v1.0.2...v1.0.3) (2026-03-15)
 
 ## [1.0.2](https://github.com/Aknirex/prompt-by-prompt/compare/v1.0.1...v1.0.2) (2026-03-15)
