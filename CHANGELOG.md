@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-15
+
+### Added
+- Updated Node.js LTS support to current version v24.14.0 (added `engines.node` field specifier)
+- Updated `@eslint/js`, `@types/node`, and `eslint` devDependencies to latest versions
+
 ## [0.3.9] - 2026-03-15
 
 ### Fixed
