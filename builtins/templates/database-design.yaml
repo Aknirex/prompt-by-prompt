@@ -1,0 +1,44 @@
+id: "pbp.plan.database.001"
+name: "Database Design"
+description: "Design database schemas and ER diagrams"
+category: "Planning"
+tags: ["database", "schema", "sql", "planning", "design"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "db_type"
+    description: "Type of Database"
+    type: "enum"
+    values: ["relational (postgresql/mysql)", "nosql (mongodb/dynamodb)", "graph", "suggest-best"]
+    default: "relational (postgresql/mysql)"
+
+template: |
+  Design a database schema for the following features or project requirements.
+  
+  Database Preference: {{db_type}}
+  
+  {{#if selection}}
+  Features / Data Entities:
+  {{selection}}
+  {{/if}}
+  
+  {{#if file_content}}
+  Additional Context:
+  {{file_content}}
+  {{/if}}
+  
+  Please provide a formal Database Design covering:
+  
+  1. **Overview & Rationale**: Why this database type was chosen (if 'suggest-best' was selected) and core principles.
+  2. **Entity-Relationship Model**: Describe the main entities, their attributes, and relationships (1:1, 1:N, M:N). Include a Mermaid.js ER diagram or PlantUML.
+  3. **Schema Definition**: Detailed table/collection structures with column names, data types, primary keys, foreign keys, and constraints.
+  4. **Indexes & Performance**: Recommended indexes for common queries.
+  5. **Common Queries**: 2-3 sample queries (SQL or NoSQL equivalent) for core operations.
+  
+  Make sure the design is normalized (for relational databases) or optimized for read/write patterns (for NoSQL). Output in clear Markdown formatting.

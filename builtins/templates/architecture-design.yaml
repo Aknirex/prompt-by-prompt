@@ -1,0 +1,46 @@
+id: "pbp.plan.architecture.001"
+name: "Architecture Design"
+description: "Design system architecture based on requirements"
+category: "Planning"
+tags: ["architecture", "design", "system", "planning"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "architecture_style"
+    description: "Preferred architecture style"
+    type: "enum"
+    values: ["microservices", "monolith", "serverless", "event-driven", "suggest-best"]
+    default: "suggest-best"
+
+template: |
+  Design the system architecture for the following requirements or project description.
+  
+  Preferred Style: {{architecture_style}}
+  
+  {{#if selection}}
+  System Requirements / Constraints:
+  {{selection}}
+  {{/if}}
+  
+  {{#if file_content}}
+  Additional Context:
+  {{file_content}}
+  {{/if}}
+  
+  Please provide a comprehensive Architecture Design Document covering:
+  
+  1. **High-Level Overview**: A brief explanation of the architecture and why the chosen pattern fits best.
+  2. **Component Diagram**: Describe the key components/services and how they interact. (Provide text-based descriptions or Mermaid.js diagrams).
+  3. **Technology Stack**: Recommended languages, frameworks, databases, and infrastructure choices with justifications.
+  4. **Data Flow**: Step-by-step data flow for 1-2 critical use cases.
+  5. **Scalability & Performance**: How the system will scale and handle high loads.
+  6. **Security Architecture**: Authentication, authorization, and data protection strategies.
+  7. **Deployment Strategy**: CI/CD approach and hosting environments.
+  
+  Format the output as a clean Markdown document. Provide clear rationale for major technical decisions.

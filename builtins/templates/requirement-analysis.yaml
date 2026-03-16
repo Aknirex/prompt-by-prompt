@@ -1,0 +1,45 @@
+id: "pbp.plan.requirement.001"
+name: "Requirement Analysis"
+description: "Analyze user requests to extract functional and non-functional requirements"
+category: "Planning"
+tags: ["requirement", "analysis", "planning", "prd"]
+author: "PbP Team"
+version: "1.0.0"
+
+parameters:
+  model: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4000
+
+variables:
+  - name: "project_type"
+    description: "Type of the project"
+    type: "string"
+    default: "Web Application"
+
+template: |
+  Perform a comprehensive requirement analysis for the following project description.
+  
+  Project Type: {{project_type}}
+  
+  {{#if selection}}
+  Initial Description/Ideas:
+  {{selection}}
+  {{/if}}
+  
+  {{#if file_content}}
+  Additional Context:
+  {{file_content}}
+  {{/if}}
+  
+  Please output a detailed Product Requirements Document (PRD) covering:
+  
+  1. **Executive Summary**: Brief overview of the product, its goals, and target audience.
+  2. **User Personas**: Describe the typical users.
+  3. **User Stories**: Write out key user stories in the format "As a [user], I want to [action] so that [benefit]".
+  4. **Functional Requirements**: Detailed list of features the system must have. Priority (Must have, Should have, Could have).
+  5. **Non-Functional Requirements**: Performance, security, scalability, and usability requirements.
+  6. **Out of Scope**: What will NOT be built in this phase.
+  7. **Dependencies & Risks**: External APIs, technical risks, or constraints.
+  
+  Use clean Markdown formatting. Ensure the requirements are unambiguous, testable, and feasible.
