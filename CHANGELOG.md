@@ -1,5 +1,12 @@
 # Changelog
 
+# [1.4.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.3.0...v1.4.0) (2026-03-16)
+
+
+### Features
+
+* add new templates for architecture design, database design, and requirement analysis ([c5de947](https://github.com/Aknirex/prompt-by-prompt/commit/c5de947115fdcbf2f8fb82c217c1688cbbbd8abc))
+
 # [1.3.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.2.0...v1.3.0) (2026-03-15)
 
 
