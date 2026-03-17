@@ -1,5 +1,15 @@
 # Changelog
 
+# [1.9.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.8.0...v1.9.0) (2026-03-17)
+
+
+### Features
+
+* Add FileAdapter for saving prompts to a file, enhance settings with output directory and send behavior options ([80afa00](https://github.com/Aknirex/prompt-by-prompt/commit/80afa00b13430f11a7d1b81faf1e0f1721b984e5))
+* Add UI language and custom provider URL settings, enhance internationalization support ([5767e5f](https://github.com/Aknirex/prompt-by-prompt/commit/5767e5f778e9b6a99034e45a61990063d9332b84))
+* Enhance internationalization support with dynamic configuration updates and improved translations ([4120fc7](https://github.com/Aknirex/prompt-by-prompt/commit/4120fc7eab6a05df2cb3f58695210f0bf2789bba))
+* Update settings panel and localization for prompt generator configuration and send behavior options ([cea21ed](https://github.com/Aknirex/prompt-by-prompt/commit/cea21ed0c175ebd767dce274b2e1eba04ec363f9))
+
 # [1.8.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.7.0...v1.8.0) (2026-03-17)
 
 
