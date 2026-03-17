@@ -1,5 +1,12 @@
 # Changelog
 
+# [1.7.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.6.0...v1.7.0) (2026-03-17)
+
+
+### Features
+
+* enhance default global rule generation logic and content ([b12e830](https://github.com/Aknirex/prompt-by-prompt/commit/b12e830e40eae9cae13944abd1336a2400e7f7b2))
+
 # [1.6.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.5.0...v1.6.0) (2026-03-17)
 
 
