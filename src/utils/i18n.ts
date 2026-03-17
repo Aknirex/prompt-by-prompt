@@ -1,5 +1,14 @@
 import * as vscode from 'vscode';
 
+const en_dict: Record<string, string> = {
+    'UI Language': 'UI Language',
+    'English': 'English',
+    'Japanese': 'Japanese',
+    'Spanish': 'Spanish',
+    'Korean': 'Korean',
+    'Chinese': 'Chinese',
+};
+
 const ja_dict: Record<string, string> = {
     'Refresh Prompts': 'プロンプトを更新',
     'Create New Prompt': '新しいプロンプトを作成',
@@ -35,6 +44,24 @@ const ja_dict: Record<string, string> = {
     'Workspace Rule:': 'ワークスペースルール:',
     'No workspace open to create rule file.': 'ワークスペースが開かれていないため、ルールファイルを作成できません。',
     'already exists.': 'は既に存在します。',
+    'Prompt Generator': 'プロンプトジェネレーター',
+    'Describe what you want the prompt to do in natural language. The AI will generate a prompt for you.': 'プロンプトに何をさせたいかを自然言語で記述してください。AIがプロンプトを生成します。',
+    'System Prompt': 'システムプロンプト',
+    'Configure the system prompt used by the AI when generating new prompt templates.': '新しいプロンプトテンプレートを生成する際にAIが使用するシステムプロンプトを設定します。',
+    'e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks...': '例: SQLインジェクションやXSS攻撃に焦点を当て、コードのセキュリティ脆弱性をレビューするプロンプトを作成して...',
+    'Generating prompt...': 'プロンプトを生成中...',
+    'What does this prompt do?': 'このプロンプトは何をしますか？',
+    'Comma separated tags': 'カンマ区切りのタグ',
+    'Prompt': 'プロンプト',
+    'Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}': '{{variable_name}}を使用して、プロンプト実行時に埋められる変数を定義します。含まれるコンテキスト: {{workspace_folder}}, {{active_file}}, {{selected_text}}',
+    'Enter your prompt here...': 'ここにプロンプトを入力してください...',
+    'Please enter a description for the prompt you want to generate.': '生成したいプロンプトの説明を入力してください。',
+    'UI Language': 'UI言語',
+    'English': '英語',
+    'Japanese': '日本語',
+    'Spanish': 'スペイン語',
+    'Korean': '韓国語',
+    'Chinese': '中国語',
 };
 
 const es_dict: Record<string, string> = {
@@ -72,6 +99,24 @@ const es_dict: Record<string, string> = {
     'Workspace Rule:': 'Regla de Espacio:',
     'No workspace open to create rule file.': 'No hay espacio de trabajo abierto para crear la regla.',
     'already exists.': 'ya existe.',
+    'Prompt Generator': 'Generador de Prompts',
+    'Describe what you want the prompt to do in natural language. The AI will generate a prompt for you.': 'Describe en lenguaje natural lo que quieres que haga el prompt. La IA generará un prompt para ti.',
+    'System Prompt': 'Prompt del Sistema',
+    'Configure the system prompt used by the AI when generating new prompt templates.': 'Configura el prompt del sistema utilizado por la IA al generar nuevas plantillas de prompt.',
+    'e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks...': 'ej. Crea un prompt que revise el código en busca de vulnerabilidades de seguridad, centrándose en ataques de inyección SQL y XSS...',
+    'Generating prompt...': 'Generando prompt...',
+    'What does this prompt do?': '¿Qué hace este prompt?',
+    'Comma separated tags': 'Etiquetas separadas por comas',
+    'Prompt': 'Prompt',
+    'Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}': 'Usa {{variable_name}} para definir variables que se completarán al ejecutar el prompt. Contexto incluido: {{workspace_folder}}, {{active_file}}, {{selected_text}}',
+    'Enter your prompt here...': 'Introduce tu prompt aquí...',
+    'Please enter a description for the prompt you want to generate.': 'Por favor, introduce una descripción para el prompt que quieres generar.',
+    'UI Language': 'Idioma de la interfaz',
+    'English': 'Inglés',
+    'Japanese': 'Japonés',
+    'Spanish': 'Español',
+    'Korean': 'Coreano',
+    'Chinese': 'Chino',
 };
 
 const ko_dict: Record<string, string> = {
@@ -109,6 +154,24 @@ const ko_dict: Record<string, string> = {
     'Workspace Rule:': '워크스페이스 규칙:',
     'No workspace open to create rule file.': '워크스페이스가 열려있지 않아 규칙 파일을 생성할 수 없습니다.',
     'already exists.': '이미 존재합니다.',
+    'Prompt Generator': '프롬프트 생성기',
+    'Describe what you want the prompt to do in natural language. The AI will generate a prompt for you.': '프롬프트가 수행할 작업을 자연어로 설명하세요. AI가 프롬프트를 생성합니다.',
+    'System Prompt': '시스템 프롬프트',
+    'Configure the system prompt used by the AI when generating new prompt templates.': '새 프롬프트 템플릿을 생성할 때 AI가 사용할 시스템 프롬프트를 구성합니다.',
+    'e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks...': '예: SQL 인젝션 및 XSS 공격에 초점을 맞춰 코드의 보안 취약점을 검토하는 프롬프트를 생성하세요...',
+    'Generating prompt...': '프롬프트 생성 중...',
+    'What does this prompt do?': '이 프롬프트는 무엇을 하나요?',
+    'Comma separated tags': '쉼표로 구분된 태그',
+    'Prompt': '프롬프트',
+    'Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}': '{{variable_name}}을 사용하여 프롬프트 실행 시 채워질 변수를 정의하세요. 포함된 컨텍스트: {{workspace_folder}}, {{active_file}}, {{selected_text}}',
+    'Enter your prompt here...': '여기에 프롬프트를 입력하세요...',
+    'Please enter a description for the prompt you want to generate.': '생성할 프롬프트에 대한 설명을 입력하세요.',
+    'UI Language': 'UI 언어',
+    'English': '영어',
+    'Japanese': '일본어',
+    'Spanish': '스페인어',
+    'Korean': '한국어',
+    'Chinese': '중국어',
 };
 
 const zh_cn_dict: Record<string, string> = {
@@ -172,23 +235,65 @@ const zh_cn_dict: Record<string, string> = {
     'Generate': 'AI 自动生成',
     'Category': '分类',
     'Tags': '标签',
-    'Output Directory': '输出目录'
+    'Output Directory': '输出目录',
+    'Prompt Generator': '提示词生成器',
+    'Describe what you want the prompt to do in natural language. The AI will generate a prompt for you.': '用自然语言描述您希望提示词执行的操作。AI 将为您生成提示词。',
+    'System Prompt': '系统提示词',
+    'Configure the system prompt used by the AI when generating new prompt templates.': '配置 AI 在生成新提示词模板时使用的系统提示词。',
+    'e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks...': '例如：创建一个审查代码安全漏洞的提示词，重点关注 SQL 注入和 XSS 攻击...',
+    'Generating prompt...': '正在生成提示词...',
+    'What does this prompt do?': '此提示词的功能是什么？',
+    'Comma separated tags': '逗号分隔的标签',
+    'Prompt': '提示词',
+    'Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}': '使用 {{variable_name}} 定义在运行提示词时将填充的变量。包含的上下文：{{workspace_folder}}, {{active_file}}, {{selected_text}}',
+    'Enter your prompt here...': '在此处输入您的提示词...',
+    'Please enter a description for the prompt you want to generate.': '请输入您要生成的提示词的描述。',
+    'Agent Settings': '代理设置',
+    'Default Agent': '默认代理',
+    'The default agent to send prompts to when executing': '执行提示词时默认使用的代理',
+    'Ask Every Time': '每次询问',
+    'Copy to Clipboard': '复制到剪贴板',
+    'Storage Settings': '存储设置',
+    'Where to save new prompts by default. Global prompts are available in all projects.': '默认保存新提示词的位置。全局提示词在所有项目中均可用。',
+    'Directory for generated markdown files (relative to workspace or absolute path)': '生成的 Markdown 文件的目录（相对于工作区或绝对路径）',
+    'AI Provider Configuration': '提示词生成器',
+    'Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).': '配置用于提示词生成的 AI 供应商。除 Ollama (本地) 外，每个供应商都需要 API Key。',
+    'Default Provider': '默认供应商',
+    'The default provider for AI prompt generation': 'AI 提示词生成的默认供应商',
+    'Generator': '生成器',
+    'Settings saved successfully!': '设置保存成功！',
+    'Failed to save settings': '设置保存失败',
+    'Remember last used agent': '记住上次使用的代理',
+    'Variables explicitly defined here can have descriptions and default values. Extracted variables from the template are automatically handled.': '此处明确定义的变量可以包含描述和默认值。从模板中提取的变量会自动处理。',
+    'Global prompts are available in all projects. Workspace prompts are stored in the project folder.': '全局提示词在所有项目中均可用。工作区提示词存储在项目文件夹中。',
+    'Custom Provider': '自定义供应商',
+    'Provider URL': '供应商 URL',
+    'UI Language': '界面语言',
+    'English': '英语',
+    'Japanese': '日语',
+    'Spanish': '西班牙语',
+    'Korean': '韩语',
+    'Chinese': '中文',
+    'Current Project': '当前项目',
+    'All Projects': '所有项目'
 };
 
 const dictionaries: Record<string, Record<string, string>> = {
+    'en': en_dict,
     'zh-cn': zh_cn_dict,
     'ja': ja_dict,
     'es': es_dict,
     'ko': ko_dict
 };
 
-let currentLanguage = vscode.env.language.toLowerCase();
-if (currentLanguage === 'zh-tw' || currentLanguage === 'zh-hk') {
-    currentLanguage = 'zh-cn'; // Fallback mapping
-}
-
 export function t(key: string): string {
-    const dict = dictionaries[currentLanguage];
+    const config = vscode.workspace.getConfiguration('pbp');
+    let currentLanguage = (config.get('uiLanguage') as string || vscode.env.language).toLowerCase();
+    if (currentLanguage === 'zh-tw' || currentLanguage === 'zh-hk') {
+        currentLanguage = 'zh-cn'; // Fallback mapping
+    }
+    
+    const dict = dictionaries[currentLanguage] || dictionaries['en'] || dictionaries['zh-cn'];
     let text = dict[key] || key;
 
     if (arguments.length > 1) {

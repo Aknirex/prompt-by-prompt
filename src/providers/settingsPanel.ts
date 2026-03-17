@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { AI_PROVIDERS, AIProvider } from '../services/aiService';
+import { AI_PROVIDERS, AIProvider, DEFAULT_GENERATOR_SYSTEM_PROMPT } from '../services/aiService';
 import { t } from '../utils/i18n';
 
 /**
@@ -19,6 +19,7 @@ export interface SettingsConfig {
   
   // AI Provider settings
   defaultModel: AIProvider;
+  customProviderUrl: string;
   
   // Provider-specific settings
   ollamaEndpoint: string;
@@ -48,29 +49,10 @@ export interface SettingsConfig {
 
   // File output settings
   outputDirectory: string;
+  
+  // UI settings
+  uiLanguage: string;
 }
-
-/**
- * Default generator system prompt
- */
-export const DEFAULT_GENERATOR_SYSTEM_PROMPT = `You are a prompt engineering assistant. Your task is to help users create effective prompts for AI assistants.
-
-When generating prompts:
-1. Be clear and specific about the task
-2. Include relevant context variables like {{selection}}, {{filepath}}, {{lang}}
-3. Structure the prompt logically with clear sections
-4. Consider the target AI's capabilities and limitations
-
-Available context variables:
-- {{selection}}: Currently selected text in the editor
-- {{filepath}}: Path of the current file
-- {{file_content}}: Full content of the current file
-- {{lang}}: Programming language of the current file
-- {{project_name}}: Name of the current project
-- {{line_number}}: Current line number
-- {{column_number}}: Current column number
-
-Respond with ONLY the generated prompt, no explanations or markdown formatting.`;
 
 /**
  * Settings Panel using Webview
@@ -147,6 +129,7 @@ export class SettingsPanel {
       
       // AI Provider settings
       await config.update('defaultModel', data.defaultModel, vscode.ConfigurationTarget.Global);
+      await config.update('customProviderUrl', data.customProviderUrl, vscode.ConfigurationTarget.Global);
       
       // Provider-specific settings
       await config.update('ollamaEndpoint', data.ollamaEndpoint, vscode.ConfigurationTarget.Global);
@@ -176,8 +159,9 @@ export class SettingsPanel {
 
       // File output settings
       await config.update('outputDirectory', data.outputDirectory, vscode.ConfigurationTarget.Global);
+      await config.update('uiLanguage', data.uiLanguage, vscode.ConfigurationTarget.Global);
       
-      vscode.window.showInformationMessage('Settings saved successfully!');
+      vscode.window.showInformationMessage(t('Settings saved successfully!'));
       this._panel.dispose();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to save settings: ${error}`);
@@ -192,6 +176,7 @@ export class SettingsPanel {
       rememberLastAgent: config.get('rememberLastAgent') ?? true,
       defaultTarget: config.get('defaultTarget') || 'global',
       defaultModel: (config.get('defaultModel') || 'ollama') as AIProvider,
+      customProviderUrl: config.get('customProviderUrl') || '',
       ollamaEndpoint: config.get('ollamaEndpoint') || 'http://localhost:11434',
       ollamaModel: config.get('ollamaModel') || 'llama3.2',
       openaiApiKey: config.get('openaiApiKey') || '',
@@ -215,6 +200,9 @@ export class SettingsPanel {
       azureModel: config.get('azureModel') || 'gpt-4o',
       generatorSystemPrompt: this._context.globalState.get('pbp.generatorSystemPrompt') || DEFAULT_GENERATOR_SYSTEM_PROMPT,
       outputDirectory: config.get('outputDirectory') || '.prompts/output',
+      
+      // UI settings
+      uiLanguage: config.get('uiLanguage') || 'en',
     };
   }
 
@@ -261,7 +249,7 @@ export class SettingsPanel {
       .section {
         background-color: var(--vscode-editor-inactiveSelectionBackground);
         padding: 16px;
-        border-radius: 8px;
+        border-radius: 0;
         margin-bottom: 20px;
       }
       
@@ -282,7 +270,7 @@ export class SettingsPanel {
         background-color: var(--vscode-input-background);
         color: var(--vscode-input-foreground);
         border: 1px solid var(--vscode-input-border);
-        border-radius: 4px;
+        border-radius: 0;
         font-family: inherit;
         font-size: inherit;
       }
@@ -330,7 +318,7 @@ export class SettingsPanel {
       button {
         padding: 8px 20px;
         border: none;
-        border-radius: 4px;
+        border-radius: 0;
         cursor: pointer;
         font-family: inherit;
         font-size: inherit;
@@ -365,7 +353,7 @@ export class SettingsPanel {
       .provider-card {
         background-color: var(--vscode-editor-background);
         padding: 12px;
-        border-radius: 6px;
+        border-radius: 0;
         border: 1px solid var(--vscode-panel-border);
       }
       
@@ -380,7 +368,7 @@ export class SettingsPanel {
       .status-badge {
         font-size: 0.7em;
         padding: 2px 6px;
-        border-radius: 10px;
+        border-radius: 0;
       }
       
       .status-badge.configured {
@@ -407,7 +395,7 @@ export class SettingsPanel {
         border: none;
         cursor: pointer;
         color: var(--vscode-descriptionForeground);
-        border-radius: 4px 4px 0 0;
+        border-radius: 0;
       }
       
       .tab.active {
@@ -434,36 +422,48 @@ export class SettingsPanel {
 
       <div class="tabs">
         <button class="tab active" onclick="showTab('general')">${t('General Settings')}</button>
-        <button class="tab" onclick="showTab('providers')">AI Providers</button>
-        <button class="tab" onclick="showTab('generator')">Generator</button>
+        <button class="tab" onclick="showTab('providers')">${t('AI Provider Configuration')}</button>
       </div>
 
       <!-- General Tab -->
       <div id="tab-general" class="tab-content active">
         <div class="section">
-          <h2>Agent Settings</h2>
+          <h2>${t('General Settings')}</h2>
           
           <div class="form-group">
-            <label for="defaultAgent">Default Agent</label>
+            <label for="uiLanguage">${t('UI Language')}</label>
+            <select id="uiLanguage">
+              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>${t('English')}</option>
+              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>${t('Japanese')}</option>
+              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>${t('Spanish')}</option>
+              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>${t('Korean')}</option>
+              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>${t('Chinese')}</option>
+            </select>
+          </div>
+
+          <h2>${t('Agent Settings')}</h2>
+          
+          <div class="form-group">
+            <label for="defaultAgent">${t('Default Agent')}</label>
             <select id="defaultAgent">
-              <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>Ask Every Time</option>
-              <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>Copy to Clipboard</option>
+              <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>${t('Ask Every Time')}</option>
+              <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>${t('Copy to Clipboard')}</option>
               <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
               <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
               <option value="copilot" ${settings.defaultAgent === 'copilot' ? 'selected' : ''}>GitHub Copilot</option>
               <option value="continue" ${settings.defaultAgent === 'continue' ? 'selected' : ''}>Continue</option>
             </select>
-            <div class="hint">The default agent to send prompts to when executing</div>
+            <div class="hint">${t('The default agent to send prompts to when executing')}</div>
           </div>
           
           <div class="form-group checkbox-group">
             <input type="checkbox" id="rememberLastAgent" ${settings.rememberLastAgent ? 'checked' : ''}>
-            <label for="rememberLastAgent">Remember last used agent</label>
+            <label for="rememberLastAgent">${t('Remember last used agent')}</label>
           </div>
         </div>
         
         <div class="section">
-          <h2>Storage Settings</h2>
+          <h2>${t('Storage Settings')}</h2>
 
           <div class="form-group">
             <label for="defaultTarget">${t('Target')}</label>
@@ -471,13 +471,13 @@ export class SettingsPanel {
               <option value="global" ${settings.defaultTarget === 'global' ? 'selected' : ''}>${t('Global')}</option>
               <option value="workspace" ${settings.defaultTarget === 'workspace' ? 'selected' : ''}>${t('Workspace')}</option>
             </select>
-            <div class="hint">Where to save new prompts by default. Global prompts are available in all projects.</div>
+            <div class="hint">${t('Where to save new prompts by default. Global prompts are available in all projects.')}</div>
           </div>
 
           <div class="form-group">
             <label for="outputDirectory">${t('Output Directory')}</label>
             <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/output">
-            <div class="hint">Directory for generated markdown files (relative to workspace or absolute path)</div>
+            <div class="hint">${t('Directory for generated markdown files (relative to workspace or absolute path)')}</div>
           </div>
         </div>
       </div>
@@ -485,35 +485,38 @@ export class SettingsPanel {
       <!-- AI Providers Tab -->
       <div id="tab-providers" class="tab-content">
         <div class="section">
-          <h2>AI Provider Configuration</h2>
-          <div class="hint" style="margin-bottom: 16px;">Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).</div>
+          <h2>${t('AI Provider Configuration')}</h2>
+          <div class="hint" style="margin-bottom: 16px;">${t('Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).')}</div>
           
           <div class="form-group">
-            <label for="defaultModel">Default Provider</label>
-            <select id="defaultModel">
+            <label for="providerSelector">${t('Default Provider')}</label>
+            <select id="providerSelector" onchange="showProviderConfig(this.value)">
               ${AI_PROVIDERS.map(p => `<option value="${p.id}" ${settings.defaultModel === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+              <option value="custom" ${settings.defaultModel === 'custom' ? 'selected' : ''}>${t('Custom Provider')}</option>
             </select>
-            <div class="hint">The default provider for AI prompt generation</div>
+            <div class="hint">${t('The default provider for AI prompt generation')}</div>
           </div>
           
-          <div class="provider-grid">
-            ${this._getProviderCardsHtml(settings)}
+          <div class="form-group" id="customProviderUrlGroup" style="display: ${settings.defaultModel === 'custom' ? 'block' : 'none'}">
+            <label for="customProviderUrl">${t('Provider URL')}</label>
+            <input type="text" id="customProviderUrl" value="${this._escapeHtml(settings.customProviderUrl)}" placeholder="https://api.example.com">
+          </div>
+          
+          <div id="provider-configs">
+            ${this._getProviderConfigsHtml(settings)}
           </div>
         </div>
-      </div>
-      
-      <!-- Generator Tab -->
-      <div id="tab-generator" class="tab-content">
+        
         <div class="section">
-          <h2>Prompt Generator</h2>
-          <p>Configure the system prompt used by the AI when generating new prompt templates.</p>
+          <h2>${t('Prompt Generator')}</h2>
+          <p>${t('Configure the system prompt used by the AI when generating new prompt templates.')}</p>
           
             <div class="form-group">
-              <label for="generatorSystemPrompt">System Prompt</label>
+              <label for="generatorSystemPrompt">${t('System Prompt')}</label>
               <textarea id="generatorSystemPrompt" rows="15">${this._escapeHtml(settings.generatorSystemPrompt)}</textarea>
             </div>
 
-            <button type="button" class="secondary" onclick="resetGeneratorPrompt()">Reset to Default</button>
+            <button type="button" class="secondary" onclick="resetGeneratorPrompt()">${t('Reset to Default')}</button>
           </div>
       </div>
 
@@ -531,6 +534,11 @@ export class SettingsPanel {
       event.target.classList.add('active');
     }
     
+    function showProviderConfig(providerId) {
+      document.querySelectorAll('.provider-config').forEach(el => el.style.display = 'none');
+      document.getElementById('config-' + providerId).style.display = 'block';
+    }
+    
     function resetGeneratorPrompt() {
       document.getElementById('generatorSystemPrompt').value = \`${DEFAULT_GENERATOR_SYSTEM_PROMPT.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`;
     }
@@ -540,30 +548,31 @@ export class SettingsPanel {
         defaultAgent: document.getElementById('defaultAgent').value,
         rememberLastAgent: document.getElementById('rememberLastAgent').checked,
         defaultTarget: document.getElementById('defaultTarget').value,
-        defaultModel: document.getElementById('defaultModel').value,
-        ollamaEndpoint: document.getElementById('ollamaEndpoint')?.value || 'http://localhost:11434',
-        ollamaModel: document.getElementById('ollamaModel')?.value || 'llama3.2',
+        defaultModel: document.getElementById('providerSelector').value,
+        ollamaEndpoint: document.getElementById('ollamaEndpoint')?.value || '',
+        ollamaModel: document.getElementById('ollamaModel')?.value || '',
         openaiApiKey: document.getElementById('openaiApiKey')?.value || '',
-        openaiModel: document.getElementById('openaiModel')?.value || 'gpt-4o-mini',
+        openaiModel: document.getElementById('openaiModel')?.value || '',
         claudeApiKey: document.getElementById('claudeApiKey')?.value || '',
-        claudeModel: document.getElementById('claudeModel')?.value || 'claude-3-5-sonnet-20241022',
+        claudeModel: document.getElementById('claudeModel')?.value || '',
         groqApiKey: document.getElementById('groqApiKey')?.value || '',
-        groqModel: document.getElementById('groqModel')?.value || 'llama-3.3-70b-versatile',
+        groqModel: document.getElementById('groqModel')?.value || '',
         geminiApiKey: document.getElementById('geminiApiKey')?.value || '',
-        geminiModel: document.getElementById('geminiModel')?.value || 'gemini-2.0-flash',
+        geminiModel: document.getElementById('geminiModel')?.value || '',
         openrouterApiKey: document.getElementById('openrouterApiKey')?.value || '',
-        openrouterModel: document.getElementById('openrouterModel')?.value || 'anthropic/claude-3.5-sonnet',
+        openrouterModel: document.getElementById('openrouterModel')?.value || '',
         deepseekApiKey: document.getElementById('deepseekApiKey')?.value || '',
-        deepseekModel: document.getElementById('deepseekModel')?.value || 'deepseek-chat',
+        deepseekModel: document.getElementById('deepseekModel')?.value || '',
         mistralApiKey: document.getElementById('mistralApiKey')?.value || '',
-        mistralModel: document.getElementById('mistralModel')?.value || 'mistral-large-latest',
+        mistralModel: document.getElementById('mistralModel')?.value || '',
         xaiApiKey: document.getElementById('xaiApiKey')?.value || '',
-        xaiModel: document.getElementById('xaiModel')?.value || 'grok-beta',
+        xaiModel: document.getElementById('xaiModel')?.value || '',
         azureApiKey: document.getElementById('azureApiKey')?.value || '',
         azureEndpoint: document.getElementById('azureEndpoint')?.value || '',
-        azureModel: document.getElementById('azureModel')?.value || 'gpt-4o',
-          generatorSystemPrompt: document.getElementById('generatorSystemPrompt').value,
-          outputDirectory: document.getElementById('outputDirectory').value
+        azureModel: document.getElementById('azureModel')?.value || '',
+        generatorSystemPrompt: document.getElementById('generatorSystemPrompt').value,
+        outputDirectory: document.getElementById('outputDirectory').value,
+        uiLanguage: document.getElementById('uiLanguage').value
       };
       
       const vscode = acquireVsCodeApi();
@@ -579,7 +588,7 @@ export class SettingsPanel {
 </html>`;
   }
 
-  private _getProviderCardsHtml(settings: SettingsConfig): string {
+  private _getProviderConfigsHtml(settings: SettingsConfig): string {
     const providers = [
       { id: 'anthropic', name: 'Anthropic', apiKey: settings.claudeApiKey, model: settings.claudeModel, modelId: 'claudeModel', apiKeyId: 'claudeApiKey' },
       { id: 'azure', name: 'Azure OpenAI', apiKey: settings.azureApiKey, model: settings.azureModel, modelId: 'azureModel', apiKeyId: 'azureApiKey', hasEndpoint: true, endpoint: settings.azureEndpoint },
@@ -594,16 +603,10 @@ export class SettingsPanel {
     ];
     
     return providers.map(p => {
-      const isConfigured = p.isLocal || !!p.apiKey;
-      const statusClass = isConfigured ? 'configured' : 'not-configured';
-      const statusText = isConfigured ? 'Configured' : 'Not Configured';
+      const isSelected = settings.defaultModel === p.id;
       
       return `
-        <div class="provider-card">
-          <h3>
-            ${p.name}
-            <span class="status-badge ${statusClass}">${statusText}</span>
-          </h3>
+        <div id="config-${p.id}" class="provider-config" style="display: ${isSelected ? 'block' : 'none'}">
           ${p.hasEndpoint ? `
             <div class="form-group">
               <label for="${p.isLocal ? 'ollamaEndpoint' : 'azureEndpoint'}">Endpoint</label>

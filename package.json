@@ -353,6 +353,16 @@
           "type": "string",
           "default": "ask",
           "description": "%config.pbp.defaultRuleFile.description%"
+        },
+        "pbp.uiLanguage": {
+          "type": "string",
+          "default": "en",
+          "description": "UI Language"
+        },
+        "pbp.customProviderUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Custom Provider URL"
         }
       }
     }

@@ -15,7 +15,8 @@ export type AIProvider =
   | 'ollama'
   | 'openai'
   | 'openrouter'
-  | 'xai';
+  | 'xai'
+  | 'custom';
 
 export interface ProviderInfo {
   id: AIProvider;
@@ -39,8 +40,30 @@ export interface GeneratePromptResult {
 }
 
 /**
- * Available AI providers with their default models (sorted alphabetically)
+ * Default generator system prompt
  */
+export const DEFAULT_GENERATOR_SYSTEM_PROMPT = `You are a prompt engineering assistant. Your task is to help users create effective prompts for AI assistants.
+
+When generating prompts:
+1. Be clear and specific about the task
+2. Include relevant context variables like {{selection}}, {{filepath}}, {{lang}}
+3. Structure the prompt logically with clear sections
+4. Consider the target AI's capabilities and limitations
+
+Available context variables:
+- {{selection}}: Currently selected text in the editor
+- {{filepath}}: Path of the current file
+- {{file_content}}: Full content of the current file
+- {{lang}}: Programming language of the current file
+- {{project_name}}: Name of the current project
+- {{line_number}}: Current line number
+- {{column_number}}: Current column number
+
+Respond with ONLY the generated prompt, no explanations or markdown formatting.`;
+
+/**
+  * Available AI providers with their default models (sorted alphabetically)
+  */
 export const AI_PROVIDERS: ProviderInfo[] = [
   {
     id: 'anthropic',

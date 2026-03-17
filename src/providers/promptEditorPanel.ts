@@ -4,7 +4,7 @@
 
 import * as vscode from 'vscode';
 import { PromptTemplate, PromptVariable } from '../types/prompt';
-import { AIService, AIProvider } from '../services/aiService';
+import { AIService, AIProvider, DEFAULT_GENERATOR_SYSTEM_PROMPT } from '../services/aiService';
 import { t } from '../utils/i18n';
 
 /**
@@ -120,7 +120,7 @@ export class PromptEditorPanel {
     if (!data.description || !data.description.trim()) {
       this._panel.webview.postMessage({
         command: 'generateResult',
-        error: 'Please enter a description for the prompt you want to generate.'
+        error: t('Please enter a description for the prompt you want to generate.')
       });
       return;
     }
@@ -129,9 +129,11 @@ export class PromptEditorPanel {
       command: 'generateStart'
     });
 
+    const systemPrompt = (this._context.globalState.get('pbp.generatorSystemPrompt') as string) || DEFAULT_GENERATOR_SYSTEM_PROMPT;
+
     const result = await this._aiService.generatePrompt({
       userDescription: data.description,
-      systemPrompt: '',
+      systemPrompt: systemPrompt,
       provider: data.provider,
       model: data.model
     });
@@ -157,8 +159,9 @@ export class PromptEditorPanel {
       const prompt = this._existingPrompt;
       const isNew = !prompt;
       const providers = this._aiService.getAvailableProviders();
-      const defaultProvider = this._aiService.getDefaultProvider();
-      const _defaultModel = this._aiService.getDefaultModel();
+      const config = vscode.workspace.getConfiguration('pbp');
+      const defaultProvider = config.get('defaultModel') || 'ollama';
+      const defaultModel = config.get(`${defaultProvider}Model`) || '';
 
       return `<!DOCTYPE html>
   <html lang="en">
@@ -175,6 +178,7 @@ export class PromptEditorPanel {
         color: var(--vscode-editor-foreground);
         padding: 20px;
         margin: 0;
+        font-size: 14px;
       }
       
       .container { max-width: 900px; margin: 0 auto; }
@@ -199,7 +203,7 @@ export class PromptEditorPanel {
         font-weight: 500;
       }
       
-      input[type="text"], 
+      input[type="text"],
       select,
       textarea {
         width: 100%;
@@ -207,7 +211,7 @@ export class PromptEditorPanel {
         background-color: var(--vscode-input-background);
         color: var(--vscode-input-foreground);
         border: 1px solid var(--vscode-input-border);
-        border-radius: 4px;
+        border-radius: 0;
         font-family: inherit;
         font-size: inherit;
       }
@@ -237,7 +241,7 @@ export class PromptEditorPanel {
       button {
         padding: 8px 20px;
         border: none;
-        border-radius: 4px;
+        border-radius: 0;
         cursor: pointer;
         font-family: inherit;
         font-size: inherit;
@@ -270,7 +274,7 @@ export class PromptEditorPanel {
         margin-top: 20px;
         padding: 16px;
         background-color: var(--vscode-editor-inactiveSelectionBackground);
-        border-radius: 4px;
+        border-radius: 0;
       }
       
       .variable-item {
@@ -316,7 +320,7 @@ export class PromptEditorPanel {
         margin-bottom: 24px;
         padding: 16px;
         background-color: var(--vscode-editor-inactiveSelectionBackground);
-        border-radius: 8px;
+        border-radius: 0;
         border-left: 4px solid var(--vscode-textLink-foreground);
       }
       
@@ -326,10 +330,12 @@ export class PromptEditorPanel {
         align-items: flex-start;
       }
       
-      .generator-input-row textarea {
+      .generator-input-row textarea,
+      #systemPrompt {
         flex: 1;
         min-height: 60px;
         resize: vertical;
+        font-family: var(--vscode-editor-font-family);
       }
       
       .generator-input-row button { white-space: nowrap; }
@@ -357,7 +363,7 @@ export class PromptEditorPanel {
         height: 16px;
         border: 2px solid var(--vscode-progressBar-background);
         border-top-color: transparent;
-        border-radius: 50%;
+        border-radius: 0;
         animation: spin 1s linear infinite;
       }
       
@@ -369,7 +375,7 @@ export class PromptEditorPanel {
         padding: 8px 12px;
         background-color: var(--vscode-inputValidation-errorBackground);
         color: var(--vscode-inputValidation-errorForeground);
-        border-radius: 4px;
+        border-radius: 0;
         font-size: 0.9em;
       }
       
@@ -382,31 +388,29 @@ export class PromptEditorPanel {
 
       ${isNew ? `
       <div class="generator-section">
-        <h2>${t('Generate')}</h2>
+        <h2>${t('Prompt Generator')}</h2>
         <div class="hint" style="margin-bottom: 12px;">
-          Describe what you want the prompt to do in natural language. The AI will generate a prompt template for you.
+          ${t('Describe what you want the prompt to do in natural language. The AI will generate a prompt for you.')}
         </div>
-        <div class="provider-row">
-          <div class="form-group">
-            <label for="genProvider">${t('Provider')}</label>
-            <select id="genProvider" onchange="updateModels()">
+        <div class="provider-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <select id="genProvider" onchange="updateModels()" style="padding: 4px 8px; width: 100%;">
               ${providers.map(p => `<option value="${p.id}" ${p.id === defaultProvider ? 'selected' : ''}>${p.name}</option>`).join('')}
             </select>
           </div>
-          <div class="form-group">
-            <label for="genModel">${t('Model')}</label>
-            <select id="genModel">
-              <option value="">Default</option>
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <select id="genModel" style="padding: 4px 8px; width: 100%;">
+              <option value="${defaultModel}">${defaultModel || 'Default'}</option>
             </select>
           </div>
         </div>
-        <div class="generator-input-row">
-          <textarea id="generateInput" placeholder="e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks..."></textarea>
-          <button type="button" class="primary" id="generateBtn" onclick="generatePrompt()">${t('Generate')}</button>
+        <div class="generator-input-row" style="display: flex; gap: 8px;">
+          <textarea id="generateInput" placeholder="${t('e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks...')}" style="flex: 1; min-height: 40px;"></textarea>
+          <button type="button" class="primary" id="generateBtn" onclick="generatePrompt()" style="padding: 4px 12px;">${t('Generate')}</button>
         </div>
         <div class="loading" id="loadingIndicator">
           <div class="spinner"></div>
-          <span>Generating prompt...</span>
+          <span>${t('Generating prompt...')}</span>
         </div>
         <div class="error-message" id="errorMessage"></div>
       </div>
@@ -425,18 +429,18 @@ export class PromptEditorPanel {
       <div class="row">
         <div class="form-group">
           <label for="description">${t('Description')}</label>
-          <input type="text" id="description" value="${this._escapeHtml(prompt?.description || '')}" placeholder="What does this prompt do?">
+          <input type="text" id="description" value="${this._escapeHtml(prompt?.description || '')}" placeholder="${t('What does this prompt do?')}">
         </div>
         <div class="form-group">
           <label for="tags">${t('Tags')}</label>
-          <input type="text" id="tags" value="${this._escapeHtml((prompt?.tags || []).join(', '))}" placeholder="Comma separated tags">
+          <input type="text" id="tags" value="${this._escapeHtml((prompt?.tags || []).join(', '))}" placeholder="${t('Comma separated tags')}">
         </div>
       </div>
 
       <div class="form-group">
-        <label for="template">${t('Template')} *</label>
-        <div class="hint" style="margin-bottom: 8px;">Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}</div>
-        <textarea id="template" class="template" required placeholder="Enter your prompt template here...">${this._escapeHtml(prompt?.template || '')}</textarea>
+        <label for="template">${t('Prompt')} *</label>
+        <div class="hint" style="margin-bottom: 8px;">${t('Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}')}</div>
+        <textarea id="template" class="template" required placeholder="${t('Enter your prompt here...')}">${this._escapeHtml(prompt?.template || '')}</textarea>
       </div>
 
       <div class="variables-section" id="variablesSection">
@@ -453,12 +457,12 @@ export class PromptEditorPanel {
           <label>${t('Target')}</label>
           <div class="target-select">
             <label>
-              <input type="radio" name="target" value="workspace" checked>
-              ${t('Workspace')} (Current Project)
+              <input type="radio" name="target" value="global" checked>
+              ${t('Global')} (${t('All Projects')})
             </label>
             <label>
-              <input type="radio" name="target" value="global">
-              ${t('Global')} (All Projects)
+              <input type="radio" name="target" value="workspace">
+              ${t('Workspace')} (${t('Current Project')})
             </label>
           </div>
           <div class="hint">${t('Global prompts are available in all projects. Workspace prompts are stored in the project folder.')}</div>
@@ -521,11 +525,12 @@ export class PromptEditorPanel {
       
       function generatePrompt() {
         const description = document.getElementById('generateInput').value.trim();
+        const systemPrompt = document.getElementById('systemPrompt').value.trim();
         const provider = document.getElementById('genProvider').value;
         const model = document.getElementById('genModel').value;
         vscode.postMessage({
           command: 'generate',
-          data: { description, provider, model }
+          data: { description, systemPrompt, provider, model }
         });
       }
       
@@ -579,7 +584,7 @@ export class PromptEditorPanel {
 
         vscode.postMessage({
           command: 'save',
-          data: { name, description, category, tags, template, variables: variables.length > 0 ? variables : undefined, target }
+          data: { name, description, category, tags, template, variables: getVariables().length > 0 ? getVariables() : undefined, target }
         });
       }
       
