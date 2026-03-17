@@ -343,7 +343,7 @@
             "append",
             "insert"
           ],
-          "default": "send",
+          "default": "append",
           "description": "%config.pbp.sendBehavior.description%"
         },
         "pbp.defaultTarget": {

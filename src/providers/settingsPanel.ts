@@ -422,7 +422,7 @@ export class SettingsPanel {
 
       <div class="tabs">
         <button class="tab active" onclick="showTab('general')">${t('General Settings')}</button>
-        <button class="tab" onclick="showTab('providers')">${t('AI Provider Configuration')}</button>
+        <button class="tab" onclick="showTab('providers')">${t('Prompt Generator Configuration')}</button>
       </div>
 
       <!-- General Tab -->
@@ -464,11 +464,11 @@ export class SettingsPanel {
           </div>
 
           <div class="form-group" id="sendBehaviorGroup" style="display: ${['clipboard', 'file'].includes(settings.defaultAgent) ? 'none' : 'block'}">
-            <label for="sendBehavior">${t('Send Behavior')}</label>
+            <label for="sendBehavior">${t('ui.settings.sendBehavior')}</label>
             <select id="sendBehavior">
-              <option value="send" ${settings.sendBehavior === 'send' ? 'selected' : ''}>${t('Send')}</option>
-              <option value="append" ${settings.sendBehavior === 'append' ? 'selected' : ''}>${t('Append to input box')}</option>
-              <option value="insert" ${settings.sendBehavior === 'insert' ? 'selected' : ''}>${t('Insert to input box at top')}</option>
+              <option value="send" ${settings.sendBehavior === 'send' ? 'selected' : ''}>${t('ui.settings.send')}</option>
+              <option value="append" ${settings.sendBehavior === 'append' ? 'selected' : ''}>${t('ui.settings.append')}</option>
+              <option value="insert" ${settings.sendBehavior === 'insert' ? 'selected' : ''}>${t('ui.settings.insert')}</option>
             </select>
           </div>
           
@@ -491,8 +491,8 @@ export class SettingsPanel {
       <!-- AI Providers Tab -->
       <div id="tab-providers" class="tab-content">
         <div class="section">
-          <h2>${t('AI Provider Configuration')}</h2>
-          <div class="hint" style="margin-bottom: 16px;">${t('Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).')}</div>
+          <h2>${t('Prompt Generator Configuration')}</h2>
+          <div class="hint" style="margin-bottom: 16px;">${t('ui.settings.aiProviderDescription')}</div>
           
           <div class="form-group">
             <label for="providerSelector">${t('Default Provider')}</label>
