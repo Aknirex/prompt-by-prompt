@@ -1,5 +1,12 @@
 # Changelog
 
+# [1.8.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.7.0...v1.8.0) (2026-03-17)
+
+
+### Features
+
+* Enhance settings panel with internationalization and improved rule scanning ([6895638](https://github.com/Aknirex/prompt-by-prompt/commit/6895638942c4ecbec63aa5243292ce719dcfdecd))
+
 # [1.7.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.6.0...v1.7.0) (2026-03-17)
 
 
