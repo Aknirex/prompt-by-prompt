@@ -1,5 +1,14 @@
 # Changelog
 
+# [1.6.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.5.0...v1.6.0) (2026-03-17)
+
+
+### Features
+
+* enhance rule management with global rules support and default rule generation ([a79c656](https://github.com/Aknirex/prompt-by-prompt/commit/a79c65654cfe6217ca6ea78e17bbe5d8e7daac7a))
+* refactor command structure to support workspace and global rules, update localization, and enhance rule management ([e04ad73](https://github.com/Aknirex/prompt-by-prompt/commit/e04ad730b02d90cfdafe42731fda63195385147f))
+* remove unused activation events for prompts and rules views ([02f2c75](https://github.com/Aknirex/prompt-by-prompt/commit/02f2c7574ea1d182d9b4912dcd5e4d8eba374213))
+
 # [1.5.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.4.0...v1.5.0) (2026-03-17)
 
 
