@@ -47,7 +47,7 @@ class RuleGroupItem extends vscode.TreeItem {
     public readonly rules: RuleFile[],
     public readonly isGlobal: boolean
   ) {
-    super(label, vscode.TreeItemCollapsibleState.Expanded);
+    super(t(label), vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = isGlobal ? 'globalRuleGroup' : 'workspaceRuleGroup';
     // Remove background icon for groups to make it cleaner like explorer
   }

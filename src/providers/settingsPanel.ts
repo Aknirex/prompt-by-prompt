@@ -433,11 +433,11 @@ export class SettingsPanel {
           <div class="form-group">
             <label for="uiLanguage">${t('UI Language')}</label>
             <select id="uiLanguage">
-              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>${t('English')}</option>
-              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>${t('Japanese')}</option>
-              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>${t('Spanish')}</option>
-              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>${t('Korean')}</option>
-              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>${t('Chinese')}</option>
+              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>English</option>
+              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>日本語</option>
+              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>Español</option>
+              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>한국어</option>
+              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>简体中文</option>
             </select>
           </div>
 

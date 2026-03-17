@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { PromptTemplate } from '../types/prompt';
+import { t } from '../utils/i18n';
 
 /**
  * Custom TreeItem for prompts
@@ -16,9 +17,9 @@ class PromptItem extends vscode.TreeItem {
     public readonly category?: string
   ) {
     super(
-      isCategory ? category! : prompt.name,
-      isCategory 
-        ? vscode.TreeItemCollapsibleState.Collapsed 
+      isCategory ? t(category!) : prompt.name,
+      isCategory
+        ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None
     );
 

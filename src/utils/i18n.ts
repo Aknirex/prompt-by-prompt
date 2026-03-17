@@ -7,6 +7,13 @@ const en_dict: Record<string, string> = {
     'Spanish': 'Spanish',
     'Korean': 'Korean',
     'Chinese': 'Chinese',
+    'Development': 'Development',
+    'Code Analysis': 'Code Analysis',
+    'Code Generation': 'Code Generation',
+    'Documentation': 'Documentation',
+    'Testing': 'Testing',
+    'Data': 'Data',
+    'General': 'General',
 };
 
 const ja_dict: Record<string, string> = {
@@ -274,6 +281,13 @@ const zh_cn_dict: Record<string, string> = {
     'Spanish': '西班牙语',
     'Korean': '韩语',
     'Chinese': '中文',
+    'Development': '开发',
+    'Code Analysis': '代码分析',
+    'Code Generation': '代码生成',
+    'Documentation': '文档',
+    'Testing': '测试',
+    'Data': '数据',
+    'General': '通用',
     'Current Project': '当前项目',
     'All Projects': '所有项目'
 };

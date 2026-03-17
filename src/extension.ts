@@ -134,6 +134,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       updateStatusBar();
     })
   );
+
+  // Listen for configuration changes to refresh tree providers
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('pbp.uiLanguage')) {
+        treeProvider.refresh();
+        rulesTreeProvider.refresh();
+      }
+    })
+  );
   
   // Create status bar item for current agent
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
