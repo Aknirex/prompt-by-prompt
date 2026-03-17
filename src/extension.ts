@@ -241,92 +241,72 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     
     // Delete prompt
-    vscode.commands.registerCommand('pbp.deletePrompt', async (prompt: PromptTemplate) => {
-      if (!prompt) {
-        return;
-      }
-      
-      const confirm = await vscode.window.showWarningMessage(
-        `${t('Are you sure you want to delete')} "${prompt.name}"?`,
-        t('Delete'),
-        t('Cancel')
-      );
-      
-      if (confirm === t('Delete')) {
-        const deleted = await promptManager.deletePrompt(prompt.id);
-        if (deleted) {
-          vscode.window.showInformationMessage(`Prompt "${prompt.name}" deleted`);
-        } else {
-          vscode.window.showErrorMessage(t('Failed to delete prompt'));
-        }
-      }
-    }),
-    
-    // Run prompt
-    vscode.commands.registerCommand('pbp.runPrompt', async (arg: unknown) => {
-      let prompt: PromptTemplate | undefined;
-      
-      // Check if arg is a PromptItem (from tree view) or PromptTemplate
-      if (arg && typeof arg === 'object') {
-        // Check if it's a PromptItem with a prompt property
-        if ('prompt' in arg) {
-          prompt = (arg as { prompt: PromptTemplate }).prompt;
-        } else if ('id' in arg && 'template' in arg) {
-          // It's already a PromptTemplate
-          prompt = arg as PromptTemplate;
-        }
-      }
-      
-      if (!prompt) {
-        // Show quick pick to select a prompt
-        const prompts = promptManager.getAllPrompts();
-        const selected = await vscode.window.showQuickPick(
-          prompts.map(p => ({ label: p.name, description: p.description, prompt: p })),
-          { placeHolder: t('Select a prompt to run') }
+    vscode.commands.registerCommand('pbp.deletePrompt', async (item: any) => {
+      if (item && item.prompt) {
+        const prompt = item.prompt;
+        
+        const confirm = await vscode.window.showWarningMessage(
+          `${t('Are you sure you want to delete')} "${prompt.name}"?`,
+          t('Delete'),
+          t('Cancel')
         );
         
-        if (!selected) {
-          return;
+        if (confirm === t('Delete')) {
+          const deleted = await promptManager.deletePrompt(prompt.id);
+          if (deleted) {
+            vscode.window.showInformationMessage(`Prompt "${prompt.name}" deleted`);
+          } else {
+            vscode.window.showErrorMessage(t('Failed to delete prompt'));
+          }
         }
-        
-        prompt = selected.prompt;
       }
-      
-      await executePrompt(prompt);
     }),
-    
-    // Open settings panel
-    vscode.commands.registerCommand('pbp.openSettings', () => {
-      SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext);
-    }),
-    
-    // Refresh rules
-    vscode.commands.registerCommand('pbp.refreshRules', () => {
-      rulesTreeProvider.refresh();
-    }),
-    
-    // Add rule
-    vscode.commands.registerCommand('pbp.addRule', async () => {
+
+    // Workspace rule
+    vscode.commands.registerCommand('pbp.createWorkspaceRule', async () => {
       const config = vscode.workspace.getConfiguration('pbp');
       const defaultRuleFile = config.get<string>('defaultRuleFile') || 'ask';
       const options = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules', '.aiderrules', '.codeiumrules'];
-      
+
       let selected: string | undefined;
       if (defaultRuleFile === 'ask' || !options.includes(defaultRuleFile)) {
         selected = await vscode.window.showQuickPick(options, { placeHolder: t('Select rule file to create') });
       } else {
         selected = defaultRuleFile;
       }
-      
+
       if (selected) {
-        await ruleManager.createRuleFile(selected, '# New Rule File');
+        await ruleManager.createRuleFile(selected);
       }
     }),
-    
+
+    // Global rule
+    vscode.commands.registerCommand('pbp.createGlobalRule', async () => {
+      const fileName = await vscode.window.showInputBox({
+        prompt: t('Enter global rule file name (e.g. general-rules)'),
+        placeHolder: 'my-global-rule'
+      });
+      if (fileName) {
+        await ruleManager.createGlobalRule(fileName);
+      }
+    }),
+
+    // Set Active Global Rule
+    vscode.commands.registerCommand('pbp.setActiveGlobalRule', async (item: any) => {
+      // Find internal type
+      const ruleItem = item as any;
+      if (ruleItem && ruleItem.rule && ruleItem.rule.isGlobal) {
+        await ruleManager.setActiveGlobalRule(ruleItem.rule.path);
+        vscode.window.showInformationMessage(`"${ruleItem.rule.name}" ${t('set as active global rule.')}`);
+      }
+    }),
+
     // Delete rule
     vscode.commands.registerCommand('pbp.deleteRule', async (item: any) => {
       if (item && item.rule) {
         await ruleManager.deleteRuleFile(vscode.Uri.file(item.rule.path));
+      } else {
+        vscode.window.showErrorMessage(t('Invalid rule item'));
       }
     })
   ];
@@ -441,10 +421,9 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
 
   // Apply rules
   const rulesConfig: string[] = [];
-  const globalRules = ruleManager.getGlobalRules();
-  const globalContent = globalRules.map(r => r.content.trim()).filter(Boolean).join('\n');
-  if (globalContent) {
-    rulesConfig.push(`${t('Global Rules')}\n${globalContent}`);
+  const activeGlobalRule = ruleManager.getActiveGlobalRule();
+  if (activeGlobalRule && activeGlobalRule.content.trim()) {
+    rulesConfig.push(`${t('Global Rules')}\n${activeGlobalRule.content.trim()}`);
   }
   
   rulesConfig.push(

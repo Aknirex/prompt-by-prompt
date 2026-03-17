@@ -1,5 +1,116 @@
 import * as vscode from 'vscode';
 
+const ja_dict: Record<string, string> = {
+    'Refresh Prompts': 'プロンプトを更新',
+    'Create New Prompt': '新しいプロンプトを作成',
+    'Edit Prompt': 'プロンプトを編集',
+    'Delete Prompt': 'プロンプトを削除',
+    'Run Prompt': 'プロンプトを実行',
+    'Open Settings': '設定を開く',
+    'Refresh Rules': 'ルールを更新',
+    'Prompt by Prompt is activating...': 'Prompt by Prompt を起動しています...',
+    'Prompt by Prompt is now active': 'Prompt by Prompt がアクティブになりました',
+    'Failed to create prompt': 'プロンプトの作成に失敗しました',
+    'Failed to update prompt': 'プロンプトの更新に失敗しました',
+    'Failed to delete prompt': 'プロンプトの削除に失敗しました',
+    'Are you sure you want to delete': '本当に削除しますか',
+    'Delete': '削除',
+    'Cancel': 'キャンセル',
+    'Select a prompt to run': '実行するプロンプトを選択',
+    'No prompt selected': 'プロンプトが選択されていません',
+    'Select rule file to create': '作成するルールファイルを選択してください',
+    'Enter global rule file name (e.g. general-rules)': 'グローバルルールファイル名を入力してください（例: general-rules）',
+    'set as active global rule.': 'アクティブなグローバルルールとして設定されました。',
+    'Active': 'アクティブ',
+    'Created': '作成しました',
+    'Deleted': '削除しました',
+    'Select agent to send prompt': 'プロンプトを送信するエージェントを選択',
+    'Prompt copied to clipboard': 'プロンプトがクリップボードにコピーされました',
+    'Prompts refreshed': 'プロンプトが更新されました',
+    'Run': '実行',
+    'Direct send': '直接送信',
+    '⚠️ Requires manual paste': '⚠️ 手動での貼り付けが必要です',
+    'Global Rules': 'グローバルルール',
+    'Workspace Rules': 'ワークスペースルール',
+    'Workspace Rule:': 'ワークスペースルール:',
+    'No workspace open to create rule file.': 'ワークスペースが開かれていないため、ルールファイルを作成できません。',
+    'already exists.': 'は既に存在します。',
+};
+
+const es_dict: Record<string, string> = {
+    'Refresh Prompts': 'Actualizar Prompts',
+    'Create New Prompt': 'Crear Nuevo Prompt',
+    'Edit Prompt': 'Editar Prompt',
+    'Delete Prompt': 'Eliminar Prompt',
+    'Run Prompt': 'Ejecutar Prompt',
+    'Open Settings': 'Abrir Configuración',
+    'Refresh Rules': 'Actualizar Reglas',
+    'Prompt by Prompt is activating...': 'Prompt by Prompt se está activando...',
+    'Prompt by Prompt is now active': 'Prompt by Prompt está activo ahora',
+    'Failed to create prompt': 'Error al crear prompt',
+    'Failed to update prompt': 'Error al actualizar prompt',
+    'Failed to delete prompt': 'Error al eliminar prompt',
+    'Are you sure you want to delete': '¿Estás seguro de que quieres eliminar',
+    'Delete': 'Eliminar',
+    'Cancel': 'Cancelar',
+    'Select a prompt to run': 'Seleccionar prompt para ejecutar',
+    'No prompt selected': 'Ningún prompt seleccionado',
+    'Select rule file to create': 'Seleccionar archivo de regla para crear',
+    'Enter global rule file name (e.g. general-rules)': 'Introduzca el nombre del archivo de regla global (ej. general-rules)',
+    'set as active global rule.': 'establecido como regla global activa.',
+    'Active': 'Activo',
+    'Created': 'Creado',
+    'Deleted': 'Eliminado',
+    'Select agent to send prompt': 'Seleccionar agente',
+    'Prompt copied to clipboard': 'Prompt copiado al portapapeles',
+    'Prompts refreshed': 'Prompts actualizados',
+    'Run': 'Ejecutar',
+    'Direct send': 'Envío directo',
+    '⚠️ Requires manual paste': '⚠️ Requiere pegado manual',
+    'Global Rules': 'Reglas Globales',
+    'Workspace Rules': 'Reglas de Espacio de Trabajo',
+    'Workspace Rule:': 'Regla de Espacio:',
+    'No workspace open to create rule file.': 'No hay espacio de trabajo abierto para crear la regla.',
+    'already exists.': 'ya existe.',
+};
+
+const ko_dict: Record<string, string> = {
+    'Refresh Prompts': '프롬프트 새로고침',
+    'Create New Prompt': '새 프롬프트 등록',
+    'Edit Prompt': '프롬프트 편집',
+    'Delete Prompt': '프롬프트 삭제',
+    'Run Prompt': '프롬프트 실행',
+    'Open Settings': '설정 열기',
+    'Refresh Rules': '규칙 새로고침',
+    'Prompt by Prompt is activating...': 'Prompt by Prompt 시작 중...',
+    'Prompt by Prompt is now active': 'Prompt by Prompt 활성화됨',
+    'Failed to create prompt': '프롬프트 생성 실패',
+    'Failed to update prompt': '프롬프트 업데이트 실패',
+    'Failed to delete prompt': '프롬프트 삭제 실패',
+    'Are you sure you want to delete': '정말 삭제하시겠습니까',
+    'Delete': '삭제',
+    'Cancel': '취소',
+    'Select a prompt to run': '실행할 프롬프트 선택',
+    'No prompt selected': '선택된 프롬프트 없음',
+    'Select rule file to create': '생성할 규칙 파일 선택',
+    'Enter global rule file name (e.g. general-rules)': '글로벌 규칙 파일명 입력 (예: general-rules)',
+    'set as active global rule.': '활성 글로벌 규칙으로 설정되었습니다.',
+    'Active': '활성',
+    'Created': '생성됨',
+    'Deleted': '삭제됨',
+    'Select agent to send prompt': '프롬프트를 전송할 에이전트 선택',
+    'Prompt copied to clipboard': '프롬프트가 클립보드에 복사되었습니다',
+    'Prompts refreshed': '프롬프트 새로고침됨',
+    'Run': '실행',
+    'Direct send': '직접 전송',
+    '⚠️ Requires manual paste': '⚠️ 수동 붙여넣기 필요',
+    'Global Rules': '글로벌 규칙',
+    'Workspace Rules': '워크스페이스 규칙',
+    'Workspace Rule:': '워크스페이스 규칙:',
+    'No workspace open to create rule file.': '워크스페이스가 열려있지 않아 규칙 파일을 생성할 수 없습니다.',
+    'already exists.': '이미 존재합니다.',
+};
+
 const zh_cn_dict: Record<string, string> = {
     'Refresh Prompts': '刷新提示词',
     'Create New Prompt': '新建提示词',
@@ -21,6 +132,9 @@ const zh_cn_dict: Record<string, string> = {
     'Select a prompt to run': '选择要运行的提示词',
     'No prompt selected': '未选择提示词',
     'Select rule file to create': '选择要创建的规则文件',
+    'Enter global rule file name (e.g. general-rules)': '请输入全局规则文件名称 (例如 general-rules)',
+    'set as active global rule.': '已被设为活动全局规则。',
+    'Active': '当前生效',
     'Created': '已创建',
     'Deleted': '已删除',
     'Select agent to send prompt': '选择发生提示词的人工智能代理',
@@ -43,19 +157,28 @@ const zh_cn_dict: Record<string, string> = {
     'already exists.': '已存在。',
 };
 
-export function t(key: string, ...args: any[]): string {
-    const lang = vscode.env.language.toLowerCase();
-    let text = key;
+const dictionaries: Record<string, Record<string, string>> = {
+    'zh-cn': zh_cn_dict,
+    'ja': ja_dict,
+    'es': es_dict,
+    'ko': ko_dict
+};
 
-    if (lang === 'zh-cn' || lang === 'zh-tw' || lang === 'zh') {
-        text = zh_cn_dict[key] || key;
-    }
+let currentLanguage = vscode.env.language.toLowerCase();
+if (currentLanguage === 'zh-tw' || currentLanguage === 'zh-hk') {
+    currentLanguage = 'zh-cn'; // Fallback mapping
+}
 
-    if (args.length > 0) {
-        return text.replace(/{(\d+)}/g, (match, number) => {
+export function t(key: string): string {
+    const dict = dictionaries[currentLanguage];
+    let text = dict[key] || key;
+
+    if (arguments.length > 1) {
+        const args = Array.prototype.slice.call(arguments, 1);
+        text = text.replace(/{(\d+)}/g, (match, number) => {
             return typeof args[number] !== 'undefined' ? args[number] : match;
         });
     }
-    
+
     return text;
 }

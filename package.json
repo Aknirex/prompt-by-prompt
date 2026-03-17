@@ -72,13 +72,32 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "pbp.addRule",
-        "title": "%command.pbp.addRule%",
+        "command": "pbp.deleteRule",
+        "title": "%command.pbp.deleteRule%"
+      },
+      {
+        "command": "pbp.createWorkspaceRule",
+        "title": "%command.pbp.createWorkspaceRule%",
+        "icon": ""
+      },
+      {
+        "command": "pbp.createGlobalRule",
+        "title": "%command.pbp.createGlobalRule%",
+        "icon": ""
+      },
+      {
+        "command": "pbp.setActiveGlobalRule",
+        "title": "%command.pbp.setActiveGlobalRule%"
+      },
+      {
+        "command": "pbp.createWorkspaceRule",
+        "title": "%command.pbp.createWorkspaceRule%",
         "icon": "$(add)"
       },
       {
-        "command": "pbp.deleteRule",
-        "title": "%command.pbp.deleteRule%"
+        "command": "pbp.createGlobalRule",
+        "title": "%command.pbp.createGlobalRule%",
+        "icon": "$(add)"
       }
     ],
     "viewsContainers": {
@@ -125,11 +144,6 @@
           "command": "pbp.refreshRules",
           "when": "view == pbp.rulesView",
           "group": "navigation@1"
-        },
-        {
-          "command": "pbp.addRule",
-          "when": "view == pbp.rulesView",
-          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -149,8 +163,22 @@
           "group": "1_modification"
         },
         {
+          "command": "pbp.createWorkspaceRule",
+          "when": "view == pbp.rulesView && viewItem == workspaceRuleGroup",
+          "group": "inline"
+        },
+        {
+          "command": "pbp.createGlobalRule",
+          "when": "view == pbp.rulesView && viewItem == globalRuleGroup",
+          "group": "inline"
+        },
+        {
+          "command": "pbp.setActiveGlobalRule",
+          "when": "view == pbp.rulesView && viewItem == globalRuleItem"
+        },
+        {
           "command": "pbp.deleteRule",
-          "when": "view == pbp.rulesView && viewItem == rule",
+          "when": "view == pbp.rulesView && viewItem =~ /RuleItem/",
           "group": "1_modification"
         }
       ],

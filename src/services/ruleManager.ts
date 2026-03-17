@@ -115,20 +115,23 @@ export class RuleManager {
                 const defaultName = 'default-rules.md';
                 const defaultPath = path.join(globalRulesDir, defaultName);
                 const platform = os.platform();
-                const isZh = vscode.env.language.startsWith('zh');
                 
                 // Fallback basic shell inference
                 const shellFallback = platform === 'win32' ? 'powershell (or cmd)' : 'bash/zsh';
                 const defaultShell = vscode.env.shell || process.env.SHELL || process.env.COMSPEC || shellFallback;
+                const osName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
+                const userLang = vscode.env.language;
                 
-                let defaultContent = "";
-                if (isZh) {
-                    const osName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
-                    defaultContent = `# 默认全局规则\n\n- **系统环境**: ${osName}\n- **默认终端**: ${defaultShell}\n\n## 指令与行为要求\n1. 请使用**简体中文**与我进行交互。\n2. 在提供终端指令时，必须确保指令能在上述系统的默认终端中正常执行。\n3. 直接给出解决方案，不要废话。`;
-                } else {
-                    const osName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
-                    defaultContent = `# Default Global Rule\n\n- **OS**: ${osName}\n- **Default Shell**: ${defaultShell}\n\n## Requirements\n1. Please communicate in English.\n2. Ensure all terminal commands generated are fully compatible with the Default Shell on the current OS.\n3. Provide direct solutions without unnecessary explanation.`;
-                }
+                const defaultContent = `# Default Global Rule
+
+- **OS**: ${osName}
+- **Default Shell**: ${defaultShell}
+- **Editor Language**: ${userLang}
+
+## Requirements
+1. Please communicate in the language corresponding to the locale code: \`${userLang}\`.
+2. Ensure all terminal commands generated are fully compatible with the Default Shell on the current OS.
+3. Provide direct solutions without unnecessary explanation.`;
                 
                 fs.writeFileSync(defaultPath, defaultContent, 'utf-8');
                 this.context.globalState.update('pbp.activeGlobalRule', defaultPath);
