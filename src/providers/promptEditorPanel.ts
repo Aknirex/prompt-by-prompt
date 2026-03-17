@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { PromptTemplate, PromptVariable } from '../types/prompt';
 import { AIService, AIProvider } from '../services/aiService';
+import { t } from '../utils/i18n';
 
 /**
  * Result from the prompt editor
@@ -153,458 +154,441 @@ export class PromptEditorPanel {
   }
 
   private _getHtmlForWebview(_webview: vscode.Webview): string {
-    const prompt = this._existingPrompt;
-    const isNew = !prompt;
-    const providers = this._aiService.getAvailableProviders();
-    const defaultProvider = this._aiService.getDefaultProvider();
-    const _defaultModel = this._aiService.getDefaultModel();
-    
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${isNew ? 'New Prompt' : 'Edit Prompt'}</title>
-  <style>
-    * { box-sizing: border-box; }
-    
-    body {
-      font-family: var(--vscode-font-family);
-      background-color: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      padding: 20px;
-      margin: 0;
-    }
-    
-    .container { max-width: 900px; margin: 0 auto; }
-    
-    h1 {
-      margin-bottom: 20px;
-      font-size: 1.5em;
-      border-bottom: 1px solid var(--vscode-panel-border);
-      padding-bottom: 10px;
-    }
-    
-    h2 {
-      font-size: 1.1em;
-      margin: 0 0 12px 0;
-    }
-    
-    .form-group { margin-bottom: 16px; }
-    
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    
-    input[type="text"], 
-    select,
-    textarea {
-      width: 100%;
-      padding: 8px 12px;
-      background-color: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-family: inherit;
-      font-size: inherit;
-    }
-    
-    textarea {
-      min-height: 200px;
-      resize: vertical;
-      font-family: var(--vscode-editor-font-family);
-    }
-    
-    textarea.template { min-height: 300px; }
-    
-    .hint {
-      font-size: 0.85em;
-      color: var(--vscode-descriptionForeground);
-      margin-top: 4px;
-    }
-    
-    .buttons {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--vscode-panel-border);
-    }
-    
-    button {
-      padding: 8px 20px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: inherit;
-    }
-    
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    
-    button.primary {
-      background-color: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-    }
-    
-    button.primary:hover:not(:disabled) {
-      background-color: var(--vscode-button-hoverBackground);
-    }
-    
-    button.secondary {
-      background-color: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-    }
-    
-    button.secondary:hover:not(:disabled) {
-      background-color: var(--vscode-button-secondaryHoverBackground);
-    }
-    
-    .variables-section {
-      margin-top: 20px;
-      padding: 16px;
-      background-color: var(--vscode-editor-inactiveSelectionBackground);
-      border-radius: 4px;
-    }
-    
-    .variable-item {
-      display: grid;
-      grid-template-columns: 1fr 1fr auto;
-      gap: 8px;
-      margin-bottom: 8px;
-      align-items: center;
-    }
-    
-    .variable-item input { padding: 6px 10px; }
-    
-    .remove-variable-btn {
-      padding: 4px 8px;
-      background-color: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
-    }
-    
-    .row {
-      display: flex;
-      gap: 16px;
-    }
-    
-    .row .form-group { flex: 1; }
-    
-    .target-select {
-      display: flex;
-      gap: 16px;
-      margin-top: 8px;
-    }
-    
-    .target-select label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-weight: normal;
-      cursor: pointer;
-    }
-    
-    .target-select input[type="radio"] { width: auto; }
-    
-    .generator-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background-color: var(--vscode-editor-inactiveSelectionBackground);
-      border-radius: 8px;
-      border-left: 4px solid var(--vscode-textLink-foreground);
-    }
-    
-    .generator-input-row {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-    }
-    
-    .generator-input-row textarea {
-      flex: 1;
-      min-height: 60px;
-      resize: vertical;
-    }
-    
-    .generator-input-row button { white-space: nowrap; }
-    
-    .provider-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    
-    .provider-row .form-group { flex: 1; margin-bottom: 0; }
-    
-    .loading {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      margin-top: 12px;
-      color: var(--vscode-descriptionForeground);
-    }
-    
-    .loading.active { display: flex; }
-    
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--vscode-progressBar-background);
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin { to { transform: rotate(360deg); } }
-    
-    .error-message {
-      display: none;
-      margin-top: 12px;
-      padding: 8px 12px;
-      background-color: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
-      border-radius: 4px;
-      font-size: 0.9em;
-    }
-    
-    .error-message.active { display: block; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>${isNew ? 'New Prompt' : 'Edit: ' + (prompt?.name || '')}</h1>
-    
-    ${isNew ? `
-    <div class="generator-section">
-      <h2>AI Generate</h2>
-      <div class="hint" style="margin-bottom: 12px;">
-        Describe what you want the prompt to do in natural language. The AI will generate a prompt template for you.
-      </div>
-      <div class="provider-row">
-        <div class="form-group">
-          <label for="genProvider">Provider</label>
-          <select id="genProvider" onchange="updateModels()">
-            ${providers.map(p => `<option value="${p.id}" ${p.id === defaultProvider ? 'selected' : ''}>${p.name}</option>`).join('')}
-          </select>
+      const prompt = this._existingPrompt;
+      const isNew = !prompt;
+      const providers = this._aiService.getAvailableProviders();
+      const defaultProvider = this._aiService.getDefaultProvider();
+      const _defaultModel = this._aiService.getDefaultModel();
+
+      return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${isNew ? t('Create New Prompt') : t('Edit Prompt')}</title>
+    <style>
+      * { box-sizing: border-box; }
+      
+      body {
+        font-family: var(--vscode-font-family);
+        background-color: var(--vscode-editor-background);
+        color: var(--vscode-editor-foreground);
+        padding: 20px;
+        margin: 0;
+      }
+      
+      .container { max-width: 900px; margin: 0 auto; }
+      
+      h1 {
+        margin-bottom: 20px;
+        font-size: 1.5em;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        padding-bottom: 10px;
+      }
+      
+      h2 {
+        font-size: 1.1em;
+        margin: 0 0 12px 0;
+      }
+      
+      .form-group { margin-bottom: 16px; }
+      
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      
+      input[type="text"], 
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px 12px;
+        background-color: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      
+      textarea {
+        min-height: 200px;
+        resize: vertical;
+        font-family: var(--vscode-editor-font-family);
+      }
+      
+      textarea.template { min-height: 300px; }
+      
+      .hint {
+        font-size: 0.85em;
+        color: var(--vscode-descriptionForeground);
+        margin-top: 4px;
+      }
+      
+      .buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--vscode-panel-border);
+      }
+      
+      button {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      button.primary {
+        background-color: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+      }
+      
+      button.primary:hover:not(:disabled) {
+        background-color: var(--vscode-button-hoverBackground);
+      }
+      
+      button.secondary {
+        background-color: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+      }
+      
+      button.secondary:hover:not(:disabled) {
+        background-color: var(--vscode-button-secondaryHoverBackground);
+      }
+      
+      .variables-section {
+        margin-top: 20px;
+        padding: 16px;
+        background-color: var(--vscode-editor-inactiveSelectionBackground);
+        border-radius: 4px;
+      }
+      
+      .variable-item {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        margin-bottom: 8px;
+        align-items: center;
+      }
+      
+      .variable-item input { padding: 6px 10px; }
+      
+      .remove-variable-btn {
+        padding: 4px 8px;
+        background-color: var(--vscode-inputValidation-errorBackground);
+        color: var(--vscode-inputValidation-errorForeground);
+      }
+      
+      .row {
+        display: flex;
+        gap: 16px;
+      }
+      
+      .row .form-group { flex: 1; }
+      
+      .target-select {
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+      }
+      
+      .target-select label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: normal;
+        cursor: pointer;
+      }
+      
+      .target-select input[type="radio"] { width: auto; }
+      
+      .generator-section {
+        margin-bottom: 24px;
+        padding: 16px;
+        background-color: var(--vscode-editor-inactiveSelectionBackground);
+        border-radius: 8px;
+        border-left: 4px solid var(--vscode-textLink-foreground);
+      }
+      
+      .generator-input-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      
+      .generator-input-row textarea {
+        flex: 1;
+        min-height: 60px;
+        resize: vertical;
+      }
+      
+      .generator-input-row button { white-space: nowrap; }
+      
+      .provider-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      
+      .provider-row .form-group { flex: 1; margin-bottom: 0; }
+      
+      .loading {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        color: var(--vscode-descriptionForeground);
+      }
+      
+      .loading.active { display: flex; }
+      
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--vscode-progressBar-background);
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin { to { transform: rotate(360deg); } }
+      
+      .error-message {
+        display: none;
+        margin-top: 12px;
+        padding: 8px 12px;
+        background-color: var(--vscode-inputValidation-errorBackground);
+        color: var(--vscode-inputValidation-errorForeground);
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+      
+      .error-message.active { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>${isNew ? t('Create New Prompt') : t('Edit Prompt')}</h1>
+
+      ${isNew ? `
+      <div class="generator-section">
+        <h2>${t('Generate')}</h2>
+        <div class="hint" style="margin-bottom: 12px;">
+          Describe what you want the prompt to do in natural language. The AI will generate a prompt template for you.
         </div>
-        <div class="form-group">
-          <label for="genModel">Model</label>
-          <select id="genModel">
-            <option value="">Default</option>
-          </select>
+        <div class="provider-row">
+          <div class="form-group">
+            <label for="genProvider">${t('Provider')}</label>
+            <select id="genProvider" onchange="updateModels()">
+              ${providers.map(p => `<option value="${p.id}" ${p.id === defaultProvider ? 'selected' : ''}>${p.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="genModel">${t('Model')}</label>
+            <select id="genModel">
+              <option value="">Default</option>
+            </select>
+          </div>
         </div>
+        <div class="generator-input-row">
+          <textarea id="generateInput" placeholder="e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks..."></textarea>
+          <button type="button" class="primary" id="generateBtn" onclick="generatePrompt()">${t('Generate')}</button>
+        </div>
+        <div class="loading" id="loadingIndicator">
+          <div class="spinner"></div>
+          <span>Generating prompt...</span>
+        </div>
+        <div class="error-message" id="errorMessage"></div>
       </div>
-      <div class="generator-input-row">
-        <textarea id="generateInput" placeholder="e.g., Create a prompt that reviews code for security vulnerabilities, focusing on SQL injection and XSS attacks..."></textarea>
-        <button type="button" class="primary" id="generateBtn" onclick="generatePrompt()">Generate</button>
-      </div>
-      <div class="loading" id="loadingIndicator">
-        <div class="spinner"></div>
-        <span>Generating prompt...</span>
-      </div>
-      <div class="error-message" id="errorMessage"></div>
-    </div>
-    ` : ''}
-    
-    <div class="form-group">
-      <label for="name">Name *</label>
-      <input type="text" id="name" value="${this._escapeHtml(prompt?.name || '')}" placeholder="My Prompt">
-    </div>
-    
-    <div class="form-group">
-      <label for="description">Description</label>
-      <textarea id="description" rows="2" placeholder="Description of what this prompt does">${this._escapeHtml(prompt?.description || '')}</textarea>
-    </div>
-    
-    <div class="row">
+      ` : ''}
+      
       <div class="form-group">
-        <label for="category">Category</label>
-        <select id="category">
-          <option value="Development" ${prompt?.category === 'Development' ? 'selected' : ''}>Development</option>
-          <option value="Code Analysis" ${prompt?.category === 'Code Analysis' ? 'selected' : ''}>Code Analysis</option>
-          <option value="Code Generation" ${prompt?.category === 'Code Generation' ? 'selected' : ''}>Code Generation</option>
-          <option value="Documentation" ${prompt?.category === 'Documentation' ? 'selected' : ''}>Documentation</option>
-          <option value="Testing" ${prompt?.category === 'Testing' ? 'selected' : ''}>Testing</option>
-          <option value="Data" ${prompt?.category === 'Data' ? 'selected' : ''}>Data</option>
-          <option value="General" ${prompt?.category === 'General' || !prompt?.category ? 'selected' : ''}>General</option>
-        </select>
+        <label for="name">${t('Name')} *</label>
+        <input type="text" id="name" value="${this._escapeHtml(prompt?.name || '')}" placeholder="e.g. Code Review" required>
       </div>
       
       <div class="form-group">
-        <label for="tags">Tags (comma-separated)</label>
-        <input type="text" id="tags" value="${this._escapeHtml(prompt?.tags?.join(', ') || '')}" placeholder="code, review, refactor">
+        <label for="category">${t('Category')}</label>
+        <input type="text" id="category" value="${this._escapeHtml(prompt?.category || '')}" placeholder="e.g. Development">
       </div>
-    </div>
-    
-    <div class="form-group">
-      <label for="template">Template *</label>
-      <textarea id="template" class="template" placeholder="You are a helpful assistant.
-
-Context:
-- File: {{filepath}}
-- Language: {{lang}}
-
-Selected code:
-{{selection}}
-
-Please help me with...">${this._escapeHtml(prompt?.template || '')}</textarea>
-      <div class="hint">
-        Use <code>{{variable}}</code> for variables. Available: <code>{{selection}}</code>, <code>{{filepath}}</code>, <code>{{lang}}</code>, <code>{{file_content}}</code>, <code>{{project_name}}</code>
-      </div>
-    </div>
-    
-    <div class="variables-section">
-      <h3>Custom Variables</h3>
-      <div id="variables-list">
-        ${this._getVariablesHtml(prompt?.variables || [])}
-      </div>
-      <button type="button" class="secondary" onclick="addVariable()">+ Add Variable</button>
-    </div>
-    
-    <div class="form-group">
-      <label>Save Location</label>
-      <div class="target-select">
-        <label>
-          <input type="radio" name="target" value="workspace" checked>
-          Workspace (.prompts folder)
-        </label>
-        <label>
-          <input type="radio" name="target" value="global" ${!isNew && prompt?.source === 'global' ? 'checked' : ''}>
-          Global (VS Code Settings)
-        </label>
-      </div>
-      <div class="hint">Global prompts are available in all projects. Workspace prompts are stored in the project folder.</div>
-    </div>
-    
-    <div class="buttons">
-      <button type="button" class="primary" onclick="save()">Save</button>
-      <button type="button" class="secondary" onclick="cancel()">Cancel</button>
-    </div>
-  </div>
-  
-  <script>
-    const vscode = acquireVsCodeApi();
-    const providers = ${JSON.stringify(providers)};
-    let variableCount = ${prompt?.variables?.length || 0};
-    
-    // Initialize models on load
-    document.addEventListener('DOMContentLoaded', updateModels);
-    
-    function updateModels() {
-      const providerId = document.getElementById('genProvider').value;
-      const modelSelect = document.getElementById('genModel');
-      const provider = providers.find(p => p.id === providerId);
       
-      modelSelect.innerHTML = '<option value="">Default</option>';
-      if (provider && provider.models) {
-        provider.models.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m;
-          opt.textContent = m;
-          modelSelect.appendChild(opt);
-        });
-      }
-    }
+      <div class="row">
+        <div class="form-group">
+          <label for="description">${t('Description')}</label>
+          <input type="text" id="description" value="${this._escapeHtml(prompt?.description || '')}" placeholder="What does this prompt do?">
+        </div>
+        <div class="form-group">
+          <label for="tags">${t('Tags')}</label>
+          <input type="text" id="tags" value="${this._escapeHtml((prompt?.tags || []).join(', '))}" placeholder="Comma separated tags">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="template">${t('Template')} *</label>
+        <div class="hint" style="margin-bottom: 8px;">Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}</div>
+        <textarea id="template" class="template" required placeholder="Enter your prompt template here...">${this._escapeHtml(prompt?.template || '')}</textarea>
+      </div>
+
+      <div class="variables-section" id="variablesSection">
+        <h3>${t('Variables')}</h3>
+        <div class="hint" style="margin-bottom: 12px;">Variables explicitly defined here can have descriptions and default values. Extracted variables from the template are automatically handled.</div>
+        <div id="variables-list">
+          ${this._getVariablesHtml(prompt?.variables || [])}
+        </div>
+        <button type="button" class="secondary" onclick="addVariable()">+ ${t('Add Variable')}</button>
+      </div>
+      
+      ${isNew ? `
+        <div class="form-group">
+          <label>${t('Target')}</label>
+          <div class="target-select">
+            <label>
+              <input type="radio" name="target" value="workspace" checked>
+              ${t('Workspace')} (Current Project)
+            </label>
+            <label>
+              <input type="radio" name="target" value="global">
+              ${t('Global')} (All Projects)
+            </label>
+          </div>
+          <div class="hint">${t('Global prompts are available in all projects. Workspace prompts are stored in the project folder.')}</div>
+        </div>
+      ` : ''}
+
+        <div class="buttons">
+          <button type="button" class="primary" onclick="savePrompt()">${t('Save Prompt')}</button>
+          <button type="button" class="secondary" onclick="cancel()">${t('Cancel')}</button>
+        </div>
+      </form>
+    </div>
     
-    // Handle messages from extension
-    window.addEventListener('message', event => {
-      const message = event.data;
-      switch (message.command) {
-        case 'generateStart':
-          document.getElementById('loadingIndicator').classList.add('active');
-          document.getElementById('errorMessage').classList.remove('active');
-          document.getElementById('generateBtn').disabled = true;
-          break;
-        case 'generateResult':
-          document.getElementById('loadingIndicator').classList.remove('active');
-          document.getElementById('generateBtn').disabled = false;
-          if (message.prompt) {
-            document.getElementById('template').value = message.prompt;
-            document.getElementById('errorMessage').classList.remove('active');
-          } else if (message.error) {
-            document.getElementById('errorMessage').textContent = message.error;
-            document.getElementById('errorMessage').classList.add('active');
-          }
-          break;
-      }
-    });
-    
-    function generatePrompt() {
-      const description = document.getElementById('generateInput').value.trim();
-      const provider = document.getElementById('genProvider').value;
-      const model = document.getElementById('genModel').value;
-      vscode.postMessage({
-        command: 'generate',
-        data: { description, provider, model }
-      });
-    }
-    
-    function addVariable() {
-      variableCount++;
-      const list = document.getElementById('variables-list');
-      const div = document.createElement('div');
-      div.className = 'variable-item';
-      div.id = 'var-' + variableCount;
-      div.innerHTML = \`
-        <input type="text" placeholder="Variable name" class="var-name">
-        <input type="text" placeholder="Description" class="var-desc">
-        <button type="button" class="remove-variable-btn" onclick="removeVariable('var-\${variableCount}')">X</button>
-      \`;
-      list.appendChild(div);
-    }
-    
-    function removeVariable(id) {
-      const element = document.getElementById(id);
-      if (element) { element.remove(); }
-    }
-    
-    function getVariables() {
-      const items = document.querySelectorAll('.variable-item');
-      const variables = [];
-      items.forEach(item => {
-        const name = item.querySelector('.var-name')?.value?.trim();
-        const desc = item.querySelector('.var-desc')?.value?.trim();
-        if (name) {
-          variables.push({
-            name: name,
-            description: desc || name,
-            type: 'string',
-            required: false
+    <script>
+      const vscode = acquireVsCodeApi();
+      const providers = ${JSON.stringify(providers)};
+      let variableCount = ${prompt?.variables?.length || 0};
+      
+      // Initialize models on load
+      document.addEventListener('DOMContentLoaded', updateModels);
+      
+      function updateModels() {
+        const providerId = document.getElementById('genProvider').value;
+        const modelSelect = document.getElementById('genModel');
+        const provider = providers.find(p => p.id === providerId);
+        
+        modelSelect.innerHTML = '<option value="">Default</option>';
+        if (provider && provider.models) {
+          provider.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            modelSelect.appendChild(opt);
           });
         }
-      });
-      return variables;
-    }
-    
-    function save() {
-      const name = document.getElementById('name').value.trim();
-      const description = document.getElementById('description').value.trim();
-      const category = document.getElementById('category').value;
-      const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
-      const template = document.getElementById('template').value;
-      const target = document.querySelector('input[name="target"]:checked').value;
-      const variables = getVariables();
+      }
       
-      if (!name) { alert('Please enter a name for the prompt'); return; }
-      if (!template) { alert('Please enter a template for the prompt'); return; }
-      
-      vscode.postMessage({
-        command: 'save',
-        data: { name, description, category, tags, template, variables: variables.length > 0 ? variables : undefined, target }
+      // Handle messages from extension
+      window.addEventListener('message', event => {
+        const message = event.data;
+        switch (message.command) {
+          case 'generateStart':
+            document.getElementById('loadingIndicator').classList.add('active');
+            document.getElementById('errorMessage').classList.remove('active');
+            document.getElementById('generateBtn').disabled = true;
+            break;
+          case 'generateResult':
+            document.getElementById('loadingIndicator').classList.remove('active');
+            document.getElementById('generateBtn').disabled = false;
+            if (message.prompt) {
+              document.getElementById('template').value = message.prompt;
+              document.getElementById('errorMessage').classList.remove('active');
+            } else if (message.error) {
+              document.getElementById('errorMessage').textContent = message.error;
+              document.getElementById('errorMessage').classList.add('active');
+            }
+            break;
+        }
       });
-    }
-    
-    function cancel() {
-      vscode.postMessage({ command: 'cancel' });
-    }
-  </script>
-</body>
-</html>`;
+      
+      function generatePrompt() {
+        const description = document.getElementById('generateInput').value.trim();
+        const provider = document.getElementById('genProvider').value;
+        const model = document.getElementById('genModel').value;
+        vscode.postMessage({
+          command: 'generate',
+          data: { description, provider, model }
+        });
+      }
+      
+      function addVariable() {
+        variableCount++;
+        const list = document.getElementById('variables-list');
+        const div = document.createElement('div');
+        div.className = 'variable-item';
+        div.id = 'var-' + variableCount;
+        div.innerHTML = \`
+          <input type="text" placeholder="Variable name" class="var-name">
+          <input type="text" placeholder="Description" class="var-desc">
+          <button type="button" class="remove-variable-btn" onclick="removeVariable('var-\${variableCount}')">X</button>
+        \`;
+        list.appendChild(div);
+      }
+      
+      function removeVariable(id) {
+        const element = document.getElementById(id);
+        if (element) { element.remove(); }
+      }
+      
+      function getVariables() {
+        const items = document.querySelectorAll('.variable-item');
+        const variables = [];
+        items.forEach(item => {
+          const name = item.querySelector('.var-name')?.value?.trim();
+          const desc = item.querySelector('.var-desc')?.value?.trim();
+          if (name) {
+            variables.push({
+              name: name,
+              description: desc || name,
+              type: 'string',
+              required: false
+            });
+          }
+        });
+        return variables;
+      }
+      
+      function savePrompt() {
+        const name = document.getElementById('name').value.trim();
+        const category = document.getElementById('category').value.trim();
+        const description = document.getElementById('description').value.trim();
+        const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
+        const template = document.getElementById('template').value;
+        const target = document.querySelector('input[name="target"]:checked')?.value || 'global';
+
+        if (!name) { alert('${t('Name is required')}'); return; }
+        if (!template) { alert('${t('Template is required')}'); return; }
+
+        vscode.postMessage({
+          command: 'save',
+          data: { name, description, category, tags, template, variables: variables.length > 0 ? variables : undefined, target }
+        });
+      }
+      
+      function cancel() {
+        vscode.postMessage({ command: 'cancel' });
+      }
+    </script>
+  </body>
+  </html>`;
   }
 
   private _escapeHtml(text: string): string {

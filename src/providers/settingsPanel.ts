@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { AI_PROVIDERS, AIProvider } from '../services/aiService';
+import { t } from '../utils/i18n';
 
 /**
  * Settings configuration
@@ -225,301 +226,303 @@ export class SettingsPanel {
     const settings = this._getSettings();
     
     return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prompt by Prompt Settings</title>
-  <style>
-    * { box-sizing: border-box; }
-    
-    body {
-      font-family: var(--vscode-font-family);
-      background-color: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      padding: 20px;
-      margin: 0;
-    }
-    
-    .container { max-width: 900px; margin: 0 auto; }
-    
-    h1 {
-      margin-bottom: 20px;
-      font-size: 1.5em;
-      border-bottom: 1px solid var(--vscode-panel-border);
-      padding-bottom: 10px;
-    }
-    
-    h2 {
-      font-size: 1.2em;
-      margin-top: 24px;
-      margin-bottom: 12px;
-      color: var(--vscode-textLink-foreground);
-    }
-    
-    .section {
-      background-color: var(--vscode-editor-inactiveSelectionBackground);
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    
-    .form-group { margin-bottom: 14px; }
-    
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    
-    input[type="text"],
-    input[type="password"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 8px 12px;
-      background-color: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-family: inherit;
-      font-size: inherit;
-    }
-    
-    textarea {
-      min-height: 150px;
-      resize: vertical;
-      font-family: var(--vscode-editor-font-family);
-    }
-    
-    .hint {
-      font-size: 0.85em;
-      color: var(--vscode-descriptionForeground);
-      margin-top: 4px;
-    }
-    
-    .checkbox-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .checkbox-group input[type="checkbox"] { width: auto; }
-    
-    .checkbox-group label {
-      margin-bottom: 0;
-      font-weight: normal;
-    }
-    
-    .row {
-      display: flex;
-      gap: 16px;
-    }
-    
-    .row .form-group { flex: 1; }
-    
-    .buttons {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--vscode-panel-border);
-    }
-    
-    button {
-      padding: 8px 20px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: inherit;
-    }
-    
-    button.primary {
-      background-color: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-    }
-    
-    button.primary:hover {
-      background-color: var(--vscode-button-hoverBackground);
-    }
-    
-    button.secondary {
-      background-color: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-    }
-    
-    button.secondary:hover {
-      background-color: var(--vscode-button-secondaryHoverBackground);
-    }
-    
-    .api-key-input { font-family: monospace; }
-    
-    .provider-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-    }
-    
-    .provider-card {
-      background-color: var(--vscode-editor-background);
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid var(--vscode-panel-border);
-    }
-    
-    .provider-card h3 {
-      margin: 0 0 10px 0;
-      font-size: 0.95em;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    
-    .status-badge {
-      font-size: 0.7em;
-      padding: 2px 6px;
-      border-radius: 10px;
-    }
-    
-    .status-badge.configured {
-      background-color: #2ea043;
-      color: white;
-    }
-    
-    .status-badge.not-configured {
-      background-color: #6e7681;
-      color: white;
-    }
-    
-    .tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid var(--vscode-panel-border);
-      padding-bottom: 8px;
-    }
-    
-    .tab {
-      padding: 8px 16px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--vscode-descriptionForeground);
-      border-radius: 4px 4px 0 0;
-    }
-    
-    .tab.active {
-      background-color: var(--vscode-editor-inactiveSelectionBackground);
-      color: var(--vscode-editor-foreground);
-    }
-    
-    .tab-content { display: none; }
-    
-    .tab-content.active { display: block; }
-    
-    .provider-card .form-group {
-      margin-bottom: 8px;
-    }
-    
-    .provider-card .form-group:last-child {
-      margin-bottom: 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Prompt by Prompt Settings</h1>
-    
-    <div class="tabs">
-      <button class="tab active" onclick="showTab('general')">General</button>
-      <button class="tab" onclick="showTab('providers')">AI Providers</button>
-      <button class="tab" onclick="showTab('generator')">Generator</button>
-    </div>
-    
-    <!-- General Tab -->
-    <div id="tab-general" class="tab-content active">
-      <div class="section">
-        <h2>Agent Settings</h2>
-        
-        <div class="form-group">
-          <label for="defaultAgent">Default Agent</label>
-          <select id="defaultAgent">
-            <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>Ask Every Time</option>
-            <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>Copy to Clipboard</option>
-            <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
-            <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
-            <option value="copilot" ${settings.defaultAgent === 'copilot' ? 'selected' : ''}>GitHub Copilot</option>
-            <option value="continue" ${settings.defaultAgent === 'continue' ? 'selected' : ''}>Continue</option>
-          </select>
-          <div class="hint">The default agent to send prompts to when executing</div>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${t('Prompt by Prompt Settings')}</title>
+    <style>
+      * { box-sizing: border-box; }
+      
+      body {
+        font-family: var(--vscode-font-family);
+        background-color: var(--vscode-editor-background);
+        color: var(--vscode-editor-foreground);
+        padding: 20px;
+        margin: 0;
+      }
+      
+      .container { max-width: 900px; margin: 0 auto; }
+      
+      h1 {
+        margin-bottom: 20px;
+        font-size: 1.5em;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        padding-bottom: 10px;
+      }
+      
+      h2 {
+        font-size: 1.2em;
+        margin-top: 24px;
+        margin-bottom: 12px;
+        color: var(--vscode-textLink-foreground);
+      }
+      
+      .section {
+        background-color: var(--vscode-editor-inactiveSelectionBackground);
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+      
+      .form-group { margin-bottom: 14px; }
+      
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+      
+      input[type="text"],
+      input[type="password"],
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px 12px;
+        background-color: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      
+      textarea {
+        min-height: 150px;
+        resize: vertical;
+        font-family: var(--vscode-editor-font-family);
+      }
+      
+      .hint {
+        font-size: 0.85em;
+        color: var(--vscode-descriptionForeground);
+        margin-top: 4px;
+      }
+      
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .checkbox-group input[type="checkbox"] { width: auto; }
+      
+      .checkbox-group label {
+        margin-bottom: 0;
+        font-weight: normal;
+      }
+      
+      .row {
+        display: flex;
+        gap: 16px;
+      }
+      
+      .row .form-group { flex: 1; }
+      
+      .buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--vscode-panel-border);
+      }
+      
+      button {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      
+      button.primary {
+        background-color: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+      }
+      
+      button.primary:hover {
+        background-color: var(--vscode-button-hoverBackground);
+      }
+      
+      button.secondary {
+        background-color: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+      }
+      
+      button.secondary:hover {
+        background-color: var(--vscode-button-secondaryHoverBackground);
+      }
+      
+      .api-key-input { font-family: monospace; }
+      
+      .provider-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+      
+      .provider-card {
+        background-color: var(--vscode-editor-background);
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--vscode-panel-border);
+      }
+      
+      .provider-card h3 {
+        margin: 0 0 10px 0;
+        font-size: 0.95em;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .status-badge {
+        font-size: 0.7em;
+        padding: 2px 6px;
+        border-radius: 10px;
+      }
+      
+      .status-badge.configured {
+        background-color: #2ea043;
+        color: white;
+      }
+      
+      .status-badge.not-configured {
+        background-color: #6e7681;
+        color: white;
+      }
+      
+      .tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        padding-bottom: 8px;
+      }
+      
+      .tab {
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--vscode-descriptionForeground);
+        border-radius: 4px 4px 0 0;
+      }
+      
+      .tab.active {
+        background-color: var(--vscode-editor-inactiveSelectionBackground);
+        color: var(--vscode-editor-foreground);
+      }
+      
+      .tab-content { display: none; }
+      
+      .tab-content.active { display: block; }
+      
+      .provider-card .form-group {
+        margin-bottom: 8px;
+      }
+      
+      .provider-card .form-group:last-child {
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>${t('Prompt by Prompt Settings')}</h1>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('general')">${t('General Settings')}</button>
+        <button class="tab" onclick="showTab('providers')">AI Providers</button>
+        <button class="tab" onclick="showTab('generator')">Generator</button>
+      </div>
+
+      <!-- General Tab -->
+      <div id="tab-general" class="tab-content active">
+        <div class="section">
+          <h2>Agent Settings</h2>
+          
+          <div class="form-group">
+            <label for="defaultAgent">Default Agent</label>
+            <select id="defaultAgent">
+              <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>Ask Every Time</option>
+              <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>Copy to Clipboard</option>
+              <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
+              <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
+              <option value="copilot" ${settings.defaultAgent === 'copilot' ? 'selected' : ''}>GitHub Copilot</option>
+              <option value="continue" ${settings.defaultAgent === 'continue' ? 'selected' : ''}>Continue</option>
+            </select>
+            <div class="hint">The default agent to send prompts to when executing</div>
+          </div>
+          
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="rememberLastAgent" ${settings.rememberLastAgent ? 'checked' : ''}>
+            <label for="rememberLastAgent">Remember last used agent</label>
+          </div>
         </div>
         
-        <div class="form-group checkbox-group">
-          <input type="checkbox" id="rememberLastAgent" ${settings.rememberLastAgent ? 'checked' : ''}>
-          <label for="rememberLastAgent">Remember last used agent</label>
+        <div class="section">
+          <h2>Storage Settings</h2>
+
+          <div class="form-group">
+            <label for="defaultTarget">${t('Target')}</label>
+            <select id="defaultTarget">
+              <option value="global" ${settings.defaultTarget === 'global' ? 'selected' : ''}>${t('Global')}</option>
+              <option value="workspace" ${settings.defaultTarget === 'workspace' ? 'selected' : ''}>${t('Workspace')}</option>
+            </select>
+            <div class="hint">Where to save new prompts by default. Global prompts are available in all projects.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="outputDirectory">${t('Output Directory')}</label>
+            <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/output">
+            <div class="hint">Directory for generated markdown files (relative to workspace or absolute path)</div>
+          </div>
         </div>
       </div>
       
-      <div class="section">
-        <h2>Storage Settings</h2>
-        
-        <div class="form-group">
-          <label for="defaultTarget">Default Save Location</label>
-          <select id="defaultTarget">
-            <option value="global" ${settings.defaultTarget === 'global' ? 'selected' : ''}>Global (VS Code Settings)</option>
-            <option value="workspace" ${settings.defaultTarget === 'workspace' ? 'selected' : ''}>Workspace (.prompts folder)</option>
-          </select>
-          <div class="hint">Where to save new prompts by default. Global prompts are available in all projects.</div>
-        </div>
-        
-        <div class="form-group">
-          <label for="outputDirectory">Output Directory</label>
-          <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/output">
-          <div class="hint">Directory for generated markdown files (relative to workspace or absolute path)</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- AI Providers Tab -->
-    <div id="tab-providers" class="tab-content">
-      <div class="section">
-        <h2>AI Provider Configuration</h2>
-        <div class="hint" style="margin-bottom: 16px;">Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).</div>
-        
-        <div class="form-group">
-          <label for="defaultModel">Default Provider</label>
-          <select id="defaultModel">
-            ${AI_PROVIDERS.map(p => `<option value="${p.id}" ${settings.defaultModel === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-          </select>
-          <div class="hint">The default provider for AI prompt generation</div>
-        </div>
-        
-        <div class="provider-grid">
-          ${this._getProviderCardsHtml(settings)}
-        </div>
-      </div>
-    </div>
-    
-    <!-- Generator Tab -->
-    <div id="tab-generator" class="tab-content">
-      <div class="section">
-        <h2>Prompt Generator System Prompt</h2>
-        <div class="hint" style="margin-bottom: 12px;">Customize the system prompt used when generating new prompts with AI assistance</div>
-        
+      <!-- AI Providers Tab -->
+      <div id="tab-providers" class="tab-content">
+        <div class="section">
+          <h2>AI Provider Configuration</h2>
+          <div class="hint" style="margin-bottom: 16px;">Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).</div>
+          
           <div class="form-group">
-            <label for="generatorSystemPrompt">System Prompt</label>
-            <textarea id="generatorSystemPrompt" rows="15">${this._escapeHtml(settings.generatorSystemPrompt)}</textarea>
+            <label for="defaultModel">Default Provider</label>
+            <select id="defaultModel">
+              ${AI_PROVIDERS.map(p => `<option value="${p.id}" ${settings.defaultModel === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+            </select>
+            <div class="hint">The default provider for AI prompt generation</div>
           </div>
-
-          <button type="button" class="secondary" onclick="resetGeneratorPrompt()">Reset to Default</button>
+          
+          <div class="provider-grid">
+            ${this._getProviderCardsHtml(settings)}
+          </div>
         </div>
-    </div>    <div class="buttons">
-      <button type="button" class="primary" onclick="save()">Save Settings</button>
-      <button type="button" class="secondary" onclick="cancel()">Cancel</button>
-    </div>
+      </div>
+      
+      <!-- Generator Tab -->
+      <div id="tab-generator" class="tab-content">
+        <div class="section">
+          <h2>Prompt Generator</h2>
+          <p>Configure the system prompt used by the AI when generating new prompt templates.</p>
+          
+            <div class="form-group">
+              <label for="generatorSystemPrompt">System Prompt</label>
+              <textarea id="generatorSystemPrompt" rows="15">${this._escapeHtml(settings.generatorSystemPrompt)}</textarea>
+            </div>
+
+            <button type="button" class="secondary" onclick="resetGeneratorPrompt()">Reset to Default</button>
+          </div>
+      </div>
+
+      <div class="buttons">
+        <button type="button" class="primary" onclick="saveSettings()">${t('Save Settings')}</button>
+        <button type="button" class="secondary" onclick="resetGeneratorPrompt()">${t('Reset to Default')}</button>
+      </div>
   </div>
-  
+
   <script>
     function showTab(tabName) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -532,7 +535,7 @@ export class SettingsPanel {
       document.getElementById('generatorSystemPrompt').value = \`${DEFAULT_GENERATOR_SYSTEM_PROMPT.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`;
     }
     
-    function save() {
+    function saveSettings() {
       const data = {
         defaultAgent: document.getElementById('defaultAgent').value,
         rememberLastAgent: document.getElementById('rememberLastAgent').checked,

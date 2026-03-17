@@ -171,6 +171,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   
   // Register commands
   const commands = [
+    // Open Settings
+    vscode.commands.registerCommand('pbp.openSettings', () => {
+      SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext);
+    }),
+
+    // Run Prompt
+    vscode.commands.registerCommand('pbp.runPrompt', async (item: any) => {
+      if (item && item.prompt) {
+        await executePrompt(item.prompt);
+      }
+    }),
+
+    // Refresh Rules
+    vscode.commands.registerCommand('pbp.refreshRules', async () => {
+      await ruleManager.scanRuleFiles();
+      vscode.window.showInformationMessage(t('Rules refreshed'));
+    }),
+
     // Refresh prompts
     vscode.commands.registerCommand('pbp.refreshPrompts', async () => {
       await promptManager.refresh();

@@ -155,6 +155,24 @@ const zh_cn_dict: Record<string, string> = {
     'Workspace Rule:': '工作区规则:',
     'No workspace open to create rule file.': '未打开工作区，无法创建规则文件。',
     'already exists.': '已存在。',
+    'Prompt by Prompt Settings': 'Prompt by Prompt 设置',
+    'General Settings': '通用设置',
+    'Save Settings': '保存设置',
+    'Reset to Default': '重置为默认值',
+    'Name': '名称',
+    'Name is required': '必须输入名称',
+    'Description': '描述',
+    'Template': '模板',
+    'Template is required': '必须输入模板',
+    'Variables': '变量',
+    'Target': '保存至',
+    'Global': '全局',
+    'Workspace': '工作区',
+    'Save Prompt': '保存提示词',
+    'Generate': 'AI 自动生成',
+    'Category': '分类',
+    'Tags': '标签',
+    'Output Directory': '输出目录'
 };
 
 const dictionaries: Record<string, Record<string, string>> = {
