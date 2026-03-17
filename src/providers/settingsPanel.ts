@@ -12,7 +12,7 @@ import { t } from '../utils/i18n';
 export interface SettingsConfig {
   // Agent settings
   defaultAgent: string;
-  rememberLastAgent: boolean;
+  sendBehavior: 'send' | 'append' | 'insert';
   
   // Default save location
   defaultTarget: 'workspace' | 'global';
@@ -124,7 +124,7 @@ export class SettingsPanel {
     try {
       // Agent settings
       await config.update('defaultAgent', data.defaultAgent, vscode.ConfigurationTarget.Global);
-      await config.update('rememberLastAgent', data.rememberLastAgent, vscode.ConfigurationTarget.Global);
+      await config.update('sendBehavior', data.sendBehavior, vscode.ConfigurationTarget.Global);
       await config.update('defaultTarget', data.defaultTarget, vscode.ConfigurationTarget.Global);
       
       // AI Provider settings
@@ -173,7 +173,7 @@ export class SettingsPanel {
     
     return {
       defaultAgent: config.get('defaultAgent') || 'ask',
-      rememberLastAgent: config.get('rememberLastAgent') ?? true,
+      sendBehavior: config.get('sendBehavior') ?? 'send',
       defaultTarget: config.get('defaultTarget') || 'global',
       defaultModel: (config.get('defaultModel') || 'ollama') as AIProvider,
       customProviderUrl: config.get('customProviderUrl') || '',
@@ -433,11 +433,11 @@ export class SettingsPanel {
           <div class="form-group">
             <label for="uiLanguage">${t('UI Language')}</label>
             <select id="uiLanguage">
-              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>English</option>
-              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>日本語</option>
-              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>Español</option>
-              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>한국어</option>
-              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>简体中文</option>
+              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>${t('English')}</option>
+              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>${t('Japanese')}</option>
+              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>${t('Spanish')}</option>
+              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>${t('Korean')}</option>
+              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>${t('Chinese')}</option>
             </select>
           </div>
 
@@ -445,9 +445,10 @@ export class SettingsPanel {
           
           <div class="form-group">
             <label for="defaultAgent">${t('Default Agent')}</label>
-            <select id="defaultAgent">
+            <select id="defaultAgent" onchange="updateAgentVisibility()">
               <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>${t('Ask Every Time')}</option>
               <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>${t('Copy to Clipboard')}</option>
+              <option value="file" ${settings.defaultAgent === 'file' ? 'selected' : ''}>${t('Save to File')}</option>
               <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
               <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
               <option value="copilot" ${settings.defaultAgent === 'copilot' ? 'selected' : ''}>GitHub Copilot</option>
@@ -455,11 +456,22 @@ export class SettingsPanel {
             </select>
             <div class="hint">${t('The default agent to send prompts to when executing')}</div>
           </div>
-          
-          <div class="form-group checkbox-group">
-            <input type="checkbox" id="rememberLastAgent" ${settings.rememberLastAgent ? 'checked' : ''}>
-            <label for="rememberLastAgent">${t('Remember last used agent')}</label>
+
+          <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
+            <label for="outputDirectory">${t('Output Directory')}</label>
+            <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/">
+            <div class="hint">${t('Directory for generated markdown files (relative to workspace or absolute path)')}</div>
           </div>
+
+          <div class="form-group" id="sendBehaviorGroup" style="display: ${['clipboard', 'file'].includes(settings.defaultAgent) ? 'none' : 'block'}">
+            <label for="sendBehavior">${t('Send Behavior')}</label>
+            <select id="sendBehavior">
+              <option value="send" ${settings.sendBehavior === 'send' ? 'selected' : ''}>${t('Send')}</option>
+              <option value="append" ${settings.sendBehavior === 'append' ? 'selected' : ''}>${t('Append to input box')}</option>
+              <option value="insert" ${settings.sendBehavior === 'insert' ? 'selected' : ''}>${t('Insert to input box at top')}</option>
+            </select>
+          </div>
+          
         </div>
         
         <div class="section">
@@ -472,12 +484,6 @@ export class SettingsPanel {
               <option value="workspace" ${settings.defaultTarget === 'workspace' ? 'selected' : ''}>${t('Workspace')}</option>
             </select>
             <div class="hint">${t('Where to save new prompts by default. Global prompts are available in all projects.')}</div>
-          </div>
-
-          <div class="form-group">
-            <label for="outputDirectory">${t('Output Directory')}</label>
-            <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/output">
-            <div class="hint">${t('Directory for generated markdown files (relative to workspace or absolute path)')}</div>
           </div>
         </div>
       </div>
@@ -546,8 +552,9 @@ export class SettingsPanel {
     function saveSettings() {
       const data = {
         defaultAgent: document.getElementById('defaultAgent').value,
-        rememberLastAgent: document.getElementById('rememberLastAgent').checked,
+        sendBehavior: document.getElementById('sendBehavior').value,
         defaultTarget: document.getElementById('defaultTarget').value,
+        outputDirectory: document.getElementById('outputDirectory').value,
         defaultModel: document.getElementById('providerSelector').value,
         ollamaEndpoint: document.getElementById('ollamaEndpoint')?.value || '',
         ollamaModel: document.getElementById('ollamaModel')?.value || '',

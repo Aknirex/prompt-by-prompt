@@ -14,7 +14,7 @@ import * as vscode from 'vscode';
 /**
  * Supported agent types
  */
-export type AgentType = 'cline' | 'roo-code' | 'copilot' | 'continue' | 'clipboard';
+export type AgentType = 'cline' | 'roo-code' | 'copilot' | 'continue' | 'clipboard' | 'file';
 
 /**
  * Result of sending a prompt to an agent

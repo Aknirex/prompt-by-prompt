@@ -47,6 +47,52 @@ export class ClipboardAdapter implements AgentAdapter {
 }
 
 // ============================================================================
+// File Adapter
+// ============================================================================
+
+/**
+ * FileAdapter - Saves prompt to a file
+ */
+export class FileAdapter implements AgentAdapter {
+  readonly name = 'Save to File';
+  readonly type: AgentType = 'file';
+  readonly capabilities = {
+    canSendDirectly: false,
+    canOpenPanel: false,
+    requiresConfirmation: true,
+  };
+
+  async isAvailable(): Promise<boolean> {
+    return true; // Always available
+  }
+
+  async sendPrompt(prompt: string): Promise<SendResult> {
+    const config = vscode.workspace.getConfiguration('pbp');
+    const outputDir = config.get<string>('outputDirectory', '.prompts/');
+    const fileName = `prompt-${new Date().getTime()}.txt`;
+    
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      vscode.window.showErrorMessage('No workspace folder found.');
+      return { success: false, reason: 'command_failed', message: 'No workspace folder found.' };
+    }
+
+    const folderUri = vscode.workspace.workspaceFolders[0].uri;
+    const outputUri = vscode.Uri.joinPath(folderUri, outputDir);
+    const fileUri = vscode.Uri.joinPath(outputUri, fileName);
+    
+    await vscode.workspace.fs.createDirectory(outputUri);
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(prompt));
+    
+    vscode.window.showInformationMessage(`Prompt saved to ${fileUri.fsPath}`);
+    return { success: true };
+  }
+
+  getIcon(): vscode.ThemeIcon {
+    return new vscode.ThemeIcon('file');
+  }
+}
+
+// ============================================================================
 // Cline Adapter
 // ============================================================================
 

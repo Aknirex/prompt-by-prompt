@@ -325,15 +325,26 @@
             "roo-code",
             "copilot",
             "continue",
-            "clipboard"
+            "clipboard",
+            "file"
           ],
           "default": "ask",
           "description": "%config.pbp.defaultAgent.description%"
         },
-        "pbp.rememberLastAgent": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.pbp.rememberLastAgent.description%"
+        "pbp.outputDirectory": {
+          "type": "string",
+          "default": ".prompts/",
+          "description": "%config.pbp.outputDirectory.description%"
+        },
+        "pbp.sendBehavior": {
+          "type": "string",
+          "enum": [
+            "send",
+            "append",
+            "insert"
+          ],
+          "default": "send",
+          "description": "%config.pbp.sendBehavior.description%"
         },
         "pbp.defaultTarget": {
           "type": "string",
@@ -343,11 +354,6 @@
           ],
           "default": "global",
           "description": "%config.pbp.defaultTarget.description%"
-        },
-        "pbp.outputDirectory": {
-          "type": "string",
-          "default": ".prompts/output",
-          "description": "%config.pbp.outputDirectory.description%"
         },
         "pbp.defaultRuleFile": {
           "type": "string",
