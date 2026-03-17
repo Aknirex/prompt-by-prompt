@@ -44,7 +44,7 @@ export interface SettingsConfig {
   
   // Generator system prompt
   generatorSystemPrompt: string;
-  
+
   // File output settings
   outputDirectory: string;
 }
@@ -172,7 +172,7 @@ export class SettingsPanel {
       
       // Generator system prompt
       await this._context.globalState.update('pbp.generatorSystemPrompt', data.generatorSystemPrompt);
-      
+
       // File output settings
       await config.update('outputDirectory', data.outputDirectory, vscode.ConfigurationTarget.Global);
       
@@ -507,16 +507,14 @@ export class SettingsPanel {
         <h2>Prompt Generator System Prompt</h2>
         <div class="hint" style="margin-bottom: 12px;">Customize the system prompt used when generating new prompts with AI assistance</div>
         
-        <div class="form-group">
-          <label for="generatorSystemPrompt">System Prompt</label>
-          <textarea id="generatorSystemPrompt" rows="15">${this._escapeHtml(settings.generatorSystemPrompt)}</textarea>
+          <div class="form-group">
+            <label for="generatorSystemPrompt">System Prompt</label>
+            <textarea id="generatorSystemPrompt" rows="15">${this._escapeHtml(settings.generatorSystemPrompt)}</textarea>
+          </div>
+
+          <button type="button" class="secondary" onclick="resetGeneratorPrompt()">Reset to Default</button>
         </div>
-        
-        <button type="button" class="secondary" onclick="resetGeneratorPrompt()">Reset to Default</button>
-      </div>
-    </div>
-    
-    <div class="buttons">
+    </div>    <div class="buttons">
       <button type="button" class="primary" onclick="save()">Save Settings</button>
       <button type="button" class="secondary" onclick="cancel()">Cancel</button>
     </div>
@@ -561,8 +559,8 @@ export class SettingsPanel {
         azureApiKey: document.getElementById('azureApiKey')?.value || '',
         azureEndpoint: document.getElementById('azureEndpoint')?.value || '',
         azureModel: document.getElementById('azureModel')?.value || 'gpt-4o',
-        generatorSystemPrompt: document.getElementById('generatorSystemPrompt').value,
-        outputDirectory: document.getElementById('outputDirectory').value
+          generatorSystemPrompt: document.getElementById('generatorSystemPrompt').value,
+          outputDirectory: document.getElementById('outputDirectory').value
       };
       
       const vscode = acquireVsCodeApi();

@@ -40,52 +40,52 @@
     "commands": [
       {
         "command": "pbp.refreshPrompts",
-        "title": "Refresh Prompts",
+        "title": "%command.pbp.refreshPrompts%",
         "icon": "$(refresh)"
       },
       {
         "command": "pbp.createPrompt",
-        "title": "Create New Prompt",
+        "title": "%command.pbp.createPrompt%",
         "icon": "$(add)"
       },
       {
         "command": "pbp.editPrompt",
-        "title": "Edit Prompt"
+        "title": "%command.pbp.editPrompt%"
       },
       {
         "command": "pbp.deletePrompt",
-        "title": "Delete Prompt"
+        "title": "%command.pbp.deletePrompt%"
       },
       {
         "command": "pbp.runPrompt",
-        "title": "Run Prompt",
+        "title": "%command.pbp.runPrompt%",
         "icon": "$(play)"
       },
       {
         "command": "pbp.openSettings",
-        "title": "Open Settings",
+        "title": "%command.pbp.openSettings%",
         "icon": "$(gear)"
       },
       {
         "command": "pbp.refreshRules",
-        "title": "Refresh Rules",
+        "title": "%command.pbp.refreshRules%",
         "icon": "$(refresh)"
       },
       {
         "command": "pbp.addRule",
-        "title": "Add Rule",
+        "title": "%command.pbp.addRule%",
         "icon": "$(add)"
       },
       {
         "command": "pbp.deleteRule",
-        "title": "Delete Rule"
+        "title": "%command.pbp.deleteRule%"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "pbp-explorer",
-          "title": "Prompt by Prompt",
+          "title": "%viewContainer.pbp-explorer%",
           "icon": "media/icon.svg"
         }
       ]
@@ -94,12 +94,12 @@
       "pbp-explorer": [
         {
           "id": "pbp.promptsView",
-          "name": "Prompts",
+          "name": "%view.pbp.promptsView%",
           "icon": "media/icon.svg"
         },
         {
           "id": "pbp.rulesView",
-          "name": "Project Rules",
+          "name": "%view.pbp.rulesView%",
           "icon": "media/icon.svg"
         }
       ]
@@ -162,7 +162,7 @@
       ]
     },
     "configuration": {
-      "title": "Prompt by Prompt",
+      "title": "%config.title%",
       "properties": {
         "pbp.defaultModel": {
           "type": "string",
@@ -179,117 +179,117 @@
             "openrouter",
             "xai"
           ],
-          "description": "Default AI provider for prompt generation"
+          "description": "%config.pbp.defaultModel.description%"
         },
         "pbp.ollamaEndpoint": {
           "type": "string",
           "default": "http://localhost:11434",
-          "description": "Ollama API endpoint"
+          "description": "%config.pbp.ollamaEndpoint.description%"
         },
         "pbp.ollamaModel": {
           "type": "string",
           "default": "llama3.2",
-          "description": "Default Ollama model"
+          "description": "%config.pbp.ollamaModel.description%"
         },
         "pbp.openaiApiKey": {
           "type": "string",
           "default": "",
-          "description": "OpenAI API Key"
+          "description": "%config.pbp.openaiApiKey.description%"
         },
         "pbp.openaiModel": {
           "type": "string",
           "default": "gpt-4o-mini",
-          "description": "Default OpenAI model"
+          "description": "%config.pbp.openaiModel.description%"
         },
         "pbp.claudeApiKey": {
           "type": "string",
           "default": "",
-          "description": "Anthropic API Key"
+          "description": "%config.pbp.claudeApiKey.description%"
         },
         "pbp.claudeModel": {
           "type": "string",
           "default": "claude-3-5-sonnet-20241022",
-          "description": "Default Anthropic model"
+          "description": "%config.pbp.claudeModel.description%"
         },
         "pbp.groqApiKey": {
           "type": "string",
           "default": "",
-          "description": "Groq API Key"
+          "description": "%config.pbp.groqApiKey.description%"
         },
         "pbp.groqModel": {
           "type": "string",
           "default": "llama-3.3-70b-versatile",
-          "description": "Default Groq model"
+          "description": "%config.pbp.groqModel.description%"
         },
         "pbp.geminiApiKey": {
           "type": "string",
           "default": "",
-          "description": "Google AI API Key"
+          "description": "%config.pbp.geminiApiKey.description%"
         },
         "pbp.geminiModel": {
           "type": "string",
           "default": "gemini-2.0-flash",
-          "description": "Default Google AI model"
+          "description": "%config.pbp.geminiModel.description%"
         },
         "pbp.openrouterApiKey": {
           "type": "string",
           "default": "",
-          "description": "OpenRouter API Key"
+          "description": "%config.pbp.openrouterApiKey.description%"
         },
         "pbp.openrouterModel": {
           "type": "string",
           "default": "anthropic/claude-3.5-sonnet",
-          "description": "Default OpenRouter model (format: provider/model)"
+          "description": "%config.pbp.openrouterModel.description%"
         },
         "pbp.deepseekApiKey": {
           "type": "string",
           "default": "",
-          "description": "DeepSeek API Key"
+          "description": "%config.pbp.deepseekApiKey.description%"
         },
         "pbp.deepseekModel": {
           "type": "string",
           "default": "deepseek-chat",
-          "description": "Default DeepSeek model"
+          "description": "%config.pbp.deepseekModel.description%"
         },
         "pbp.mistralApiKey": {
           "type": "string",
           "default": "",
-          "description": "Mistral AI API Key"
+          "description": "%config.pbp.mistralApiKey.description%"
         },
         "pbp.mistralModel": {
           "type": "string",
           "default": "mistral-large-latest",
-          "description": "Default Mistral AI model"
+          "description": "%config.pbp.mistralModel.description%"
         },
         "pbp.xaiApiKey": {
           "type": "string",
           "default": "",
-          "description": "xAI (Grok) API Key"
+          "description": "%config.pbp.xaiApiKey.description%"
         },
         "pbp.xaiModel": {
           "type": "string",
           "default": "grok-beta",
-          "description": "Default xAI model"
+          "description": "%config.pbp.xaiModel.description%"
         },
         "pbp.azureApiKey": {
           "type": "string",
           "default": "",
-          "description": "Azure OpenAI API Key"
+          "description": "%config.pbp.azureApiKey.description%"
         },
         "pbp.azureEndpoint": {
           "type": "string",
           "default": "",
-          "description": "Azure OpenAI endpoint URL"
+          "description": "%config.pbp.azureEndpoint.description%"
         },
         "pbp.azureModel": {
           "type": "string",
           "default": "gpt-4o",
-          "description": "Default Azure OpenAI deployment name"
+          "description": "%config.pbp.azureModel.description%"
         },
         "pbp.promptsDir": {
           "type": "string",
           "default": ".prompts",
-          "description": "Directory name for workspace prompts"
+          "description": "%config.pbp.promptsDir.description%"
         },
         "pbp.defaultAgent": {
           "type": "string",
@@ -302,12 +302,12 @@
             "clipboard"
           ],
           "default": "ask",
-          "description": "Default agent to send prompts to. 'ask' will prompt every time."
+          "description": "%config.pbp.defaultAgent.description%"
         },
         "pbp.rememberLastAgent": {
           "type": "boolean",
           "default": true,
-          "description": "Remember the last used agent"
+          "description": "%config.pbp.rememberLastAgent.description%"
         },
         "pbp.defaultTarget": {
           "type": "string",
@@ -316,17 +316,17 @@
             "global"
           ],
           "default": "global",
-          "description": "Default save location for new prompts"
+          "description": "%config.pbp.defaultTarget.description%"
         },
         "pbp.outputDirectory": {
           "type": "string",
           "default": ".prompts/output",
-          "description": "Directory for generated markdown files (relative to workspace or absolute path)"
+          "description": "%config.pbp.outputDirectory.description%"
         },
         "pbp.defaultRuleFile": {
           "type": "string",
           "default": "ask",
-          "description": "Default rule file to create. 'ask' will prompt every time."
+          "description": "%config.pbp.defaultRuleFile.description%"
         }
       }
     }

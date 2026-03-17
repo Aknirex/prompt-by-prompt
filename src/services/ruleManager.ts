@@ -5,11 +5,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { t } from '../utils/i18n';
 
 export interface RuleFile {
     name: string;
     path: string;
     content: string;
+    isGlobal?: boolean;
 }
 
 export const KNOWN_RULE_FILES = [
@@ -33,20 +35,32 @@ export class RuleManager {
     }
 
     private setupWatcher() {
-        if (!vscode.workspace.workspaceFolders) return;
-        
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(
-                vscode.workspace.workspaceFolders[0],
-                '{AGENTS.md,.clinerules,.cursorrules,.windsurfrules,.aiderrules,.codeiumrules}'
-            )
-        );
+        if (vscode.workspace.workspaceFolders) {
+            const watcher = vscode.workspace.createFileSystemWatcher(
+                new vscode.RelativePattern(
+                    vscode.workspace.workspaceFolders[0],
+                    '{AGENTS.md,.clinerules,.cursorrules,.windsurfrules,.aiderrules,.codeiumrules}'
+                )
+            );
 
-        watcher.onDidCreate(() => this.scanRuleFiles());
-        watcher.onDidChange(() => this.scanRuleFiles());
-        watcher.onDidDelete(() => this.scanRuleFiles());
-        
-        this.context.subscriptions.push(watcher);
+            watcher.onDidCreate(() => this.scanRuleFiles());
+            watcher.onDidChange(() => this.scanRuleFiles());
+            watcher.onDidDelete(() => this.scanRuleFiles());
+
+            this.context.subscriptions.push(watcher);
+        }
+
+        try {
+            const globalWatcher = vscode.workspace.createFileSystemWatcher(
+                new vscode.RelativePattern(this.context.globalStorageUri, 'global-rules.md')
+            );
+            globalWatcher.onDidCreate(() => this.scanRuleFiles());
+            globalWatcher.onDidChange(() => this.scanRuleFiles());
+            globalWatcher.onDidDelete(() => this.scanRuleFiles());
+            this.context.subscriptions.push(globalWatcher);
+        } catch (e) {
+            console.error('Failed to setup global watcher', e);
+        }
     }
 
     public async initialize() {
@@ -56,37 +70,56 @@ export class RuleManager {
 
     public async scanRuleFiles(): Promise<RuleFile[]> {
         this.ruleFiles = [];
-        
-        if (!vscode.workspace.workspaceFolders) {
-            this.onDidChangeRules.fire();
-            return this.ruleFiles;
-        }
 
-        const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        if (vscode.workspace.workspaceFolders) {
+            const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
 
-        for (const fileName of KNOWN_RULE_FILES) {
-            const filePath = path.join(rootPath, fileName);
-            if (fs.existsSync(filePath)) {
-                try {
-                    const content = await fs.promises.readFile(filePath, 'utf-8');
-                    this.ruleFiles.push({ name: fileName, path: filePath, content });
-                } catch (e) {
-                    console.error(`Error reading ${fileName}`, e);
+            for (const fileName of KNOWN_RULE_FILES) {
+                const filePath = path.join(rootPath, fileName);
+                if (fs.existsSync(filePath)) {
+                    try {
+                        const content = await fs.promises.readFile(filePath, 'utf-8');
+                        this.ruleFiles.push({ name: fileName, path: filePath, content, isGlobal: false });
+                    } catch (e) {
+                        console.error(`Error reading ${fileName}`, e);
+                    }
                 }
             }
         }
 
+        // Global rules setup
+        try {
+            const globalStoragePath = this.context.globalStorageUri.fsPath;
+            if (!fs.existsSync(globalStoragePath)) {
+                fs.mkdirSync(globalStoragePath, { recursive: true });
+            }
+            const globalRulePath = path.join(globalStoragePath, 'global-rules.md');
+            if (!fs.existsSync(globalRulePath)) {
+                fs.writeFileSync(globalRulePath, '', 'utf-8');
+            }
+            const content = await fs.promises.readFile(globalRulePath, 'utf-8');
+            this.ruleFiles.push({ name: 'global-rules.md', path: globalRulePath, content, isGlobal: true });
+        } catch (e) {
+            console.error('Error reading global rules', e);
+        }
+
         this.onDidChangeRules.fire();
+        return this.ruleFiles;
+    }    public getRuleFiles(): RuleFile[] {
         return this.ruleFiles;
     }
 
-    public getRuleFiles(): RuleFile[] {
-        return this.ruleFiles;
+    public getWorkspaceRules(): RuleFile[] {
+        return this.ruleFiles.filter(r => !r.isGlobal);
+    }
+
+    public getGlobalRules(): RuleFile[] {
+        return this.ruleFiles.filter(r => r.isGlobal);
     }
 
     public async createRuleFile(fileName: string, template: string = ''): Promise<void> {
         if (!vscode.workspace.workspaceFolders) {
-            vscode.window.showErrorMessage('No workspace open to create rule file.');
+            vscode.window.showErrorMessage(t('No workspace open to create rule file.'));
             return;
         }
 
@@ -94,28 +127,28 @@ export class RuleManager {
         const filePath = path.join(rootPath, fileName);
 
         if (fs.existsSync(filePath)) {
-            vscode.window.showInformationMessage(`${fileName} already exists.`);
+            vscode.window.showInformationMessage(`${fileName} ${t('already exists.')}`);
             return;
         }
 
         try {
             await fs.promises.writeFile(filePath, template, 'utf-8');
-            vscode.window.showInformationMessage(`Created ${fileName}`);
+            vscode.window.showInformationMessage(`${t('Created')} ${fileName}`);
         } catch (e) {
-            vscode.window.showErrorMessage(`Failed to create ${fileName}: ${e}`);
+            vscode.window.showErrorMessage(`${t('Failed to create prompt').replace('prompt', '')}${fileName}: ${e}`);
         }
     }
 
     public async deleteRuleFile(uri: vscode.Uri): Promise<void> {
         const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete ${path.basename(uri.fsPath)}?`,
+            `${t('Are you sure you want to delete')} ${path.basename(uri.fsPath)}?`,
             { modal: true },
-            'Delete'
+            t('Delete')
         );
-        if (confirm === 'Delete') {
+        if (confirm === t('Delete')) {
             try {
                 await vscode.workspace.fs.delete(uri);
-                vscode.window.showInformationMessage(`Deleted ${path.basename(uri.fsPath)}`);
+                vscode.window.showInformationMessage(`${t('Deleted')} ${path.basename(uri.fsPath)}`);
             } catch (e) {
                 vscode.window.showErrorMessage(`Failed to delete ${path.basename(uri.fsPath)}: ${e}`);
             }

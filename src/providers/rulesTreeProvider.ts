@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { RuleFile, RuleManager } from '../services/ruleManager';
+import { t } from '../utils/i18n';
 
 /**
  * Custom TreeItem for rules
@@ -12,12 +13,12 @@ import { RuleFile, RuleManager } from '../services/ruleManager';
 class RuleItem extends vscode.TreeItem {
   constructor(public readonly rule: RuleFile) {
     super(rule.name, vscode.TreeItemCollapsibleState.None);
-    
+
     this.tooltip = rule.path;
     this.description = rule.path;
     this.contextValue = 'rule';
     this.iconPath = new vscode.ThemeIcon('shield');
-    
+
     this.command = {
       command: 'vscode.open',
       title: 'Edit Rule',
@@ -26,14 +27,28 @@ class RuleItem extends vscode.TreeItem {
   }
 }
 
-export class RulesTreeProvider implements vscode.TreeDataProvider<RuleItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<RuleItem | undefined | null | void> = 
-    new vscode.EventEmitter<RuleItem | undefined | null | void>();
-  
-  readonly onDidChangeTreeData: vscode.Event<RuleItem | undefined | null | void> = 
+class RuleGroupItem extends vscode.TreeItem {
+  constructor(
+    public readonly label: string,
+    public readonly rules: RuleFile[]
+  ) {
+    super(label, vscode.TreeItemCollapsibleState.Expanded);
+    this.contextValue = 'ruleGroup';
+    // Remove background icon for groups to make it cleaner like explorer
+  }
+}
+
+type TreeElement = RuleGroupItem | RuleItem;
+
+export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
+  private _onDidChangeTreeData: vscode.EventEmitter<TreeElement | undefined | null | void> =
+    new vscode.EventEmitter<TreeElement | undefined | null | void>();
+
+  readonly onDidChangeTreeData: vscode.Event<TreeElement | undefined | null | void> =
     this._onDidChangeTreeData.event;
 
-  private rules: RuleFile[] = [];
+  private workspaceRules: RuleFile[] = [];
+  private globalRules: RuleFile[] = [];
 
   constructor(private ruleManager: RuleManager) {
     this.ruleManager.onDidChange(() => this.refresh());
@@ -43,25 +58,33 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<RuleItem> {
    * Refresh the tree view
    */
   refresh(): void {
-    this.rules = this.ruleManager.getRuleFiles();
+    this.workspaceRules = this.ruleManager.getWorkspaceRules();
+    this.globalRules = this.ruleManager.getGlobalRules();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Get tree item for display
    */
-  getTreeItem(element: RuleItem): vscode.TreeItem {
+  getTreeItem(element: TreeElement): vscode.TreeItem {
     return element;
   }
 
   /**
    * Get children for a tree item
    */
-  getChildren(element?: RuleItem): Thenable<RuleItem[]> {
+  getChildren(element?: TreeElement): Thenable<TreeElement[]> {
+    if (element instanceof RuleGroupItem) {
+      return Promise.resolve(element.rules.map(rule => new RuleItem(rule)));
+    }
+
     if (element) {
       return Promise.resolve([]);
     }
-    
-    return Promise.resolve(this.rules.map(rule => new RuleItem(rule)));
+
+    return Promise.resolve([
+      new RuleGroupItem(t('Workspace Rules'), this.workspaceRules),
+      new RuleGroupItem(t('Global Rules'), this.globalRules)
+    ]);
   }
 }

@@ -14,6 +14,7 @@ import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorP
 import { SettingsPanel } from './providers/settingsPanel';
 import { ExtensionConfig, PromptTemplate } from './types/prompt';
 import { AgentType } from './types/agent';
+import { t } from './utils/i18n';
 import { RuleManager, KNOWN_RULE_FILES } from './services/ruleManager';
 
 // Global service instances
@@ -173,7 +174,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Refresh prompts
     vscode.commands.registerCommand('pbp.refreshPrompts', async () => {
       await promptManager.refresh();
-      vscode.window.showInformationMessage('Prompts refreshed');
+      vscode.window.showInformationMessage(t('Prompts refreshed'));
     }),
     
     // Create new prompt - use editor panel
@@ -195,7 +196,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             
             vscode.window.showInformationMessage(`Prompt "${result.name}" created`);
           } catch (error) {
-            vscode.window.showErrorMessage(`Failed to create prompt: ${error}`);
+            vscode.window.showErrorMessage(`${t('Failed to create prompt')}: ${error}`);
           }
         }
       );
@@ -204,7 +205,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Edit prompt - use editor panel for global prompts, open file for workspace prompts
     vscode.commands.registerCommand('pbp.editPrompt', async (prompt: PromptTemplate) => {
       if (!prompt) {
-        vscode.window.showErrorMessage('No prompt selected');
+        vscode.window.showErrorMessage(t('No prompt selected'));
         return;
       }
       
@@ -233,7 +234,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             
             vscode.window.showInformationMessage(`Prompt "${result.name}" updated`);
           } catch (error) {
-            vscode.window.showErrorMessage(`Failed to update prompt: ${error}`);
+            vscode.window.showErrorMessage(`${t('Failed to update prompt')}: ${error}`);
           }
         }
       );
@@ -246,17 +247,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       
       const confirm = await vscode.window.showWarningMessage(
-        `Are you sure you want to delete "${prompt.name}"?`,
-        'Delete',
-        'Cancel'
+        `${t('Are you sure you want to delete')} "${prompt.name}"?`,
+        t('Delete'),
+        t('Cancel')
       );
       
-      if (confirm === 'Delete') {
+      if (confirm === t('Delete')) {
         const deleted = await promptManager.deletePrompt(prompt.id);
         if (deleted) {
           vscode.window.showInformationMessage(`Prompt "${prompt.name}" deleted`);
         } else {
-          vscode.window.showErrorMessage('Failed to delete prompt');
+          vscode.window.showErrorMessage(t('Failed to delete prompt'));
         }
       }
     }),
@@ -281,7 +282,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const prompts = promptManager.getAllPrompts();
         const selected = await vscode.window.showQuickPick(
           prompts.map(p => ({ label: p.name, description: p.description, prompt: p })),
-          { placeHolder: 'Select a prompt to run' }
+          { placeHolder: t('Select a prompt to run') }
         );
         
         if (!selected) {
@@ -312,7 +313,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       
       let selected: string | undefined;
       if (defaultRuleFile === 'ask' || !options.includes(defaultRuleFile)) {
-        selected = await vscode.window.showQuickPick(options, { placeHolder: 'Select rule file to create' });
+        selected = await vscode.window.showQuickPick(options, { placeHolder: t('Select rule file to create') });
       } else {
         selected = defaultRuleFile;
       }
@@ -365,10 +366,10 @@ async function selectAgent(): Promise<AgentType | undefined> {
     return {
       label: `$(${adapter.getIcon().id}) ${adapter.name}`,
       description: adapter.capabilities.canSendDirectly
-        ? 'Direct send'
-        : 'Copy to clipboard',
+        ? t('Direct send')
+        : t('Copy to clipboard'),
       detail: adapter.capabilities.requiresConfirmation
-        ? '⚠️ Requires manual paste'
+        ? t('⚠️ Requires manual paste')
         : undefined,
       agentType: type,
     };
@@ -384,8 +385,8 @@ async function selectAgent(): Promise<AgentType | undefined> {
   }
   
   const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Select agent to send prompt',
-    title: 'Send Prompt To...',
+    placeHolder: t('Select agent to send prompt'),
+    title: t('Send Prompt To...'),
   });
   
   return (selected as AgentQuickPickItem | undefined)?.agentType;
@@ -436,11 +437,27 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   }
   
   // Render template
-  const renderedPrompt = await contextEngine.renderTemplate(prompt, editorContext, customVariables);
+  let renderedPrompt = await contextEngine.renderTemplate(prompt, editorContext, customVariables);
+
+  // Apply rules
+  const rulesConfig: string[] = [];
+  const globalRules = ruleManager.getGlobalRules();
+  const globalContent = globalRules.map(r => r.content.trim()).filter(Boolean).join('\n');
+  if (globalContent) {
+    rulesConfig.push(`${t('Global Rules')}\n${globalContent}`);
+  }
   
+  rulesConfig.push(
+    ...ruleManager.getWorkspaceRules().map(r => `${t('Workspace Rule:')} ${r.name}\n${r.content.trim()}`)
+  );
+
+  if (rulesConfig.length > 0) {
+    renderedPrompt += `\n\n---\n${rulesConfig.join('\n\n')}`;
+  }
+
   // Check if rendered prompt is empty
   if (!renderedPrompt || !renderedPrompt.trim()) {
-    vscode.window.showWarningMessage('The rendered prompt is empty. Please check your template and variables.');
+    vscode.window.showWarningMessage(t('The rendered prompt is empty. Please check your template and variables.'));
     return;
   }
   
@@ -449,13 +466,13 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   // Show preview option with more actions
   const action = await vscode.window.showInformationMessage(
     `Run prompt "${prompt.name}"?`,
-    'Run',
-    'Preview',
-    'Copy',
-    'Cancel'
+    t('Run'),
+    t('Preview'),
+    t('Copy'),
+    t('Cancel')
   );
   
-  if (action === 'Preview') {
+  if (action === t('Preview')) {
     // Show preview in a new document
     const doc = await vscode.workspace.openTextDocument({
       content: renderedPrompt,
@@ -465,14 +482,14 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
     return;
   }
   
-  if (action === 'Copy') {
+  if (action === t('Copy')) {
     // Copy to clipboard directly
     await vscode.env.clipboard.writeText(renderedPrompt);
-    vscode.window.showInformationMessage('Prompt copied to clipboard!');
+    vscode.window.showInformationMessage(t('Prompt copied to clipboard!'));
     return;
   }
   
-  if (action !== 'Run') {
+  if (action !== t('Run')) {
     return;
   }
   
@@ -495,7 +512,7 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   const result = await agentService.sendToAgent(renderedPrompt, agentType);
   
   if (!result.success) {
-    vscode.window.showErrorMessage(`Failed to send prompt: ${result.message}`);
+    vscode.window.showErrorMessage(`${t('Failed to send prompt')}: ${result.message}`);
   } else {
     log(`Prompt sent successfully to ${agentType}`);
   }
