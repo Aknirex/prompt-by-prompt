@@ -15,9 +15,23 @@ class RuleItem extends vscode.TreeItem {
     super(rule.name, vscode.TreeItemCollapsibleState.None);
 
     this.tooltip = rule.path;
-    this.description = rule.path;
-    this.contextValue = 'rule';
-    this.iconPath = new vscode.ThemeIcon('shield');
+    
+    // Assign specific context value for global vs workspace rules
+    if (rule.isGlobal) {
+      if (rule.isActive) {
+        this.description = `(${t('Active')})`;
+        this.contextValue = 'globalRuleItem_active';
+        this.iconPath = new vscode.ThemeIcon('pass-filled', new vscode.ThemeColor('testing.iconPassed'));
+      } else {
+        this.description = rule.path;
+        this.contextValue = 'globalRuleItem';
+        this.iconPath = new vscode.ThemeIcon('circle-outline');
+      }
+    } else {
+      this.description = rule.path;
+      this.contextValue = 'workspaceRuleItem';
+      this.iconPath = new vscode.ThemeIcon('shield');
+    }
 
     this.command = {
       command: 'vscode.open',
@@ -30,10 +44,11 @@ class RuleItem extends vscode.TreeItem {
 class RuleGroupItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
-    public readonly rules: RuleFile[]
+    public readonly rules: RuleFile[],
+    public readonly isGlobal: boolean
   ) {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
-    this.contextValue = 'ruleGroup';
+    this.contextValue = isGlobal ? 'globalRuleGroup' : 'workspaceRuleGroup';
     // Remove background icon for groups to make it cleaner like explorer
   }
 }
@@ -83,8 +98,8 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
     }
 
     return Promise.resolve([
-      new RuleGroupItem(t('Workspace Rules'), this.workspaceRules),
-      new RuleGroupItem(t('Global Rules'), this.globalRules)
+      new RuleGroupItem(t('Workspace Rules'), this.workspaceRules, false),
+      new RuleGroupItem(t('Global Rules'), this.globalRules, true)
     ]);
   }
 }

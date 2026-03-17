@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { t } from '../utils/i18n';
 
 export interface RuleFile {
@@ -12,6 +13,7 @@ export interface RuleFile {
     path: string;
     content: string;
     isGlobal?: boolean;
+    isActive?: boolean;
 }
 
 export const KNOWN_RULE_FILES = [
@@ -51,8 +53,9 @@ export class RuleManager {
         }
 
         try {
+            const globalRulesDir = path.join(this.context.globalStorageUri.fsPath, 'global-rules');
             const globalWatcher = vscode.workspace.createFileSystemWatcher(
-                new vscode.RelativePattern(this.context.globalStorageUri, 'global-rules.md')
+                new vscode.RelativePattern(globalRulesDir, '*.md')
             );
             globalWatcher.onDidCreate(() => this.scanRuleFiles());
             globalWatcher.onDidChange(() => this.scanRuleFiles());
@@ -90,22 +93,74 @@ export class RuleManager {
         // Global rules setup
         try {
             const globalStoragePath = this.context.globalStorageUri.fsPath;
-            if (!fs.existsSync(globalStoragePath)) {
-                fs.mkdirSync(globalStoragePath, { recursive: true });
+            const globalRulesDir = path.join(globalStoragePath, 'global-rules');
+            if (!fs.existsSync(globalRulesDir)) {
+                fs.mkdirSync(globalRulesDir, { recursive: true });
             }
-            const globalRulePath = path.join(globalStoragePath, 'global-rules.md');
-            if (!fs.existsSync(globalRulePath)) {
-                fs.writeFileSync(globalRulePath, '', 'utf-8');
+
+            // Migrate old global-rules.md
+            const oldGlobalRulePath = path.join(globalStoragePath, 'global-rules.md');
+            if (fs.existsSync(oldGlobalRulePath)) {
+                const migratedPath = path.join(globalRulesDir, 'default-rules.md');
+                if (!fs.existsSync(migratedPath)) {
+                    fs.renameSync(oldGlobalRulePath, migratedPath);
+                    this.context.globalState.update('pbp.activeGlobalRule', migratedPath);
+                }
             }
-            const content = await fs.promises.readFile(globalRulePath, 'utf-8');
-            this.ruleFiles.push({ name: 'global-rules.md', path: globalRulePath, content, isGlobal: true });
+
+            const files = fs.readdirSync(globalRulesDir).filter(f => f.endsWith('.md'));
+            
+            if (files.length === 0) {
+                // Generate default global rule if none exist
+                const defaultName = 'default-rules.md';
+                const defaultPath = path.join(globalRulesDir, defaultName);
+                const platform = os.platform();
+                const isZh = vscode.env.language.startsWith('zh');
+                
+                // Fallback basic shell inference
+                const shellFallback = platform === 'win32' ? 'powershell (or cmd)' : 'bash/zsh';
+                const defaultShell = vscode.env.shell || process.env.SHELL || process.env.COMSPEC || shellFallback;
+                
+                let defaultContent = "";
+                if (isZh) {
+                    const osName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
+                    defaultContent = `# 默认全局规则\n\n- **系统环境**: ${osName}\n- **默认终端**: ${defaultShell}\n\n## 指令与行为要求\n1. 请使用**简体中文**与我进行交互。\n2. 在提供终端指令时，必须确保指令能在上述系统的默认终端中正常执行。\n3. 直接给出解决方案，不要废话。`;
+                } else {
+                    const osName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
+                    defaultContent = `# Default Global Rule\n\n- **OS**: ${osName}\n- **Default Shell**: ${defaultShell}\n\n## Requirements\n1. Please communicate in English.\n2. Ensure all terminal commands generated are fully compatible with the Default Shell on the current OS.\n3. Provide direct solutions without unnecessary explanation.`;
+                }
+                
+                fs.writeFileSync(defaultPath, defaultContent, 'utf-8');
+                this.context.globalState.update('pbp.activeGlobalRule', defaultPath);
+                files.push(defaultName);
+            }
+
+            let activeRulePath = this.context.globalState.get<string>('pbp.activeGlobalRule');
+            
+            // If no active rule or active rule deleted, pick the first one
+            if (!activeRulePath || !fs.existsSync(activeRulePath)) {
+                if (files.length > 0) {
+                    activeRulePath = path.join(globalRulesDir, files[0]);
+                    this.context.globalState.update('pbp.activeGlobalRule', activeRulePath);
+                }
+            }
+
+            for (const file of files) {
+                const filePath = path.join(globalRulesDir, file);
+                const content = await fs.promises.readFile(filePath, 'utf-8');
+                const isActive = filePath === activeRulePath;
+                this.ruleFiles.push({ name: file, path: filePath, content, isGlobal: true, isActive });
+            }
+            
         } catch (e) {
             console.error('Error reading global rules', e);
         }
 
         this.onDidChangeRules.fire();
         return this.ruleFiles;
-    }    public getRuleFiles(): RuleFile[] {
+    }
+
+    public getRuleFiles(): RuleFile[] {
         return this.ruleFiles;
     }
 
@@ -115,6 +170,35 @@ export class RuleManager {
 
     public getGlobalRules(): RuleFile[] {
         return this.ruleFiles.filter(r => r.isGlobal);
+    }
+    
+    public getActiveGlobalRule(): RuleFile | undefined {
+        return this.ruleFiles.find(r => r.isGlobal && r.isActive);
+    }
+
+    public async setActiveGlobalRule(rulePath: string): Promise<void> {
+        await this.context.globalState.update('pbp.activeGlobalRule', rulePath);
+        await this.scanRuleFiles();
+    }
+    
+    public async createGlobalRule(fileName: string): Promise<void> {
+        if (!fileName.endsWith('.md')) {
+            fileName += '.md';
+        }
+        const globalRulesDir = path.join(this.context.globalStorageUri.fsPath, 'global-rules');
+        if (!fs.existsSync(globalRulesDir)) {
+            fs.mkdirSync(globalRulesDir, { recursive: true });
+        }
+        const filePath = path.join(globalRulesDir, fileName);
+        if (fs.existsSync(filePath)) {
+            vscode.window.showInformationMessage(`${fileName} ${t('already exists.')}`);
+            return;
+        }
+        
+        fs.writeFileSync(filePath, `# ${fileName}\n\n`, 'utf-8');
+        vscode.window.showInformationMessage(`Global rule ${fileName} created.`);
+        await this.setActiveGlobalRule(filePath); // auto activate newly created rule
+        vscode.commands.executeCommand('vscode.open', vscode.Uri.file(filePath));
     }
 
     public async createRuleFile(fileName: string, template: string = ''): Promise<void> {
