@@ -1,5 +1,12 @@
 # Changelog
 
+# [1.5.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.4.0...v1.5.0) (2026-03-17)
+
+
+### Features
+
+* implement internationalization support and update UI for prompt management ([748951b](https://github.com/Aknirex/prompt-by-prompt/commit/748951b7b0e31869fabea80ad4de9511e5ee5033))
+
 # [1.4.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.3.0...v1.4.0) (2026-03-16)
 
 
