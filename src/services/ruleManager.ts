@@ -110,32 +110,49 @@ export class RuleManager {
 
             const files = fs.readdirSync(globalRulesDir).filter(f => f.endsWith('.md'));
             
-            if (files.length === 0) {
-                // Generate default global rule if none exist
-                const defaultName = 'default-rules.md';
-                const defaultPath = path.join(globalRulesDir, defaultName);
+            const hasGenerated = this.context.globalState.get('pbp.hasGeneratedDefaultRule');
+            let shouldGenerateDefault = !hasGenerated && files.length === 0;
+            let targetPath = path.join(globalRulesDir, 'default-rules.md');
+            let targetName = 'default-rules.md';
+            
+            if (!hasGenerated && files.length === 1) {
+                targetName = files[0];
+                targetPath = path.join(globalRulesDir, targetName);
+                const existingContent = await fs.promises.readFile(targetPath, 'utf-8');
+                if (!existingContent.trim()) {
+                    shouldGenerateDefault = true;
+                }
+            }
+            
+            if (!hasGenerated) {
+                this.context.globalState.update('pbp.hasGeneratedDefaultRule', true);
+            }
+            
+            if (shouldGenerateDefault) {
                 const platform = os.platform();
                 
                 // Fallback basic shell inference
-                const shellFallback = platform === 'win32' ? 'powershell (or cmd)' : 'bash/zsh';
-                const defaultShell = vscode.env.shell || process.env.SHELL || process.env.COMSPEC || shellFallback;
+                const shellFallback = platform === 'win32' ? 'powershell' : 'bash';
+                const defaultShellPath = vscode.env.shell || process.env.SHELL || process.env.COMSPEC || shellFallback;
+                const shellType = path.basename(defaultShellPath).split('.')[0]; // Extract just the type, e.g. "pwsh", "cmd", "bash"
+                
                 const osName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
                 const userLang = vscode.env.language;
                 
-                const defaultContent = `# Default Global Rule
+                const defaultContent = `# Global Rules
 
-- **OS**: ${osName}
-- **Default Shell**: ${defaultShell}
-- **Editor Language**: ${userLang}
+- OS: ${osName}
+- Shell: ${shellType}
 
-## Requirements
-1. Please communicate in the language corresponding to the locale code: \`${userLang}\`.
-2. Ensure all terminal commands generated are fully compatible with the Default Shell on the current OS.
-3. Provide direct solutions without unnecessary explanation.`;
+1. Respond in the language of locale: \`${userLang}\`.
+2. Ensure terminal commands are compatible with the shell.
+3. Provide concise and direct solutions.`;
                 
-                fs.writeFileSync(defaultPath, defaultContent, 'utf-8');
-                this.context.globalState.update('pbp.activeGlobalRule', defaultPath);
-                files.push(defaultName);
+                fs.writeFileSync(targetPath, defaultContent, 'utf-8');
+                this.context.globalState.update('pbp.activeGlobalRule', targetPath);
+                if (files.length === 0) {
+                    files.push(targetName);
+                }
             }
 
             let activeRulePath = this.context.globalState.get<string>('pbp.activeGlobalRule');
