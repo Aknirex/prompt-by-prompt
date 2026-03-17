@@ -12,6 +12,14 @@ Prompt by Prompt (PbP) is a VS Code extension that brings **Prompt Engineering**
 - **CRUD Operations**: Create, edit, and delete prompts within the editor.
 - **Version Control**: Prompts are files, making them Git-friendly out of the box.
 
+### 📜 Rule Management
+- **Global & Workspace Rules**: Easily manage custom agent rules alongside workspace configurations `.prompts/`.
+- **System Inference**: Auto-generates system-aware prompts indicating shell environment and OS for tailored LLM response natively.
+- **Sidebar Integration**: Fully manageable and selectable via the Rules tree view sidebar.
+
+### 🌐 Multi-language Support (i18n)
+- **Localized UI**: Seamlessly supports English, Simplified Chinese (zh-cn), Japanese (ja), Spanish (es), and Korean (ko) based on your VS Code display language.
+
 ### 🔧 Context Engine
 - **Auto-extraction**: Automatically captures editor context (selection, file path, language, etc.).
 - **Variable Injection**: Use `{{selection}}`, `{{filepath}}`, `{{file_content}}`, etc., in templates.
