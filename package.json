@@ -31,9 +31,7 @@
     "prompt-engineering"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onView:pbp.promptsView",
-    "onView:pbp.rulesView"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
