@@ -17,6 +17,12 @@ const en_dict: Record<string, string> = {
     'Select action for the rendered prompt': 'Select action for the rendered prompt',
     'Send to agent': 'Send to agent',
     'Open in editor': 'Open in editor',
+    'ui.settings.sendBehavior': 'Send Behavior',
+    'ui.settings.send': 'Send',
+    'ui.settings.append': 'Append to Input Box',
+    'ui.settings.insert': 'Insert at Top of Input Box',
+    'ui.settings.aiProviderDescription': 'Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).',
+    'Prompt Generator Configuration': 'Prompt Generator Configuration',
 };
 
 const ja_dict: Record<string, string> = {
@@ -131,6 +137,12 @@ const ja_dict: Record<string, string> = {
     'Select action for the rendered prompt': 'レンダリングされたプロンプトのアクションを選択',
     'Send to agent': 'エージェントに送信',
     'Open in editor': 'エディタで開く',
+    'ui.settings.sendBehavior': '送信動作',
+    'ui.settings.send': '送信',
+    'ui.settings.append': '入力欄に追加',
+    'ui.settings.insert': '入力欄の先頭に挿入',
+    'ui.settings.aiProviderDescription': 'プロンプト生成用のAIプロバイダーを設定します。Ollama（ローカル）を除き、各プロバイダーにはAPIキーが必要です。',
+    'Prompt Generator Configuration': 'プロンプトジェネレーター設定',
 };
 
 const es_dict: Record<string, string> = {
@@ -245,6 +257,12 @@ const es_dict: Record<string, string> = {
     'Select action for the rendered prompt': 'Seleccionar acción para el prompt generado',
     'Send to agent': 'Enviar al agente',
     'Open in editor': 'Abrir en editor',
+    'ui.settings.sendBehavior': 'Comportamiento de envío',
+    'ui.settings.send': 'Enviar',
+    'ui.settings.append': 'Añadir al cuadro de entrada',
+    'ui.settings.insert': 'Insertar al principio del cuadro de entrada',
+    'ui.settings.aiProviderDescription': 'Configura tus proveedores de IA para la generación de prompts. Cada proveedor requiere una clave API excepto Ollama (local).',
+    'Prompt Generator Configuration': 'Configuración del generador de prompts',
 };
 
 const ko_dict: Record<string, string> = {
@@ -359,6 +377,12 @@ const ko_dict: Record<string, string> = {
     'Select action for the rendered prompt': '렌더링된 프롬프트에 대한 작업 선택',
     'Send to agent': '에이전트로 전송',
     'Open in editor': '편집기에서 열기',
+    'ui.settings.sendBehavior': '전송 동작',
+    'ui.settings.send': '전송',
+    'ui.settings.append': '입력 상자에 추가',
+    'ui.settings.insert': '입력 상자 맨 위에 삽입',
+    'ui.settings.aiProviderDescription': '프롬프트 생성을 위한 AI 공급자를 설정합니다. Ollama(로컬)를 제외한 각 공급자는 API 키가 필요합니다.',
+    'Prompt Generator Configuration': '프롬프트 생성기 구성',
 };
 
 const zh_cn_dict: Record<string, string> = {

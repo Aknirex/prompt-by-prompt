@@ -13,7 +13,7 @@ import { RulesTreeProvider } from './providers/rulesTreeProvider';
 import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
 import { SettingsPanel } from './providers/settingsPanel';
 import { ExtensionConfig, PromptTemplate } from './types/prompt';
-import { AgentType } from './types/agent';
+import { AgentType, SendOptions } from './types/agent';
 import { t } from './utils/i18n';
 import { RuleManager, KNOWN_RULE_FILES } from './services/ruleManager';
 
@@ -485,8 +485,17 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   
   log(`Sending prompt to agent: ${agentType}`);
   
+  // Get sendBehavior config and create SendOptions
+  const config = vscode.workspace.getConfiguration('pbp');
+  const sendBehavior = config.get<string>('sendBehavior') || 'append';
+  const sendOptions: SendOptions = {
+    autoSubmit: sendBehavior === 'send'
+  };
+  
+  log(`Send behavior: ${sendBehavior}, autoSubmit: ${sendOptions.autoSubmit}`);
+  
   // Send to agent
-  const result = await agentService.sendToAgent(renderedPrompt, agentType);
+  const result = await agentService.sendToAgent(renderedPrompt, agentType, sendOptions);
   
   if (!result.success) {
     vscode.window.showErrorMessage(`${t('Failed to send prompt')}: ${result.message}`);

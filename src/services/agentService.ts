@@ -238,7 +238,7 @@ export class RooCodeAdapter implements AgentAdapter {
             // Try object format first (newer API), then fall back to string format
             log(`[RooCodeAdapter] Calling startNewTask with prompt (object format): ${prompt.substring(0, 50)}...`);
             try {
-              await api.startNewTask({ task: prompt, newTab: true });
+              await api.startNewTask({ task: prompt, newTab: false });
               log('[RooCodeAdapter] startNewTask (object format) completed successfully');
               
               // Wait for task to be created
