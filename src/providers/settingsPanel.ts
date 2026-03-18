@@ -491,7 +491,7 @@ export class SettingsPanel {
       <!-- AI Providers Tab -->
       <div id="tab-providers" class="tab-content">
         <div class="section">
-          <h2>${t('Prompt Generator Configuration')}</h2>
+          <h2>${t('AI Provider Configuration')}</h2>
           <div class="hint" style="margin-bottom: 16px;">${t('ui.settings.aiProviderDescription')}</div>
           
           <div class="form-group">

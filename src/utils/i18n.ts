@@ -431,7 +431,7 @@ const zh_cn_dict: Record<string, string> = {
     'Storage Settings': '存储设置',
     'Where to save new prompts by default. Global prompts are available in all projects.': '默认保存新提示词的位置。全局提示词在所有项目中均可用。',
     'Directory for generated markdown files (relative to workspace or absolute path)': '生成的 Markdown 文件的目录（相对于工作区或绝对路径）',
-    'AI Provider Configuration': '提示词生成器',
+    'AI Provider Configuration': 'AI 供应商配置',
     'Configure your AI providers for prompt generation. Each provider requires an API key except Ollama (local).': '配置用于提示词生成的 AI 供应商。除 Ollama (本地) 外，每个供应商都需要 API Key。',
     'Default Provider': '默认供应商',
     'The default provider for AI prompt generation': 'AI 提示词生成的默认供应商',
@@ -457,7 +457,14 @@ const zh_cn_dict: Record<string, string> = {
     'Data': 'Data',
     'General': 'General',
     'Current Project': 'Current Project',
-    'All Projects': 'All Projects'
+    'All Projects': 'All Projects',
+    'Save to File': '保存到文件',
+    'ui.settings.sendBehavior': '发送行为',
+    'ui.settings.send': '发送',
+    'ui.settings.append': '追加到输入框',
+    'ui.settings.insert': '插入到输入框顶部',
+    'ui.settings.aiProviderDescription': '配置用于提示词生成的 AI 供应商。除 Ollama (本地) 外，每个供应商都需要 API Key。',
+    'Prompt Generator Configuration': '提示词生成器配置'
 };
 
 const dictionaries: Record<string, Record<string, string>> = {
