@@ -1,5 +1,16 @@
 # Changelog
 
+# [1.10.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.9.0...v1.10.0) (2026-03-18)
+
+
+### Features
+
+* Add send behavior configuration and enhance localization for prompt generator ([0971e8b](https://github.com/Aknirex/prompt-by-prompt/commit/0971e8bb2e9b74e17b56968d2591b09f059fde6e))
+* Enhance RooCodeAdapter to support autoSubmit option and improve clipboard handling ([b90b083](https://github.com/Aknirex/prompt-by-prompt/commit/b90b083c22edeaca7015548aea52048183acccc7))
+* Initialize agent service with logging and enhance localization for prompt actions ([f8e9a75](https://github.com/Aknirex/prompt-by-prompt/commit/f8e9a7559763b17c3b284fd335d76a7313a4db7d))
+* more agents ([4001b05](https://github.com/Aknirex/prompt-by-prompt/commit/4001b05f643f156742ab8f1334fd7a89d905b567))
+* Update AI Provider Configuration title and improve Chinese translations ([1e6b585](https://github.com/Aknirex/prompt-by-prompt/commit/1e6b58507ccf1ece9eaa8029b99c61615dccf048))
+
 # [1.9.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.8.0...v1.9.0) (2026-03-17)
 
 
