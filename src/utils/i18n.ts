@@ -14,6 +14,9 @@ const en_dict: Record<string, string> = {
     'Testing': 'Testing',
     'Data': 'Data',
     'General': 'General',
+    'Select action for the rendered prompt': 'Select action for the rendered prompt',
+    'Send to agent': 'Send to agent',
+    'Open in editor': 'Open in editor',
 };
 
 const ja_dict: Record<string, string> = {
@@ -124,7 +127,10 @@ const ja_dict: Record<string, string> = {
     'Data': 'Data',
     'General': 'General',
     'Current Project': 'Current Project',
-    'All Projects': 'All Projects'
+    'All Projects': 'All Projects',
+    'Select action for the rendered prompt': 'レンダリングされたプロンプトのアクションを選択',
+    'Send to agent': 'エージェントに送信',
+    'Open in editor': 'エディタで開く',
 };
 
 const es_dict: Record<string, string> = {
@@ -235,7 +241,10 @@ const es_dict: Record<string, string> = {
     'Data': 'Data',
     'General': 'General',
     'Current Project': 'Current Project',
-    'All Projects': 'All Projects'
+    'All Projects': 'All Projects',
+    'Select action for the rendered prompt': 'Seleccionar acción para el prompt generado',
+    'Send to agent': 'Enviar al agente',
+    'Open in editor': 'Abrir en editor',
 };
 
 const ko_dict: Record<string, string> = {
@@ -346,7 +355,10 @@ const ko_dict: Record<string, string> = {
     'Data': 'Data',
     'General': 'General',
     'Current Project': 'Current Project',
-    'All Projects': 'All Projects'
+    'All Projects': 'All Projects',
+    'Select action for the rendered prompt': '렌더링된 프롬프트에 대한 작업 선택',
+    'Send to agent': '에이전트로 전송',
+    'Open in editor': '편집기에서 열기',
 };
 
 const zh_cn_dict: Record<string, string> = {
@@ -459,6 +471,9 @@ const zh_cn_dict: Record<string, string> = {
     'Current Project': 'Current Project',
     'All Projects': 'All Projects',
     'Save to File': '保存到文件',
+    'Select action for the rendered prompt': '选择生成提示词的操作',
+    'Send to agent': '发送到Agent',
+    'Open in editor': '在编辑器中打开',
     'ui.settings.sendBehavior': '发送行为',
     'ui.settings.send': '发送',
     'ui.settings.append': '追加到输入框',

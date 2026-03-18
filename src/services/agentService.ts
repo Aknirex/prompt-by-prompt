@@ -1,6 +1,6 @@
 /**
  * Agent Service - Manages agent adapters and provides unified interface
- * 
+ *
  * This service manages the available agent adapters and provides
  * caching for availability checks.
  */
@@ -14,6 +14,25 @@ import {
   AGENT_EXTENSION_IDS,
   isExtensionAvailable,
 } from '../types/agent';
+
+// Output channel for logging
+let logChannel: vscode.OutputChannel;
+
+/**
+ * Initialize the agent service with an output channel for logging
+ */
+export function initAgentService(channel: vscode.OutputChannel): void {
+  logChannel = channel;
+}
+
+/**
+ * Log message to output channel
+ */
+function log(message: string): void {
+  if (logChannel) {
+    logChannel.appendLine(`[AgentService] ${message}`);
+  }
+}
 
 // ============================================================================
 // Clipboard Adapter (Always available fallback)
@@ -155,7 +174,18 @@ export class ClineAdapter implements AgentAdapter {
 // ============================================================================
 
 /**
+ * Roo Code API interface (subset of @roo-code/types)
+ */
+interface RooCodeAPI {
+  startNewTask(message: string | { task: string; newTab?: boolean }, images?: string[]): Promise<void>;
+  sendMessage(message: string): Promise<void>;
+  pressPrimaryButton(): Promise<void>;
+  pressSecondaryButton(): Promise<void>;
+}
+
+/**
  * RooCodeAdapter - Integration with Roo Code extension
+ * Uses the Roo Code extension API for direct task creation without dialogs
  */
 export class RooCodeAdapter implements AgentAdapter {
   readonly name = 'Roo Code';
@@ -166,21 +196,98 @@ export class RooCodeAdapter implements AgentAdapter {
     requiresConfirmation: false,
   };
 
-  private static readonly CANDIDATE_INVOCATIONS: Array<{
-    cmd: string;
-    args: (p: string) => unknown[];
-  }> = [
-    { cmd: 'roo-cline.newTask', args: (p: string) => [p] },
-    { cmd: 'roo-cline.newTask', args: (p: string) => [{ task: p }] },
-    { cmd: 'rooveterinaryinc.roo-cline.newTask', args: (p: string) => [p] },
-  ];
-
   async isAvailable(): Promise<boolean> {
     return isExtensionAvailable(AGENT_EXTENSION_IDS['roo-code']);
   }
 
   async sendPrompt(prompt: string): Promise<SendResult> {
-    for (const { cmd, args } of RooCodeAdapter.CANDIDATE_INVOCATIONS) {
+    // Try to use the Roo Code extension API directly
+    const extensionId = AGENT_EXTENSION_IDS['roo-code'];
+    const extension = vscode.extensions.getExtension<RooCodeAPI>(extensionId);
+    
+    log(`[RooCodeAdapter] Extension ID: ${extensionId}`);
+    log(`[RooCodeAdapter] Extension found: ${!!extension}`);
+    log(`[RooCodeAdapter] Extension active: ${extension?.isActive}`);
+    
+    if (extension) {
+      // Activate the extension if not already active
+      if (!extension.isActive) {
+        try {
+          log('[RooCodeAdapter] Activating extension...');
+          await extension.activate();
+          log('[RooCodeAdapter] Extension activated');
+        } catch (error) {
+          log(`[RooCodeAdapter] Failed to activate extension: ${error}`);
+        }
+      }
+      
+      if (extension.isActive) {
+        try {
+          const api = extension.exports;
+          log(`[RooCodeAdapter] API exports: ${JSON.stringify(Object.keys(api || {}))}`);
+          log(`[RooCodeAdapter] startNewTask type: ${typeof api?.startNewTask}`);
+          
+          if (api && typeof api.startNewTask === 'function') {
+            // First, open the Roo Code sidebar to ensure the UI is visible
+            log('[RooCodeAdapter] Opening Roo Code sidebar...');
+            await vscode.commands.executeCommand('roo-cline.SidebarProvider.focus');
+            
+            // Wait a moment for the sidebar to open
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Try object format first (newer API), then fall back to string format
+            log(`[RooCodeAdapter] Calling startNewTask with prompt (object format): ${prompt.substring(0, 50)}...`);
+            try {
+              await api.startNewTask({ task: prompt, newTab: true });
+              log('[RooCodeAdapter] startNewTask (object format) completed successfully');
+              
+              // Wait for task to be created
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              // Try to send message to ensure the prompt is visible
+              if (typeof api.sendMessage === 'function') {
+                log('[RooCodeAdapter] Calling sendMessage to ensure prompt is visible...');
+                try {
+                  await api.sendMessage(prompt);
+                  log('[RooCodeAdapter] sendMessage completed');
+                } catch (sendError) {
+                  log(`[RooCodeAdapter] sendMessage failed: ${sendError}`);
+                }
+              }
+              
+              return { success: true };
+            } catch (objError) {
+              log(`[RooCodeAdapter] Object format failed, trying string format: ${objError}`);
+              await api.startNewTask(prompt);
+              log('[RooCodeAdapter] startNewTask (string format) completed successfully');
+              return { success: true };
+            }
+          } else {
+            log('[RooCodeAdapter] API or startNewTask not available');
+          }
+        } catch (error) {
+          log(`[RooCodeAdapter] API call failed: ${error}`);
+          // API call failed, fall through to command-based approach
+        }
+      }
+    }
+    
+    // Fallback: try command-based approach (may show dialog)
+    log('[RooCodeAdapter] Falling back to command-based approach');
+    return this.fallbackToCommand(prompt);
+  }
+
+  private async fallbackToCommand(prompt: string): Promise<SendResult> {
+    const candidateInvocations: Array<{
+      cmd: string;
+      args: (p: string) => unknown[];
+    }> = [
+      { cmd: 'roo-cline.newTask', args: (p: string) => [p] },
+      { cmd: 'roo-cline.newTask', args: (p: string) => [{ task: p }] },
+      { cmd: 'rooveterinaryinc.roo-cline.newTask', args: (p: string) => [p] },
+    ];
+
+    for (const { cmd, args } of candidateInvocations) {
       try {
         await vscode.commands.executeCommand(cmd, ...args(prompt));
         return { success: true };
@@ -291,6 +398,172 @@ export class ContinueAdapter implements AgentAdapter {
 }
 
 // ============================================================================
+// Cursor Adapter
+// ============================================================================
+
+/**
+ * CursorAdapter - Integration with Cursor AI
+ * Uses clipboard fallback since Cursor is VS Code based
+ */
+export class CursorAdapter implements AgentAdapter {
+  readonly name = 'Cursor';
+  readonly type: AgentType = 'cursor';
+  readonly capabilities = {
+    canSendDirectly: false,
+    canOpenPanel: false,
+    requiresConfirmation: true,
+  };
+
+  async isAvailable(): Promise<boolean> {
+    return isExtensionAvailable(AGENT_EXTENSION_IDS.cursor);
+  }
+
+  async sendPrompt(prompt: string): Promise<SendResult> {
+    await vscode.env.clipboard.writeText(prompt);
+    vscode.window.showInformationMessage(
+      'Prompt copied! Paste in Cursor AI chat.'
+    );
+    return { success: true };
+  }
+
+  getIcon(): vscode.ThemeIcon {
+    return new vscode.ThemeIcon('symbol-keyword');
+  }
+}
+
+// ============================================================================
+// Kilo Code Adapter
+// ============================================================================
+
+/**
+ * KiloCodeAdapter - Integration with Kilo Code
+ */
+export class KiloCodeAdapter implements AgentAdapter {
+  readonly name = 'Kilo Code';
+  readonly type: AgentType = 'kilo-code';
+  readonly capabilities = {
+    canSendDirectly: false,
+    canOpenPanel: false,
+    requiresConfirmation: true,
+  };
+
+  async isAvailable(): Promise<boolean> {
+    return isExtensionAvailable(AGENT_EXTENSION_IDS['kilo-code']);
+  }
+
+  async sendPrompt(prompt: string): Promise<SendResult> {
+    await vscode.env.clipboard.writeText(prompt);
+    vscode.window.showInformationMessage(
+      'Prompt copied! Paste in Kilo Code.'
+    );
+    return { success: true };
+  }
+
+  getIcon(): vscode.ThemeIcon {
+    return new vscode.ThemeIcon('code');
+  }
+}
+
+// ============================================================================
+// Codex Adapter
+// ============================================================================
+
+/**
+ * CodexAdapter - Integration with OpenAI Codex
+ */
+export class CodexAdapter implements AgentAdapter {
+  readonly name = 'OpenAI Codex';
+  readonly type: AgentType = 'codex';
+  readonly capabilities = {
+    canSendDirectly: false,
+    canOpenPanel: false,
+    requiresConfirmation: true,
+  };
+
+  async isAvailable(): Promise<boolean> {
+    return isExtensionAvailable(AGENT_EXTENSION_IDS.codex);
+  }
+
+  async sendPrompt(prompt: string): Promise<SendResult> {
+    await vscode.env.clipboard.writeText(prompt);
+    vscode.window.showInformationMessage(
+      'Prompt copied! Paste in Codex.'
+    );
+    return { success: true };
+  }
+
+  getIcon(): vscode.ThemeIcon {
+    return new vscode.ThemeIcon('hubot');
+  }
+}
+
+// ============================================================================
+// Gemini Adapter
+// ============================================================================
+
+/**
+ * GeminiAdapter - Integration with Google Gemini Code Assist
+ */
+export class GeminiAdapter implements AgentAdapter {
+  readonly name = 'Gemini Code Assist';
+  readonly type: AgentType = 'gemini';
+  readonly capabilities = {
+    canSendDirectly: false,
+    canOpenPanel: false,
+    requiresConfirmation: true,
+  };
+
+  async isAvailable(): Promise<boolean> {
+    return isExtensionAvailable(AGENT_EXTENSION_IDS.gemini);
+  }
+
+  async sendPrompt(prompt: string): Promise<SendResult> {
+    await vscode.env.clipboard.writeText(prompt);
+    vscode.window.showInformationMessage(
+      'Prompt copied! Paste in Gemini Code Assist.'
+    );
+    return { success: true };
+  }
+
+  getIcon(): vscode.ThemeIcon {
+    return new vscode.ThemeIcon('sparkle');
+  }
+}
+
+// ============================================================================
+// Tongyi Adapter
+// ============================================================================
+
+/**
+ * TongyiAdapter - Integration with Alibaba Tongyi Lingma
+ */
+export class TongyiAdapter implements AgentAdapter {
+  readonly name = 'Tongyi Lingma';
+  readonly type: AgentType = 'tongyi';
+  readonly capabilities = {
+    canSendDirectly: false,
+    canOpenPanel: false,
+    requiresConfirmation: true,
+  };
+
+  async isAvailable(): Promise<boolean> {
+    return isExtensionAvailable(AGENT_EXTENSION_IDS.tongyi);
+  }
+
+  async sendPrompt(prompt: string): Promise<SendResult> {
+    await vscode.env.clipboard.writeText(prompt);
+    vscode.window.showInformationMessage(
+      'Prompt copied! Paste in Tongyi Lingma.'
+    );
+    return { success: true };
+  }
+
+  getIcon(): vscode.ThemeIcon {
+    return new vscode.ThemeIcon('cloud');
+  }
+}
+
+// ============================================================================
 // Agent Service
 // ============================================================================
 
@@ -309,11 +582,13 @@ export class AgentService {
       ['roo-code', new RooCodeAdapter()],
       ['copilot', new CopilotAdapter()],
       ['continue', new ContinueAdapter()],
+      ['cursor', new CursorAdapter()],
+      ['kilo-code', new KiloCodeAdapter()],
+      ['codex', new CodexAdapter()],
+      ['gemini', new GeminiAdapter()],
+      ['tongyi', new TongyiAdapter()],
+      ['file', new FileAdapter()],
       ['clipboard', new ClipboardAdapter()],
-      ['cursor', new ClipboardAdapter()], // Cursor is VS Code based, clipboard is a safe fallback
-      ['kilo-code', new ClipboardAdapter()],
-      ['codex', new ClipboardAdapter()],
-      ['gemini', new ClipboardAdapter()],
     ]);
   }
 

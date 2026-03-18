@@ -7,7 +7,7 @@
 import * as vscode from 'vscode';
 import { PromptManager } from './services/promptManager';
 import { ContextEngine } from './services/contextEngine';
-import { AgentService } from './services/agentService';
+import { AgentService, initAgentService } from './services/agentService';
 import { PromptsTreeProvider } from './providers/promptsTreeProvider';
 import { RulesTreeProvider } from './providers/rulesTreeProvider';
 import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
@@ -102,6 +102,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   outputChannel = vscode.window.createOutputChannel('Prompt by Prompt');
   outputChannel.appendLine('Prompt by Prompt is activating...');
   console.log('Prompt by Prompt is activating...');
+  
+  // Initialize agent service with output channel for logging
+  initAgentService(outputChannel);
   
   // Store extension context globally
   extensionContext = context;
@@ -376,9 +379,6 @@ async function selectAgent(): Promise<AgentType | undefined> {
       description: adapter.capabilities.canSendDirectly
         ? t('Direct send')
         : t('Copy to clipboard'),
-      detail: adapter.capabilities.requiresConfirmation
-        ? t('⚠️ Requires manual paste')
-        : undefined,
       agentType: type,
     };
   });
@@ -469,30 +469,6 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   }
   
   log(`Rendered prompt (${renderedPrompt.length} chars): ${renderedPrompt.substring(0, 100)}...`);
-  
-  // Show preview option with more actions
-  const action = t('Run');
-  
-  if (action === t('Preview')) {
-    // Show preview in a new document
-    const doc = await vscode.workspace.openTextDocument({
-      content: renderedPrompt,
-      language: 'markdown'
-    });
-    await vscode.window.showTextDocument(doc);
-    return;
-  }
-  
-  if (action === t('Copy')) {
-    // Copy to clipboard directly
-    await vscode.env.clipboard.writeText(renderedPrompt);
-    vscode.window.showInformationMessage(t('Prompt copied to clipboard!'));
-    return;
-  }
-  
-  if (action !== t('Run')) {
-    return;
-  }
   
   // Select agent
   const agentType = await selectAgent();
