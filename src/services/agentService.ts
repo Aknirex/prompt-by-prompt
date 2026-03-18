@@ -200,7 +200,17 @@ export class RooCodeAdapter implements AgentAdapter {
     return isExtensionAvailable(AGENT_EXTENSION_IDS['roo-code']);
   }
 
-  async sendPrompt(prompt: string): Promise<SendResult> {
+  async sendPrompt(prompt: string, options?: SendOptions): Promise<SendResult> {
+    // Default autoSubmit to true (send behavior)
+    const autoSubmit = options?.autoSubmit ?? true;
+    
+    log(`[RooCodeAdapter] sendPrompt called with autoSubmit: ${autoSubmit}`);
+    
+    // If not autoSubmit (append mode), use clipboard + focus approach
+    if (!autoSubmit) {
+      return this.appendToInput(prompt);
+    }
+    
     // Try to use the Roo Code extension API directly
     const extensionId = AGENT_EXTENSION_IDS['roo-code'];
     const extension = vscode.extensions.getExtension<RooCodeAPI>(extensionId);
@@ -240,21 +250,6 @@ export class RooCodeAdapter implements AgentAdapter {
             try {
               await api.startNewTask({ task: prompt, newTab: false });
               log('[RooCodeAdapter] startNewTask (object format) completed successfully');
-              
-              // Wait for task to be created
-              await new Promise(resolve => setTimeout(resolve, 300));
-              
-              // Try to send message to ensure the prompt is visible
-              if (typeof api.sendMessage === 'function') {
-                log('[RooCodeAdapter] Calling sendMessage to ensure prompt is visible...');
-                try {
-                  await api.sendMessage(prompt);
-                  log('[RooCodeAdapter] sendMessage completed');
-                } catch (sendError) {
-                  log(`[RooCodeAdapter] sendMessage failed: ${sendError}`);
-                }
-              }
-              
               return { success: true };
             } catch (objError) {
               log(`[RooCodeAdapter] Object format failed, trying string format: ${objError}`);
@@ -275,6 +270,62 @@ export class RooCodeAdapter implements AgentAdapter {
     // Fallback: try command-based approach (may show dialog)
     log('[RooCodeAdapter] Falling back to command-based approach');
     return this.fallbackToCommand(prompt);
+  }
+
+  /**
+   * Append prompt to Roo Code input box without sending
+   * Uses clipboard + paste simulation since Roo Code uses webview for its UI
+   */
+  private async appendToInput(prompt: string): Promise<SendResult> {
+    log('[RooCodeAdapter] appendToInput: copying to clipboard and simulating paste');
+    
+    // First, copy prompt to clipboard
+    await vscode.env.clipboard.writeText(prompt);
+    log('[RooCodeAdapter] Prompt copied to clipboard');
+    
+    // Open and focus the Roo Code sidebar
+    try {
+      await vscode.commands.executeCommand('roo-cline.SidebarProvider.focus');
+      log('[RooCodeAdapter] Sidebar focused');
+      
+      // Wait for the sidebar to open and render
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try to focus the input box specifically
+      try {
+        await vscode.commands.executeCommand('roo-cline.focusInput');
+        log('[RooCodeAdapter] focusInput command executed');
+      } catch (e) {
+        log(`[RooCodeAdapter] focusInput command not available: ${e}`);
+      }
+      
+      // Wait a bit more for input to be focused
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Simulate Ctrl+V paste using VS Code's executeCommand
+      // The 'editor.action.clipboardPasteAction' command pastes from clipboard
+      try {
+        // Try the paste action command
+        await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+        log('[RooCodeAdapter] Paste action executed');
+        return { success: true };
+      } catch (pasteError) {
+        log(`[RooCodeAdapter] Paste action failed: ${pasteError}`);
+        
+        // Show notification that prompt is in clipboard
+        vscode.window.showInformationMessage(
+          'Prompt copied to clipboard! Press Ctrl+V to paste in Roo Code input box.'
+        );
+        return { success: true };
+      }
+    } catch (error) {
+      log(`[RooCodeAdapter] Failed to focus Roo Code: ${error}`);
+      // Fallback: just copy to clipboard
+      vscode.window.showInformationMessage(
+        'Prompt copied to clipboard! Open Roo Code and press Ctrl+V to paste.'
+      );
+      return { success: true };
+    }
   }
 
   private async fallbackToCommand(prompt: string): Promise<SendResult> {
