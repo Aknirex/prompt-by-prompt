@@ -453,6 +453,10 @@ export class SettingsPanel {
               <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
               <option value="copilot" ${settings.defaultAgent === 'copilot' ? 'selected' : ''}>GitHub Copilot</option>
               <option value="continue" ${settings.defaultAgent === 'continue' ? 'selected' : ''}>Continue</option>
+              <option value="cursor" ${settings.defaultAgent === 'cursor' ? 'selected' : ''}>Cursor</option>
+              <option value="kilo-code" ${settings.defaultAgent === 'kilo-code' ? 'selected' : ''}>Kilo Code</option>
+              <option value="codex" ${settings.defaultAgent === 'codex' ? 'selected' : ''}>Codex</option>
+              <option value="gemini" ${settings.defaultAgent === 'gemini' ? 'selected' : ''}>Gemini Code Assist</option>
             </select>
             <div class="hint">${t('The default agent to send prompts to when executing')}</div>
           </div>

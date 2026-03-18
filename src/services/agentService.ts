@@ -310,6 +310,10 @@ export class AgentService {
       ['copilot', new CopilotAdapter()],
       ['continue', new ContinueAdapter()],
       ['clipboard', new ClipboardAdapter()],
+      ['cursor', new ClipboardAdapter()], // Cursor is VS Code based, clipboard is a safe fallback
+      ['kilo-code', new ClipboardAdapter()],
+      ['codex', new ClipboardAdapter()],
+      ['gemini', new ClipboardAdapter()],
     ]);
   }
 

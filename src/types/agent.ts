@@ -14,7 +14,7 @@ import * as vscode from 'vscode';
 /**
  * Supported agent types
  */
-export type AgentType = 'cline' | 'roo-code' | 'copilot' | 'continue' | 'clipboard' | 'file';
+export type AgentType = 'cline' | 'roo-code' | 'copilot' | 'continue' | 'gemini' | 'tongyi' | 'cursor' | 'kilo-code' | 'codex' | 'clipboard' | 'file';
 
 /**
  * Result of sending a prompt to an agent
@@ -96,6 +96,11 @@ export const AGENT_EXTENSION_IDS = {
   'roo-code': 'RooVeterinaryInc.roo-cline',
   copilot: 'GitHub.copilot-chat',  // Note: Chat is in separate extension
   continue: 'continue.continue',
+  gemini: 'Google.geminicodeassist',
+  tongyi: 'Alibaba-Cloud.TONGYI-Lingma-2022',
+  cursor: 'cursor.cursor-ai',
+  'kilo-code': 'kilo.kilo-code',
+  codex: 'openai.openai-codex',
 } as const;
 
 // ============================================================================

@@ -471,13 +471,7 @@ async function executePrompt(prompt: PromptTemplate): Promise<void> {
   log(`Rendered prompt (${renderedPrompt.length} chars): ${renderedPrompt.substring(0, 100)}...`);
   
   // Show preview option with more actions
-  const action = await vscode.window.showInformationMessage(
-    `Run prompt "${prompt.name}"?`,
-    t('Run'),
-    t('Preview'),
-    t('Copy'),
-    t('Cancel')
-  );
+  const action = t('Run');
   
   if (action === t('Preview')) {
     // Show preview in a new document
