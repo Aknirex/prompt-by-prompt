@@ -14,7 +14,6 @@ const GLOBAL_STATE_KEY = 'pbp.globalPrompts';
 
 export class PromptManager {
   private prompts: Map<string, PromptTemplate> = new Map();
-  private fileWatcher?: vscode.FileSystemWatcher;
   private onDidChangePrompts: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   
   public readonly onDidChange = this.onDidChangePrompts.event;
@@ -25,14 +24,10 @@ export class PromptManager {
   ) {}
 
   /**
-   * Initialize the manager - scan and watch for prompts
+   * Initialize the manager
    */
   async initialize(): Promise<void> {
-    // Load all prompts
     await this.loadAllPrompts();
-    
-    // Setup file watcher for workspace prompts
-    this.setupFileWatcher();
   }
 
   /**
@@ -193,48 +188,6 @@ export class PromptManager {
   }
 
   /**
-   * Setup file watcher for workspace prompts directory
-   */
-  private setupFileWatcher(): void {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      return;
-    }
-
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const promptsDir = path.join(workspaceRoot, this.config.promptsDir);
-    
-    if (!fs.existsSync(promptsDir)) {
-      // Create the directory if it doesn't exist
-      fs.mkdirSync(promptsDir, { recursive: true });
-      fs.mkdirSync(path.join(promptsDir, 'templates'), { recursive: true });
-    }
-
-    // Watch for changes in .prompts directory
-    const pattern = new vscode.RelativePattern(
-      workspaceFolders[0],
-      `${this.config.promptsDir}/**/*.yaml`
-    );
-    
-    this.fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
-    
-    this.fileWatcher.onDidCreate(async () => {
-      await this.loadWorkspacePrompts();
-      this.onDidChangePrompts.fire();
-    });
-    
-    this.fileWatcher.onDidChange(async () => {
-      await this.loadWorkspacePrompts();
-      this.onDidChangePrompts.fire();
-    });
-    
-    this.fileWatcher.onDidDelete(async () => {
-      await this.loadWorkspacePrompts();
-      this.onDidChangePrompts.fire();
-    });
-  }
-
-  /**
    * Get all prompts
    */
   getAllPrompts(): PromptTemplate[] {
@@ -332,7 +285,7 @@ export class PromptManager {
     if (existing.source === 'global') {
       await this.saveGlobalPrompt(updated);
     } else if (existing.source === 'workspace') {
-      await this.saveWorkspacePrompt(updated);
+      await this.saveWorkspacePrompt(updated, existing.filePath);
     }
 
     this.prompts.set(id, updated);
@@ -392,7 +345,7 @@ export class PromptManager {
   /**
    * Save prompt to workspace
    */
-  private async saveWorkspacePrompt(prompt: PromptTemplate): Promise<void> {
+  private async saveWorkspacePrompt(prompt: PromptTemplate, previousFilePath?: string): Promise<void> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
       throw new Error('No workspace folder open');
@@ -414,6 +367,11 @@ export class PromptManager {
     const yamlContent = this.promptToYaml(prompt);
     
     await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
+
+    if (previousFilePath && previousFilePath !== filePath && fs.existsSync(previousFilePath)) {
+      await fs.promises.unlink(previousFilePath);
+    }
+
     prompt.filePath = filePath;
   }
 
@@ -473,7 +431,6 @@ export class PromptManager {
    * Dispose resources
    */
   dispose(): void {
-    this.fileWatcher?.dispose();
     this.onDidChangePrompts.dispose();
   }
 }

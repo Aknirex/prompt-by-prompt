@@ -45,9 +45,12 @@ export class ClipboardAdapter implements AgentAdapter {
   readonly name = 'Copy to Clipboard';
   readonly type: AgentType = 'clipboard';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -76,9 +79,12 @@ export class FileAdapter implements AgentAdapter {
   readonly name = 'Save to File';
   readonly type: AgentType = 'file';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -122,9 +128,12 @@ export class ClineAdapter implements AgentAdapter {
   readonly name = 'Cline';
   readonly type: AgentType = 'cline';
   readonly capabilities = {
-    canSendDirectly: true,
-    canOpenPanel: true,
-    requiresConfirmation: false,
+    canCreateTask: true,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: true,
+    canUseStructuredContext: false,
   };
 
   // Multiple command candidates with different argument formats
@@ -191,9 +200,12 @@ export class RooCodeAdapter implements AgentAdapter {
   readonly name = 'Roo Code';
   readonly type: AgentType = 'roo-code';
   readonly capabilities = {
-    canSendDirectly: true,
-    canOpenPanel: true,
-    requiresConfirmation: false,
+    canCreateTask: true,
+    canFillInput: true,
+    canAppendInput: true,
+    canInsertInput: false,
+    canAutoSubmit: true,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -201,8 +213,7 @@ export class RooCodeAdapter implements AgentAdapter {
   }
 
   async sendPrompt(prompt: string, options?: SendOptions): Promise<SendResult> {
-    // Default autoSubmit to true (send behavior)
-    const autoSubmit = options?.autoSubmit ?? true;
+    const autoSubmit = options?.behavior !== 'append' && options?.behavior !== 'insert';
     
     log(`[RooCodeAdapter] sendPrompt called with autoSubmit: ${autoSubmit}`);
     
@@ -373,9 +384,12 @@ export class CopilotAdapter implements AgentAdapter {
   readonly name = 'GitHub Copilot';
   readonly type: AgentType = 'copilot';
   readonly capabilities = {
-    canSendDirectly: true,
-    canOpenPanel: true,
-    requiresConfirmation: false,
+    canCreateTask: true,
+    canFillInput: true,
+    canAppendInput: true,
+    canInsertInput: false,
+    canAutoSubmit: true,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -383,8 +397,7 @@ export class CopilotAdapter implements AgentAdapter {
   }
 
   async sendPrompt(prompt: string, options?: SendOptions): Promise<SendResult> {
-    // Default autoSubmit to true
-    const autoSubmit = options?.autoSubmit ?? true;
+    const autoSubmit = options?.behavior !== 'append' && options?.behavior !== 'insert';
 
     try {
       await vscode.commands.executeCommand('workbench.action.chat.open', {
@@ -418,9 +431,12 @@ export class ContinueAdapter implements AgentAdapter {
   readonly name = 'Continue';
   readonly type: AgentType = 'continue';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: true,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -460,9 +476,12 @@ export class CursorAdapter implements AgentAdapter {
   readonly name = 'Cursor';
   readonly type: AgentType = 'cursor';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -493,9 +512,12 @@ export class KiloCodeAdapter implements AgentAdapter {
   readonly name = 'Kilo Code';
   readonly type: AgentType = 'kilo-code';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -526,9 +548,12 @@ export class CodexAdapter implements AgentAdapter {
   readonly name = 'OpenAI Codex';
   readonly type: AgentType = 'codex';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -559,9 +584,12 @@ export class GeminiAdapter implements AgentAdapter {
   readonly name = 'Gemini Code Assist';
   readonly type: AgentType = 'gemini';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {
@@ -592,9 +620,12 @@ export class TongyiAdapter implements AgentAdapter {
   readonly name = 'Tongyi Lingma';
   readonly type: AgentType = 'tongyi';
   readonly capabilities = {
-    canSendDirectly: false,
-    canOpenPanel: false,
-    requiresConfirmation: true,
+    canCreateTask: false,
+    canFillInput: false,
+    canAppendInput: false,
+    canInsertInput: false,
+    canAutoSubmit: false,
+    canUseStructuredContext: false,
   };
 
   async isAvailable(): Promise<boolean> {

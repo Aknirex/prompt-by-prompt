@@ -6,6 +6,7 @@
  */
 
 import * as vscode from 'vscode';
+import { ExecutionBehavior } from './execution';
 
 // ============================================================================
 // Agent Type Definitions
@@ -27,25 +28,20 @@ export type SendResult =
  * Capabilities of an agent adapter
  */
 export interface AgentCapabilities {
-  /** Whether the agent supports direct sending without user confirmation */
-  canSendDirectly: boolean;
-  
-  /** Whether the agent can open its panel programmatically */
-  canOpenPanel: boolean;
-  
-  /** Whether the agent requires user to manually paste/confirm */
-  requiresConfirmation: boolean;
+  canCreateTask: boolean;
+  canFillInput: boolean;
+  canAppendInput: boolean;
+  canInsertInput: boolean;
+  canAutoSubmit: boolean;
+  canUseStructuredContext: boolean;
 }
 
 /**
  * Options for sending a prompt
  */
 export interface SendOptions {
-  /** Whether to open the agent panel */
   openPanel?: boolean;
-  
-  /** Whether to auto-submit the prompt (default: true) */
-  autoSubmit?: boolean;
+  behavior?: ExecutionBehavior;
 }
 
 /**

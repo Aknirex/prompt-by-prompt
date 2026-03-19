@@ -39,6 +39,7 @@ export class PromptEditorPanel {
     extensionUri: vscode.Uri,
     context: vscode.ExtensionContext,
     existingPrompt?: PromptTemplate,
+    defaultTarget: 'workspace' | 'global' = 'global',
     onSave?: (result: PromptEditorResult) => void
   ): PromptEditorPanel {
     const column = vscode.window.activeTextEditor
@@ -69,7 +70,7 @@ export class PromptEditorPanel {
       }
     );
 
-    PromptEditorPanel.currentPanel = new PromptEditorPanel(panel, extensionUri, context, existingPrompt, onSave);
+    PromptEditorPanel.currentPanel = new PromptEditorPanel(panel, extensionUri, context, existingPrompt, defaultTarget, onSave);
     return PromptEditorPanel.currentPanel;
   }
 
@@ -78,6 +79,7 @@ export class PromptEditorPanel {
     extensionUri: vscode.Uri,
     context: vscode.ExtensionContext,
     existingPrompt?: PromptTemplate,
+    private readonly _defaultTarget: 'workspace' | 'global' = 'global',
     onSave?: (result: PromptEditorResult) => void
   ) {
     this._panel = panel;
@@ -439,7 +441,7 @@ export class PromptEditorPanel {
 
       <div class="form-group">
         <label for="template">${t('Prompt')} *</label>
-        <div class="hint" style="margin-bottom: 8px;">${t('Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{workspace_folder}}, {{active_file}}, {{selected_text}}')}</div>
+        <div class="hint" style="margin-bottom: 8px;">${t('Use {{variable_name}} to define variables that will be filled when running the prompt. Included context: {{selection}}, {{filepath}}, {{file_content}}, {{lang}}, {{project_name}}, {{git_commit_diff}}, {{line_number}}, {{column_number}}')}</div>
         <textarea id="template" class="template" required placeholder="${t('Enter your prompt here...')}">${this._escapeHtml(prompt?.template || '')}</textarea>
       </div>
 
@@ -457,11 +459,11 @@ export class PromptEditorPanel {
           <label>${t('Target')}</label>
           <div class="target-select">
             <label>
-              <input type="radio" name="target" value="global" checked>
+              <input type="radio" name="target" value="global" ${this._defaultTarget === 'global' ? 'checked' : ''}>
               ${t('Global')} (${t('All Projects')})
             </label>
             <label>
-              <input type="radio" name="target" value="workspace">
+              <input type="radio" name="target" value="workspace" ${this._defaultTarget === 'workspace' ? 'checked' : ''}>
               ${t('Workspace')} (${t('Current Project')})
             </label>
           </div>
@@ -525,12 +527,11 @@ export class PromptEditorPanel {
       
       function generatePrompt() {
         const description = document.getElementById('generateInput').value.trim();
-        const systemPrompt = document.getElementById('systemPrompt').value.trim();
         const provider = document.getElementById('genProvider').value;
         const model = document.getElementById('genModel').value;
         vscode.postMessage({
           command: 'generate',
-          data: { description, systemPrompt, provider, model }
+          data: { description, provider, model }
         });
       }
       
@@ -598,10 +599,10 @@ export class PromptEditorPanel {
 
   private _escapeHtml(text: string): string {
     return text
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
 

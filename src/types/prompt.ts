@@ -17,6 +17,8 @@ export interface PromptVariable {
   required?: boolean;
   values?: string[]; // for enum type
   default?: string | number | boolean;
+  placeholder?: string;
+  multiline?: boolean;
 }
 
 /**

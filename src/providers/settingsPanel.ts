@@ -12,7 +12,9 @@ import { t } from '../utils/i18n';
 export interface SettingsConfig {
   // Agent settings
   defaultAgent: string;
-  sendBehavior: 'send' | 'append' | 'insert';
+  sendBehavior: 'send' | 'append';
+  rememberLastExecution: boolean;
+  previewBeforeSend: boolean;
   
   // Default save location
   defaultTarget: 'workspace' | 'global';
@@ -125,6 +127,8 @@ export class SettingsPanel {
       // Agent settings
       await config.update('defaultAgent', data.defaultAgent, vscode.ConfigurationTarget.Global);
       await config.update('sendBehavior', data.sendBehavior, vscode.ConfigurationTarget.Global);
+      await config.update('rememberLastExecution', data.rememberLastExecution, vscode.ConfigurationTarget.Global);
+      await config.update('previewBeforeSend', data.previewBeforeSend, vscode.ConfigurationTarget.Global);
       await config.update('defaultTarget', data.defaultTarget, vscode.ConfigurationTarget.Global);
       
       // AI Provider settings
@@ -172,8 +176,10 @@ export class SettingsPanel {
     const config = vscode.workspace.getConfiguration('pbp');
     
     return {
-      defaultAgent: config.get('defaultAgent') || 'ask',
-      sendBehavior: config.get('sendBehavior') ?? 'send',
+      defaultAgent: config.get('defaultAgent') || 'clipboard',
+      sendBehavior: config.get('sendBehavior') === 'append' ? 'append' : 'send',
+      rememberLastExecution: config.get('rememberLastExecution') ?? true,
+      previewBeforeSend: config.get('previewBeforeSend') ?? true,
       defaultTarget: config.get('defaultTarget') || 'global',
       defaultModel: (config.get('defaultModel') || 'ollama') as AIProvider,
       customProviderUrl: config.get('customProviderUrl') || '',
@@ -446,7 +452,6 @@ export class SettingsPanel {
           <div class="form-group">
             <label for="defaultAgent">${t('Default Agent')}</label>
             <select id="defaultAgent" onchange="updateAgentVisibility()">
-              <option value="ask" ${settings.defaultAgent === 'ask' ? 'selected' : ''}>${t('Ask Every Time')}</option>
               <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>${t('Copy to Clipboard')}</option>
               <option value="file" ${settings.defaultAgent === 'file' ? 'selected' : ''}>${t('Save to File')}</option>
               <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
@@ -461,6 +466,22 @@ export class SettingsPanel {
             <div class="hint">${t('The default agent to send prompts to when executing')}</div>
           </div>
 
+          <div class="form-group">
+            <label for="rememberLastExecution">${t('Remember last execution')}</label>
+            <div class="checkbox-group">
+              <input type="checkbox" id="rememberLastExecution" ${settings.rememberLastExecution ? 'checked' : ''}>
+              <label for="rememberLastExecution">${t('Reuse the last target and behavior when possible')}</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="previewBeforeSend">${t('Preview before send')}</label>
+            <div class="checkbox-group">
+              <input type="checkbox" id="previewBeforeSend" ${settings.previewBeforeSend ? 'checked' : ''}>
+              <label for="previewBeforeSend">${t('Open a preview before dispatching prompts')}</label>
+            </div>
+          </div>
+
           <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
             <label for="outputDirectory">${t('Output Directory')}</label>
             <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/">
@@ -472,7 +493,6 @@ export class SettingsPanel {
             <select id="sendBehavior">
               <option value="send" ${settings.sendBehavior === 'send' ? 'selected' : ''}>${t('ui.settings.send')}</option>
               <option value="append" ${settings.sendBehavior === 'append' ? 'selected' : ''}>${t('ui.settings.append')}</option>
-              <option value="insert" ${settings.sendBehavior === 'insert' ? 'selected' : ''}>${t('ui.settings.insert')}</option>
             </select>
           </div>
           
@@ -557,6 +577,8 @@ export class SettingsPanel {
       const data = {
         defaultAgent: document.getElementById('defaultAgent').value,
         sendBehavior: document.getElementById('sendBehavior').value,
+        rememberLastExecution: document.getElementById('rememberLastExecution').checked,
+        previewBeforeSend: document.getElementById('previewBeforeSend').checked,
         defaultTarget: document.getElementById('defaultTarget').value,
         outputDirectory: document.getElementById('outputDirectory').value,
         defaultModel: document.getElementById('providerSelector').value,
@@ -594,6 +616,14 @@ export class SettingsPanel {
       const vscode = acquireVsCodeApi();
       vscode.postMessage({ command: 'cancel' });
     }
+
+    function updateAgentVisibility() {
+      const defaultAgent = document.getElementById('defaultAgent').value;
+      document.getElementById('outputDirectoryGroup').style.display = defaultAgent === 'file' ? 'block' : 'none';
+      document.getElementById('sendBehaviorGroup').style.display = ['clipboard', 'file'].includes(defaultAgent) ? 'none' : 'block';
+    }
+
+    document.addEventListener('DOMContentLoaded', updateAgentVisibility);
   </script>
 </body>
 </html>`;
@@ -641,10 +671,10 @@ export class SettingsPanel {
 
   private _escapeHtml(text: string): string {
     return text
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
 

@@ -514,7 +514,7 @@ const dictionaries: Record<string, Record<string, string>> = {
     'ko': ko_dict
 };
 
-export function t(key: string): string {
+export function t(key: string, ...args: Array<string | number>): string {
     const config = vscode.workspace.getConfiguration('pbp', null);
     let currentLanguage = (config.get('uiLanguage') as string || vscode.env.language).toLowerCase();
     if (currentLanguage === 'zh-tw' || currentLanguage === 'zh-hk') {
@@ -524,10 +524,9 @@ export function t(key: string): string {
     const dict = dictionaries[currentLanguage] || dictionaries['en'] || dictionaries['zh-cn'];
     let text = dict[key] || key;
 
-    if (arguments.length > 1) {
-        const args = Array.prototype.slice.call(arguments, 1);
+    if (args.length > 0) {
         text = text.replace(/{(\d+)}/g, (match, number) => {
-            return typeof args[number] !== 'undefined' ? args[number] : match;
+            return typeof args[number] !== 'undefined' ? String(args[number]) : match;
         });
     }
 

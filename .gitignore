@@ -26,4 +26,5 @@ coverage/
 .env.local
 
 # Documentation
-docs/
+docs/*
+!docs/TODOLIST.md

@@ -60,6 +60,18 @@
         "icon": "$(play)"
       },
       {
+        "command": "pbp.runPromptWithPicker",
+        "title": "Run Prompt (Choose Target)"
+      },
+      {
+        "command": "pbp.previewPrompt",
+        "title": "Preview Prompt"
+      },
+      {
+        "command": "pbp.rerunLastTarget",
+        "title": "Rerun Prompt"
+      },
+      {
         "command": "pbp.openSettings",
         "title": "%command.pbp.openSettings%",
         "icon": "$(gear)"
@@ -72,16 +84,6 @@
       {
         "command": "pbp.deleteRule",
         "title": "%command.pbp.deleteRule%"
-      },
-      {
-        "command": "pbp.createWorkspaceRule",
-        "title": "%command.pbp.createWorkspaceRule%",
-        "icon": ""
-      },
-      {
-        "command": "pbp.createGlobalRule",
-        "title": "%command.pbp.createGlobalRule%",
-        "icon": ""
       },
       {
         "command": "pbp.setActiveGlobalRule",
@@ -320,7 +322,6 @@
         "pbp.defaultAgent": {
           "type": "string",
           "enum": [
-            "ask",
             "cline",
             "roo-code",
             "copilot",
@@ -328,7 +329,7 @@
             "clipboard",
             "file"
           ],
-          "default": "ask",
+          "default": "clipboard",
           "description": "%config.pbp.defaultAgent.description%"
         },
         "pbp.outputDirectory": {
@@ -340,11 +341,20 @@
           "type": "string",
           "enum": [
             "send",
-            "append",
-            "insert"
+            "append"
           ],
-          "default": "append",
+          "default": "send",
           "description": "%config.pbp.sendBehavior.description%"
+        },
+        "pbp.rememberLastExecution": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reuse the last execution target and behavior for each prompt when still available."
+        },
+        "pbp.previewBeforeSend": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open a preview of the resolved prompt before dispatching it."
         },
         "pbp.defaultTarget": {
           "type": "string",
