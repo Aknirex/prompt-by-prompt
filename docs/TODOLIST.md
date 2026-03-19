@@ -38,3 +38,4 @@ Last updated: 2026-03-19
 
 - [ ] Add automated tests for execution history, preview composition, and prompt storage consistency
 - [ ] Continue into Phase 2 rule profiles / resolved rule sets / richer rule presentation after Phase 0 + 1 stabilizes
+- [ ] Investigate why `viewsContainers.activitybar` is rejected in the current VS Code debug host despite a valid manifest; restore custom Activity Bar container after root cause is confirmed

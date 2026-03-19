@@ -29,6 +29,28 @@ function log(message: string): void {
   outputChannel?.appendLine(message);
 }
 
+function logManifestDiagnostics(): void {
+  const extension = vscode.extensions.getExtension('aknirex.prompt-by-prompt');
+  const manifest = extension?.packageJSON as
+    | {
+        version?: string;
+        contributes?: {
+          viewsContainers?: unknown;
+          views?: unknown;
+          commands?: unknown;
+        };
+      }
+    | undefined;
+
+  log('[Diagnostics] activate() reached');
+  log(`[Diagnostics] extensionPath: ${extension?.extensionPath || extensionContext.extensionPath}`);
+  log(`[Diagnostics] extensionUri: ${extensionContext.extensionUri.toString()}`);
+  log(`[Diagnostics] package version: ${manifest?.version || 'unknown'}`);
+  log(`[Diagnostics] viewsContainers: ${JSON.stringify(manifest?.contributes?.viewsContainers ?? null)}`);
+  log(`[Diagnostics] views: ${JSON.stringify(manifest?.contributes?.views ?? null)}`);
+  log('[Diagnostics] custom activity bar container enabled');
+}
+
 function getConfig(): ExtensionConfig {
   const config = vscode.workspace.getConfiguration('pbp');
 
@@ -108,9 +130,9 @@ async function openPromptEditor(
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   outputChannel = vscode.window.createOutputChannel('Prompt by Prompt');
   outputChannel.appendLine('Prompt by Prompt is activating...');
-
   initAgentService(outputChannel);
   extensionContext = context;
+  logManifestDiagnostics();
 
   const config = getConfig();
   promptManager = new PromptManager(context, config);
@@ -163,6 +185,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const commands = [
     vscode.commands.registerCommand('pbp.openSettings', () => {
       SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext);
+    }),
+
+    vscode.commands.registerCommand('pbp.showDiagnostics', async () => {
+      logManifestDiagnostics();
+      outputChannel.show(true);
+      void vscode.window.showInformationMessage('Prompt by Prompt diagnostics written to the output channel.');
     }),
 
     vscode.commands.registerCommand('pbp.runPrompt', async (value?: unknown) => {

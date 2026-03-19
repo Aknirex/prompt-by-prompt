@@ -72,6 +72,10 @@
         "title": "Rerun Prompt"
       },
       {
+        "command": "pbp.showDiagnostics",
+        "title": "Show Diagnostics"
+      },
+      {
         "command": "pbp.openSettings",
         "title": "%command.pbp.openSettings%",
         "icon": "$(gear)"
