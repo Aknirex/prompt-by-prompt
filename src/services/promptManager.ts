@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PromptTemplate, ExtensionConfig } from '../types/prompt';
 
 const GLOBAL_STATE_KEY = 'pbp.globalPrompts';
+const GLOBAL_PROMPTS_DIR = 'prompts';
 
 export class PromptManager {
   private prompts: Map<string, PromptTemplate> = new Map();
@@ -35,13 +36,16 @@ export class PromptManager {
    */
   private async loadAllPrompts(): Promise<void> {
     this.prompts.clear();
-    
+
     // Load builtin prompts
     await this.loadBuiltinPrompts();
-    
-    // Load global prompts from VS Code global state
+
+    // Migrate legacy global prompts before loading global storage files.
+    await this.migrateLegacyGlobalPrompts();
+
+    // Load global prompts from extension global storage
     await this.loadGlobalPrompts();
-    
+
     // Load workspace prompts
     await this.loadWorkspacePrompts();
   }
@@ -87,15 +91,50 @@ export class PromptManager {
   }
 
   /**
-   * Load global prompts from VS Code global state
+   * Load global prompts from extension global storage
    */
   private async loadGlobalPrompts(): Promise<void> {
-    const globalPrompts = this.context.globalState.get<PromptTemplate[]>(GLOBAL_STATE_KEY, []);
-    
-    for (const prompt of globalPrompts) {
-      prompt.source = 'global';
-      this.prompts.set(prompt.id, prompt);
+    const promptsDir = path.join(this.context.globalStorageUri.fsPath, GLOBAL_PROMPTS_DIR);
+    if (!fs.existsSync(promptsDir)) {
+      return;
     }
+
+    const files = this.findYamlFiles(promptsDir);
+    for (const file of files) {
+      try {
+        const prompt = await this.loadPromptFromFile(file, 'global');
+        if (prompt) {
+          this.prompts.set(prompt.id, prompt);
+        }
+      } catch (error) {
+        console.error(`Failed to load global prompt ${file}:`, error);
+      }
+    }
+  }
+
+  private async migrateLegacyGlobalPrompts(): Promise<void> {
+    const legacyPrompts = this.context.globalState.get<PromptTemplate[]>(GLOBAL_STATE_KEY, []);
+    if (!Array.isArray(legacyPrompts) || legacyPrompts.length === 0) {
+      return;
+    }
+
+    for (const legacyPrompt of legacyPrompts) {
+      const prompt: PromptTemplate = {
+        ...legacyPrompt,
+        id: legacyPrompt.id || uuidv4(),
+        name: legacyPrompt.name || 'Untitled Prompt',
+        description: legacyPrompt.description || '',
+        category: legacyPrompt.category || 'General',
+        tags: legacyPrompt.tags || [],
+        version: legacyPrompt.version || '1.0.0',
+        template: legacyPrompt.template || '',
+        source: 'global',
+      };
+
+      await this.saveGlobalPrompt(prompt);
+    }
+
+    await this.context.globalState.update(GLOBAL_STATE_KEY, []);
   }
 
   /**
@@ -318,28 +357,39 @@ export class PromptManager {
   }
 
   /**
-   * Save prompt to global state
+   * Save prompt to extension global storage
    */
   private async saveGlobalPrompt(prompt: PromptTemplate): Promise<void> {
-    const globalPrompts = this.context.globalState.get<PromptTemplate[]>(GLOBAL_STATE_KEY, []);
-    const index = globalPrompts.findIndex(p => p.id === prompt.id);
-    
-    if (index >= 0) {
-      globalPrompts[index] = prompt;
-    } else {
-      globalPrompts.push(prompt);
+    const promptsDir = path.join(this.context.globalStorageUri.fsPath, GLOBAL_PROMPTS_DIR);
+    if (!fs.existsSync(promptsDir)) {
+      fs.mkdirSync(promptsDir, { recursive: true });
     }
-    
-    await this.context.globalState.update(GLOBAL_STATE_KEY, globalPrompts);
+
+    const filename = this.sanitizeFilename(prompt.name) + '.yaml';
+    const filePath = path.join(promptsDir, filename);
+    const yamlContent = this.promptToYaml(prompt);
+
+    await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
+
+    if (prompt.filePath && prompt.filePath !== filePath && fs.existsSync(prompt.filePath)) {
+      await fs.promises.unlink(prompt.filePath);
+    }
+
+    prompt.filePath = filePath;
   }
 
   /**
-   * Delete prompt from global state
+   * Delete prompt from extension global storage
    */
   private async deleteGlobalPrompt(id: string): Promise<void> {
-    const globalPrompts = this.context.globalState.get<PromptTemplate[]>(GLOBAL_STATE_KEY, []);
-    const filtered = globalPrompts.filter(p => p.id !== id);
-    await this.context.globalState.update(GLOBAL_STATE_KEY, filtered);
+    const prompt = this.prompts.get(id);
+    if (!prompt?.filePath) {
+      return;
+    }
+
+    if (fs.existsSync(prompt.filePath)) {
+      await fs.promises.unlink(prompt.filePath);
+    }
   }
 
   /**
