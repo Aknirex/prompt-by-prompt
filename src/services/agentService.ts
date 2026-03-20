@@ -9,11 +9,13 @@ import * as vscode from 'vscode';
 import {
   AgentType,
   AgentAdapter,
+  AgentCapabilities,
   SendResult,
   SendOptions,
   AGENT_EXTENSION_IDS,
   isExtensionAvailable,
 } from '../types/agent';
+import { ExecutionBehavior } from '../types/execution';
 
 // Output channel for logging
 let logChannel: vscode.OutputChannel;
@@ -32,6 +34,30 @@ function log(message: string): void {
   if (logChannel) {
     logChannel.appendLine(`[AgentService] ${message}`);
   }
+}
+
+export function getSupportedExecutionBehaviors(
+  capabilities: AgentCapabilities
+): ExecutionBehavior[] {
+  const behaviors: ExecutionBehavior[] = [];
+
+  if (capabilities.canAutoSubmit) {
+    behaviors.push('send');
+  }
+
+  if (capabilities.canAppendInput) {
+    behaviors.push('append');
+  }
+
+  if (capabilities.canFillInput) {
+    behaviors.push('overwrite');
+  }
+
+  if (capabilities.canInsertInput) {
+    behaviors.push('insert');
+  }
+
+  return behaviors;
 }
 
 // ============================================================================
@@ -213,7 +239,10 @@ export class RooCodeAdapter implements AgentAdapter {
   }
 
   async sendPrompt(prompt: string, options?: SendOptions): Promise<SendResult> {
-    const autoSubmit = options?.behavior !== 'append' && options?.behavior !== 'insert';
+    const autoSubmit =
+      options?.behavior !== 'append' &&
+      options?.behavior !== 'overwrite' &&
+      options?.behavior !== 'insert';
     
     log(`[RooCodeAdapter] sendPrompt called with autoSubmit: ${autoSubmit}`);
     
@@ -386,7 +415,7 @@ export class CopilotAdapter implements AgentAdapter {
   readonly capabilities = {
     canCreateTask: true,
     canFillInput: true,
-    canAppendInput: true,
+    canAppendInput: false,
     canInsertInput: false,
     canAutoSubmit: true,
     canUseStructuredContext: false,
@@ -397,12 +426,12 @@ export class CopilotAdapter implements AgentAdapter {
   }
 
   async sendPrompt(prompt: string, options?: SendOptions): Promise<SendResult> {
-    const autoSubmit = options?.behavior !== 'append' && options?.behavior !== 'insert';
+    const fillWithoutSubmit = options?.behavior === 'overwrite' || options?.behavior === 'append';
 
     try {
       await vscode.commands.executeCommand('workbench.action.chat.open', {
         query: prompt,
-        isPartialQuery: !autoSubmit,
+        isPartialQuery: fillWithoutSubmit,
       });
       return { success: true };
     } catch (error) {

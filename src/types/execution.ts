@@ -1,18 +1,13 @@
 import { AgentType } from './agent';
 import { EditorContext, PromptTemplate } from './prompt';
-import { RuleFile } from '../services/ruleManager';
+import { ResolvedRuleSet } from './rule';
 
-export type ExecutionBehavior = 'send' | 'append' | 'insert';
+export type ExecutionBehavior = 'send' | 'append' | 'overwrite' | 'insert';
 
 export type ExecutionTarget =
   | { kind: 'agent'; agentType: AgentType }
   | { kind: 'clipboard' }
   | { kind: 'file' };
-
-export interface ResolvedRuleSet {
-  globalRule?: RuleFile;
-  workspaceRules: RuleFile[];
-}
 
 export interface ResolvedExecution {
   prompt: PromptTemplate;
@@ -22,6 +17,7 @@ export interface ResolvedExecution {
   behavior?: ExecutionBehavior;
   variables: Record<string, string>;
   sourceContext: EditorContext;
+  dispatchText: string;
   previewText: string;
 }
 

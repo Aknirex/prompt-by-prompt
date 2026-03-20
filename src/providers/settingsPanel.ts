@@ -4,17 +4,18 @@
 
 import * as vscode from 'vscode';
 import { AI_PROVIDERS, AIProvider, DEFAULT_GENERATOR_SYSTEM_PROMPT } from '../services/aiService';
+import { AgentService, getSupportedExecutionBehaviors } from '../services/agentService';
 import { t } from '../utils/i18n';
+import { AgentType } from '../types/agent';
 
 /**
  * Settings configuration
  */
 export interface SettingsConfig {
   // Agent settings
-  defaultAgent: string;
-  sendBehavior: 'send' | 'append';
-  rememberLastExecution: boolean;
-  previewBeforeSend: boolean;
+  defaultAgent: AgentType;
+  sendBehavior: 'send' | 'append' | 'overwrite';
+  executionSelectionMode: 'last-execution' | 'initial-recommendation' | 'ask-every-time';
   
   // Default save location
   defaultTarget: 'workspace' | 'global';
@@ -66,11 +67,13 @@ export class SettingsPanel {
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private readonly _context: vscode.ExtensionContext;
+  private readonly _agentService: AgentService;
   private _disposables: vscode.Disposable[] = [];
 
   public static createOrShow(
     extensionUri: vscode.Uri,
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
+    agentService: AgentService
   ): SettingsPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
@@ -91,18 +94,20 @@ export class SettingsPanel {
       }
     );
 
-    SettingsPanel.currentPanel = new SettingsPanel(panel, extensionUri, context);
+    SettingsPanel.currentPanel = new SettingsPanel(panel, extensionUri, context, agentService);
     return SettingsPanel.currentPanel;
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
+    agentService: AgentService
   ) {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._context = context;
+    this._agentService = agentService;
 
     this._update();
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
@@ -122,13 +127,18 @@ export class SettingsPanel {
 
   private async _saveSettings(data: SettingsConfig): Promise<void> {
     const config = vscode.workspace.getConfiguration('pbp');
+    const normalizedBehavior = this._normalizeBehavior(data.defaultAgent, data.sendBehavior);
     
     try {
       // Agent settings
       await config.update('defaultAgent', data.defaultAgent, vscode.ConfigurationTarget.Global);
-      await config.update('sendBehavior', data.sendBehavior, vscode.ConfigurationTarget.Global);
-      await config.update('rememberLastExecution', data.rememberLastExecution, vscode.ConfigurationTarget.Global);
-      await config.update('previewBeforeSend', data.previewBeforeSend, vscode.ConfigurationTarget.Global);
+      await config.update('sendBehavior', normalizedBehavior, vscode.ConfigurationTarget.Global);
+      await config.update('executionSelectionMode', data.executionSelectionMode, vscode.ConfigurationTarget.Global);
+      await config.update(
+        'rememberLastExecution',
+        data.executionSelectionMode === 'last-execution',
+        vscode.ConfigurationTarget.Global
+      );
       await config.update('defaultTarget', data.defaultTarget, vscode.ConfigurationTarget.Global);
       
       // AI Provider settings
@@ -174,12 +184,24 @@ export class SettingsPanel {
 
   private _getSettings(): SettingsConfig {
     const config = vscode.workspace.getConfiguration('pbp');
+    const configuredMode = config.get<string>('executionSelectionMode');
+    const executionSelectionMode: SettingsConfig['executionSelectionMode'] =
+      configuredMode === 'last-execution' ||
+      configuredMode === 'initial-recommendation' ||
+      configuredMode === 'ask-every-time'
+        ? configuredMode
+        : ((config.get('rememberLastExecution') ?? true) ? 'last-execution' : 'ask-every-time');
     
+    const defaultAgent = this._getStoredAgent(config.get<string>('defaultAgent'));
+    const sendBehavior = this._normalizeBehavior(
+      defaultAgent,
+      config.get<string>('sendBehavior')
+    );
+
     return {
-      defaultAgent: config.get('defaultAgent') || 'clipboard',
-      sendBehavior: config.get('sendBehavior') === 'append' ? 'append' : 'send',
-      rememberLastExecution: config.get('rememberLastExecution') ?? true,
-      previewBeforeSend: config.get('previewBeforeSend') ?? true,
+      defaultAgent,
+      sendBehavior,
+      executionSelectionMode,
       defaultTarget: config.get('defaultTarget') || 'global',
       defaultModel: (config.get('defaultModel') || 'ollama') as AIProvider,
       customProviderUrl: config.get('customProviderUrl') || '',
@@ -216,8 +238,59 @@ export class SettingsPanel {
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
   }
 
+  private _getStoredAgent(value: string | undefined): AgentType {
+    const supported = new Set(this._agentService.getAllAgentTypes());
+    return value && supported.has(value as AgentType) ? (value as AgentType) : 'clipboard';
+  }
+
+  private _normalizeBehavior(
+    agentType: AgentType,
+    behavior: string | undefined
+  ): SettingsConfig['sendBehavior'] {
+    const adapter = this._agentService.getAdapter(agentType);
+    if (!adapter) {
+      return 'send';
+    }
+
+    const behaviors = getSupportedExecutionBehaviors(adapter.capabilities).filter(
+      (item): item is SettingsConfig['sendBehavior'] =>
+        item === 'send' || item === 'append' || item === 'overwrite'
+    );
+
+    if (behaviors.length === 0) {
+      return 'send';
+    }
+
+    if (behavior === 'append' || behavior === 'overwrite' || behavior === 'send') {
+      if (behaviors.includes(behavior)) {
+        return behavior;
+      }
+    }
+
+    return behaviors.includes('send') ? 'send' : behaviors[0];
+  }
+
+  private _getAgentOptionData() {
+    return this._agentService.getAllAgentTypes().map((agentType) => {
+      const adapter = this._agentService.getAdapter(agentType);
+      const behaviors = adapter
+        ? getSupportedExecutionBehaviors(adapter.capabilities).filter(
+            (item) => item === 'send' || item === 'append' || item === 'overwrite'
+          )
+        : [];
+
+      return {
+        type: agentType,
+        label: adapter?.name ?? agentType,
+        behaviors,
+      };
+    });
+  }
+
   private _getHtmlForWebview(_webview: vscode.Webview): string {
     const settings = this._getSettings();
+    const agentOptions = this._getAgentOptionData();
+    const sendBehaviorOptions = ['send', 'append', 'overwrite'] as const;
     
     return `<!DOCTYPE html>
   <html lang="en">
@@ -452,34 +525,19 @@ export class SettingsPanel {
           <div class="form-group">
             <label for="defaultAgent">${t('Default Agent')}</label>
             <select id="defaultAgent" onchange="updateAgentVisibility()">
-              <option value="clipboard" ${settings.defaultAgent === 'clipboard' ? 'selected' : ''}>${t('Copy to Clipboard')}</option>
-              <option value="file" ${settings.defaultAgent === 'file' ? 'selected' : ''}>${t('Save to File')}</option>
-              <option value="cline" ${settings.defaultAgent === 'cline' ? 'selected' : ''}>Cline</option>
-              <option value="roo-code" ${settings.defaultAgent === 'roo-code' ? 'selected' : ''}>Roo Code</option>
-              <option value="copilot" ${settings.defaultAgent === 'copilot' ? 'selected' : ''}>GitHub Copilot</option>
-              <option value="continue" ${settings.defaultAgent === 'continue' ? 'selected' : ''}>Continue</option>
-              <option value="cursor" ${settings.defaultAgent === 'cursor' ? 'selected' : ''}>Cursor</option>
-              <option value="kilo-code" ${settings.defaultAgent === 'kilo-code' ? 'selected' : ''}>Kilo Code</option>
-              <option value="codex" ${settings.defaultAgent === 'codex' ? 'selected' : ''}>Codex</option>
-              <option value="gemini" ${settings.defaultAgent === 'gemini' ? 'selected' : ''}>Gemini Code Assist</option>
+              ${agentOptions.map((agent) => `<option value="${agent.type}" ${settings.defaultAgent === agent.type ? 'selected' : ''}>${this._escapeHtml(agent.label)}</option>`).join('')}
             </select>
             <div class="hint">${t('The default agent to send prompts to when executing')}</div>
           </div>
 
           <div class="form-group">
-            <label for="rememberLastExecution">${t('Remember last execution')}</label>
-            <div class="checkbox-group">
-              <input type="checkbox" id="rememberLastExecution" ${settings.rememberLastExecution ? 'checked' : ''}>
-              <label for="rememberLastExecution">${t('Reuse the last target and behavior when possible')}</label>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="previewBeforeSend">${t('Preview before send')}</label>
-            <div class="checkbox-group">
-              <input type="checkbox" id="previewBeforeSend" ${settings.previewBeforeSend ? 'checked' : ''}>
-              <label for="previewBeforeSend">${t('Open a preview before dispatching prompts')}</label>
-            </div>
+            <label for="executionSelectionMode">Execution Selection Mode</label>
+            <select id="executionSelectionMode">
+              <option value="last-execution" ${settings.executionSelectionMode === 'last-execution' ? 'selected' : ''}>Use last execution (per prompt)</option>
+              <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>Always use initial recommendation</option>
+              <option value="ask-every-time" ${settings.executionSelectionMode === 'ask-every-time' ? 'selected' : ''}>Ask every run</option>
+            </select>
+            <div class="hint">Choose whether runs should reuse per-prompt history, always follow initial defaults, or ask each time.</div>
           </div>
 
           <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
@@ -491,9 +549,13 @@ export class SettingsPanel {
           <div class="form-group" id="sendBehaviorGroup" style="display: ${['clipboard', 'file'].includes(settings.defaultAgent) ? 'none' : 'block'}">
             <label for="sendBehavior">${t('ui.settings.sendBehavior')}</label>
             <select id="sendBehavior">
-              <option value="send" ${settings.sendBehavior === 'send' ? 'selected' : ''}>${t('ui.settings.send')}</option>
-              <option value="append" ${settings.sendBehavior === 'append' ? 'selected' : ''}>${t('ui.settings.append')}</option>
+              ${sendBehaviorOptions.map((behavior) => `
+                <option value="${behavior}" ${settings.sendBehavior === behavior ? 'selected' : ''}>
+                  ${behavior === 'send' ? t('ui.settings.send') : behavior === 'append' ? t('ui.settings.append') : 'Overwrite Input Box'}
+                </option>
+              `).join('')}
             </select>
+            <div class="hint" id="sendBehaviorHint"></div>
           </div>
           
         </div>
@@ -557,6 +619,13 @@ export class SettingsPanel {
   </div>
 
   <script>
+    const agentBehaviorMap = ${JSON.stringify(
+      agentOptions.reduce<Record<string, string[]>>((accumulator, agent) => {
+        accumulator[agent.type] = agent.behaviors;
+        return accumulator;
+      }, {})
+    )};
+
     function showTab(tabName) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -577,8 +646,7 @@ export class SettingsPanel {
       const data = {
         defaultAgent: document.getElementById('defaultAgent').value,
         sendBehavior: document.getElementById('sendBehavior').value,
-        rememberLastExecution: document.getElementById('rememberLastExecution').checked,
-        previewBeforeSend: document.getElementById('previewBeforeSend').checked,
+        executionSelectionMode: document.getElementById('executionSelectionMode').value,
         defaultTarget: document.getElementById('defaultTarget').value,
         outputDirectory: document.getElementById('outputDirectory').value,
         defaultModel: document.getElementById('providerSelector').value,
@@ -619,8 +687,25 @@ export class SettingsPanel {
 
     function updateAgentVisibility() {
       const defaultAgent = document.getElementById('defaultAgent').value;
+      const sendBehaviorSelect = document.getElementById('sendBehavior');
+      const sendBehaviorHint = document.getElementById('sendBehaviorHint');
+      const supportedBehaviors = agentBehaviorMap[defaultAgent] || [];
+
       document.getElementById('outputDirectoryGroup').style.display = defaultAgent === 'file' ? 'block' : 'none';
       document.getElementById('sendBehaviorGroup').style.display = ['clipboard', 'file'].includes(defaultAgent) ? 'none' : 'block';
+
+      Array.from(sendBehaviorSelect.options).forEach((option) => {
+        option.hidden = !supportedBehaviors.includes(option.value);
+      });
+
+      const firstVisibleOption = Array.from(sendBehaviorSelect.options).find((option) => !option.hidden);
+      if (firstVisibleOption && !supportedBehaviors.includes(sendBehaviorSelect.value)) {
+        sendBehaviorSelect.value = firstVisibleOption.value;
+      }
+
+      sendBehaviorHint.textContent = supportedBehaviors.length > 0
+        ? 'Supported by this agent: ' + supportedBehaviors.join(', ')
+        : 'This target uses its own delivery flow.';
     }
 
     document.addEventListener('DOMContentLoaded', updateAgentVisibility);

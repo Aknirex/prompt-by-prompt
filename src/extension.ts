@@ -184,7 +184,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const commands = [
     vscode.commands.registerCommand('pbp.openSettings', () => {
-      SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext);
+      SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext, agentService);
     }),
 
     vscode.commands.registerCommand('pbp.showDiagnostics', async () => {
@@ -207,13 +207,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
 
-    vscode.commands.registerCommand('pbp.previewPrompt', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (prompt) {
-        await executionService.previewPrompt(prompt);
-      }
-    }),
-
     vscode.commands.registerCommand('pbp.rerunLastTarget', async (value?: unknown) => {
       const prompt = await pickPromptIfNeeded(value);
       if (prompt) {
@@ -225,6 +218,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await ruleManager.scanRuleFiles();
       rulesTreeProvider.refresh();
       vscode.window.showInformationMessage(t('Rules refreshed'));
+    }),
+
+    vscode.commands.registerCommand('pbp.selectRuleProfile', async () => {
+      const profiles = ruleManager.getRuleProfiles();
+      if (profiles.length === 0) {
+        vscode.window.showWarningMessage('No rule profiles available.');
+        return;
+      }
+
+      const items = profiles.map((profile) => ({
+        label: profile.name,
+        description: profile.isActive ? '(Active)' : `${profile.enabledRuleIds.length} global rule(s)`,
+        profile,
+      }));
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Select active rule profile',
+        title: 'Prompt by Prompt',
+      });
+
+      if (!selected || selected.profile.isActive) {
+        return;
+      }
+
+      await ruleManager.setActiveRuleProfile(selected.profile.id);
+      rulesTreeProvider.refresh();
+      vscode.window.showInformationMessage(`"${selected.profile.name}" ${t('set as active global rule.')}`);
     }),
 
     vscode.commands.registerCommand('pbp.refreshPrompts', async () => {
@@ -340,11 +360,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
 
     vscode.commands.registerCommand('pbp.setActiveGlobalRule', async (item: { rule?: { isGlobal?: boolean; path?: string; name?: string } }) => {
-      if (item?.rule?.isGlobal && item.rule.path) {
+      if (item?.rule?.path) {
         await ruleManager.setActiveGlobalRule(item.rule.path);
         rulesTreeProvider.refresh();
         vscode.window.showInformationMessage(`"${item.rule.name}" ${t('set as active global rule.')}`);
       }
+    }),
+
+    vscode.commands.registerCommand('pbp.setActiveRuleProfile', async (item: { profile?: { id?: string; name?: string } }) => {
+      if (!item?.profile?.id) {
+        vscode.window.showErrorMessage(t('Invalid rule item'));
+        return;
+      }
+
+      await ruleManager.setActiveRuleProfile(item.profile.id);
+      rulesTreeProvider.refresh();
+      vscode.window.showInformationMessage(`"${item.profile.name}" ${t('set as active global rule.')}`);
     }),
 
     vscode.commands.registerCommand('pbp.deleteRule', async (item: { rule?: { path?: string } }) => {

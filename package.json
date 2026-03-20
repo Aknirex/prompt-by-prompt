@@ -61,11 +61,7 @@
       },
       {
         "command": "pbp.runPromptWithPicker",
-        "title": "Run Prompt (Choose Target)"
-      },
-      {
-        "command": "pbp.previewPrompt",
-        "title": "Preview Prompt"
+        "title": "Run Prompt (Choose Target/Behavior)"
       },
       {
         "command": "pbp.rerunLastTarget",
@@ -86,12 +82,21 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "pbp.selectRuleProfile",
+        "title": "Select Rule Profile",
+        "icon": "$(layers)"
+      },
+      {
         "command": "pbp.deleteRule",
         "title": "%command.pbp.deleteRule%"
       },
       {
         "command": "pbp.setActiveGlobalRule",
         "title": "%command.pbp.setActiveGlobalRule%"
+      },
+      {
+        "command": "pbp.setActiveRuleProfile",
+        "title": "Set Active Rule Profile"
       },
       {
         "command": "pbp.createWorkspaceRule",
@@ -148,6 +153,11 @@
           "command": "pbp.refreshRules",
           "when": "view == pbp.rulesView",
           "group": "navigation@1"
+        },
+        {
+          "command": "pbp.selectRuleProfile",
+          "when": "view == pbp.rulesView",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -155,6 +165,11 @@
           "command": "pbp.runPrompt",
           "when": "view == pbp.promptsView && viewItem == prompt",
           "group": "inline"
+        },
+        {
+          "command": "pbp.runPromptWithPicker",
+          "when": "view == pbp.promptsView && viewItem == prompt",
+          "group": "2_execution"
         },
         {
           "command": "pbp.editPrompt",
@@ -179,6 +194,10 @@
         {
           "command": "pbp.setActiveGlobalRule",
           "when": "view == pbp.rulesView && viewItem == globalRuleItem"
+        },
+        {
+          "command": "pbp.setActiveRuleProfile",
+          "when": "view == pbp.rulesView && viewItem == ruleProfileItem"
         },
         {
           "command": "pbp.deleteRule",
@@ -330,6 +349,11 @@
             "roo-code",
             "copilot",
             "continue",
+            "gemini",
+            "tongyi",
+            "cursor",
+            "kilo-code",
+            "codex",
             "clipboard",
             "file"
           ],
@@ -345,20 +369,26 @@
           "type": "string",
           "enum": [
             "send",
-            "append"
+            "append",
+            "overwrite"
           ],
           "default": "send",
           "description": "%config.pbp.sendBehavior.description%"
         },
+        "pbp.executionSelectionMode": {
+          "type": "string",
+          "enum": [
+            "last-execution",
+            "initial-recommendation",
+            "ask-every-time"
+          ],
+          "default": "last-execution",
+          "description": "How execution target and behavior are chosen: reuse per-prompt last execution, always use initial recommendations, or ask every run."
+        },
         "pbp.rememberLastExecution": {
           "type": "boolean",
           "default": true,
-          "description": "Reuse the last execution target and behavior for each prompt when still available."
-        },
-        "pbp.previewBeforeSend": {
-          "type": "boolean",
-          "default": true,
-          "description": "Open a preview of the resolved prompt before dispatching it."
+          "description": "Legacy compatibility flag for last execution reuse. Prefer pbp.executionSelectionMode."
         },
         "pbp.defaultTarget": {
           "type": "string",
@@ -395,7 +425,7 @@
     "watch": "npm run esbuild-base -- --sourcemap --watch",
     "build": "npm run esbuild-base -- --minify",
     "lint": "eslint src",
-    "test": "echo \"No tests to run\"",
+    "test": "vitest run",
     "test:watch": "vitest",
     "package": "vsce package",
     "release": "release-it"
