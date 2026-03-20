@@ -52,9 +52,9 @@ Last updated: 2026-03-20
 
 ### Phase 1 收尾
 
-- [ ] 引入独立 `ExecutionPreset` 模型
-- [ ] 恢复独立命令 `pbp.previewPrompt`
-- [ ] 评估是否需要恢复 `pbp.selectExecutionTarget`
+- [x] 引入独立 `ExecutionPreset` 模型
+- [x] 恢复独立命令 `pbp.previewPrompt`
+- [x] 评估是否需要恢复 `pbp.selectExecutionTarget`
 
 ### Phase 2 收尾
 

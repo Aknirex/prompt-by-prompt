@@ -6,6 +6,7 @@ import {
   ExecutionBehavior,
   ExecutionHistoryMap,
   ExecutionHistoryRecord,
+  ExecutionPreset,
   ExecutionTarget,
   ResolvedExecution,
 } from '../types/execution';
@@ -23,6 +24,7 @@ interface ExecutionSelection {
 
 interface ExecutionServiceOptions {
   forcePicker?: boolean;
+  explicitPreset?: ExecutionPreset;
 }
 
 type ExecutionSelectionMode =
@@ -43,11 +45,53 @@ export class ExecutionService {
     prompt: PromptTemplate,
     options: ExecutionServiceOptions = {}
   ): Promise<void> {
+    const resolvedExecution = await this.resolveExecution(prompt, options);
+    if (!resolvedExecution) {
+      return;
+    }
+
+    const result = await this.dispatch(resolvedExecution);
+    if (!result.success) {
+      vscode.window.showErrorMessage(`${t('Failed to send prompt')}: ${result.message}`);
+      return;
+    }
+
+    await this.saveHistory(prompt.id, {
+      target: resolvedExecution.target,
+      behavior: resolvedExecution.behavior,
+    });
+  }
+
+  async previewPrompt(
+    prompt: PromptTemplate,
+    options: ExecutionServiceOptions = {}
+  ): Promise<ResolvedExecution | undefined> {
+    return this.resolveExecution(prompt, options);
+  }
+
+  async selectExecutionTarget(prompt: PromptTemplate): Promise<ExecutionPreset | undefined> {
+    const selection = await this.selectTargetAndBehavior();
+    if (!selection) {
+      return undefined;
+    }
+
+    await this.savePreset(prompt.id, selection);
+    return selection;
+  }
+
+  async rerunLastTarget(prompt: PromptTemplate): Promise<void> {
+    await this.runPrompt(prompt);
+  }
+
+  private async resolveExecution(
+    prompt: PromptTemplate,
+    options: ExecutionServiceOptions = {}
+  ): Promise<ResolvedExecution | undefined> {
     const editorContext = await this.contextEngine.extractContext();
     const variables = await this.collectVariables(prompt, editorContext);
     if (!variables) {
       this.log('Prompt execution cancelled while collecting variables');
-      return;
+      return undefined;
     }
 
     const renderedPrompt = await this.contextEngine.renderTemplate(prompt, editorContext, variables);
@@ -55,13 +99,13 @@ export class ExecutionService {
       vscode.window.showWarningMessage(
         t('The rendered prompt is empty. Please check your template and variables.')
       );
-      return;
+      return undefined;
     }
 
-    const selection = await this.resolveSelection(prompt.id, options.forcePicker === true);
+    const selection = options.explicitPreset ?? await this.resolveSelection(prompt.id, options.forcePicker === true);
     if (!selection) {
       this.log('Prompt execution cancelled while selecting target');
-      return;
+      return undefined;
     }
     const resolvedRules = this.resolveRules(selection.target);
 
@@ -77,18 +121,7 @@ export class ExecutionService {
       previewText: '',
     };
     resolvedExecution.previewText = this.buildPreviewText(resolvedExecution);
-
-    const result = await this.dispatch(resolvedExecution);
-    if (!result.success) {
-      vscode.window.showErrorMessage(`${t('Failed to send prompt')}: ${result.message}`);
-      return;
-    }
-
-    await this.saveHistory(prompt.id, selection);
-  }
-
-  async rerunLastTarget(prompt: PromptTemplate): Promise<void> {
-    await this.runPrompt(prompt);
+    return resolvedExecution;
   }
 
   private async collectVariables(
@@ -656,6 +689,10 @@ export class ExecutionService {
       return;
     }
 
+    await this.savePreset(promptId, selection);
+  }
+
+  private async savePreset(promptId: string, selection: ExecutionPreset): Promise<void> {
     const history = this.getHistory();
     history[promptId] = {
       promptId,

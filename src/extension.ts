@@ -15,6 +15,19 @@ import { t } from './utils/i18n';
 import { RuleManager } from './services/ruleManager';
 import { ExecutionService } from './services/executionService';
 
+async function showExecutionPreview(prompt: PromptTemplate, forcePicker = false): Promise<void> {
+  const preview = await executionService.previewPrompt(prompt, { forcePicker });
+  if (!preview) {
+    return;
+  }
+
+  const document = await vscode.workspace.openTextDocument({
+    language: 'markdown',
+    content: preview.previewText,
+  });
+  await vscode.window.showTextDocument(document, { preview: true });
+}
+
 let promptManager: PromptManager;
 let contextEngine: ContextEngine;
 let agentService: AgentService;
@@ -205,6 +218,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (prompt) {
         await executionService.runPrompt(prompt, { forcePicker: true });
       }
+    }),
+
+    vscode.commands.registerCommand('pbp.previewPrompt', async (value?: unknown) => {
+      const prompt = await pickPromptIfNeeded(value);
+      if (prompt) {
+        await showExecutionPreview(prompt);
+      }
+    }),
+
+    vscode.commands.registerCommand('pbp.selectExecutionTarget', async (value?: unknown) => {
+      const prompt = await pickPromptIfNeeded(value);
+      if (!prompt) {
+        return;
+      }
+
+      const preset = await executionService.selectExecutionTarget(prompt);
+      if (!preset) {
+        return;
+      }
+
+      vscode.window.showInformationMessage(
+        `Execution target for "${prompt.name}" saved as ${preset.target.kind === 'agent' ? preset.target.agentType : preset.target.kind}${preset.behavior ? ` (${preset.behavior})` : ''}.`
+      );
     }),
 
     vscode.commands.registerCommand('pbp.rerunLastTarget', async (value?: unknown) => {

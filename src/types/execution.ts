@@ -9,6 +9,11 @@ export type ExecutionTarget =
   | { kind: 'clipboard' }
   | { kind: 'file' };
 
+export interface ExecutionPreset {
+  target: ExecutionTarget;
+  behavior?: ExecutionBehavior;
+}
+
 export interface ResolvedExecution {
   prompt: PromptTemplate;
   renderedPrompt: string;
@@ -21,10 +26,8 @@ export interface ResolvedExecution {
   previewText: string;
 }
 
-export interface ExecutionHistoryRecord {
+export interface ExecutionHistoryRecord extends ExecutionPreset {
   promptId: string;
-  target: ExecutionTarget;
-  behavior?: ExecutionBehavior;
   executedAt: string;
 }
 

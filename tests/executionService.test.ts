@@ -316,6 +316,153 @@ describe('ExecutionService', () => {
     expect(window.showErrorMessage).toHaveBeenCalledWith('Failed to send prompt: dispatch failed');
   });
 
+  it('builds preview executions without dispatching or persisting history', async () => {
+    configValues.executionSelectionMode = 'last-execution';
+    configValues.rememberLastExecution = true;
+
+    const update = vi.fn(async () => undefined);
+    const sendToAgent = vi.fn(async () => ({ success: true }));
+    const { ExecutionService } = await import('../src/services/executionService');
+    const service = new ExecutionService(
+      {
+        globalState: {
+          get: vi.fn(() => ({})),
+          update,
+        },
+      } as never,
+      {
+        extractContext: vi.fn(async () => ({
+          selection: 'const value = 1;',
+          filepath: 'src/file.ts',
+          file_content: 'const value = 1;',
+          lang: 'typescript',
+          project_name: 'prompt-by-prompt',
+          line_number: 2,
+          column_number: 3,
+        })),
+        getMissingVariables: vi.fn(() => []),
+        renderTemplate: vi.fn(async () => 'Review this code'),
+      } as never,
+      {
+        getAdapter: vi.fn(() => ({
+          name: 'Clipboard',
+          capabilities: {
+            canCreateTask: false,
+            canFillInput: false,
+            canAppendInput: false,
+            canInsertInput: false,
+            canAutoSubmit: false,
+            canUseStructuredContext: false,
+          },
+        })),
+        sendToAgent,
+      } as never,
+      {
+        resolveRuleSet: vi.fn(() => ({
+          profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
+          workspaceRules: [],
+          globalRules: [],
+          activeRules: [],
+          activeEntries: [],
+          injectionMode: 'text-fallback',
+          notes: [],
+          conflicts: [],
+        })),
+      } as never,
+      vi.fn()
+    );
+
+    const preview = await service.previewPrompt({
+      id: 'prompt-preview',
+      name: 'Preview Prompt',
+      description: '',
+      category: 'test',
+      tags: [],
+      version: '1.0.0',
+      template: 'ignored',
+    }, {
+      explicitPreset: {
+        target: { kind: 'clipboard' },
+      },
+    });
+
+    expect(preview?.target).toEqual({ kind: 'clipboard' });
+    expect(preview?.previewText).toContain('[Dispatch Target]');
+    expect(preview?.previewText).toContain('[Actual Payload]');
+    expect(sendToAgent).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('stores an explicitly selected execution preset for a prompt', async () => {
+    const update = vi.fn(async () => undefined);
+    const { window } = await import('vscode');
+    const { ExecutionService } = await import('../src/services/executionService');
+    const service = new ExecutionService(
+      {
+        globalState: {
+          get: vi.fn(() => ({})),
+          update,
+        },
+      } as never,
+      {} as never,
+      {
+        getAdapter: vi.fn(() => ({
+          name: 'GitHub Copilot',
+          capabilities: {
+            canCreateTask: true,
+            canFillInput: true,
+            canAppendInput: false,
+            canInsertInput: false,
+            canAutoSubmit: true,
+            canUseStructuredContext: false,
+          },
+        })),
+        getAvailableAgents: vi.fn(async () => ['copilot']),
+      } as never,
+      {} as never,
+      vi.fn()
+    );
+
+    vi.mocked(window.showQuickPick)
+      .mockResolvedValueOnce({
+        label: 'GitHub Copilot',
+        description: 'send + overwrite',
+        target: { kind: 'agent', agentType: 'copilot' },
+        sortOrder: 2,
+      } as never)
+      .mockResolvedValueOnce({
+        label: 'send',
+        description: 'Send immediately to GitHub Copilot',
+        behavior: 'send',
+      } as never);
+
+    const preset = await service.selectExecutionTarget({
+      id: 'prompt-preset',
+      name: 'Preset Prompt',
+      description: '',
+      category: 'test',
+      tags: [],
+      version: '1.0.0',
+      template: 'ignored',
+    });
+
+    expect(preset).toEqual({
+      target: { kind: 'agent', agentType: 'copilot' },
+      behavior: 'send',
+    });
+    expect(update).toHaveBeenCalledWith(
+      'pbp.executionHistory',
+      expect.objectContaining({
+        'prompt-preset': expect.objectContaining({
+          promptId: 'prompt-preset',
+          target: { kind: 'agent', agentType: 'copilot' },
+          behavior: 'send',
+          executedAt: expect.any(String),
+        }),
+      })
+    );
+  });
+
   it('dispatches copilot payloads with task, rules, and context instead of preview chrome', async () => {
     const { ExecutionService } = await import('../src/services/executionService');
     const service = new ExecutionService(
