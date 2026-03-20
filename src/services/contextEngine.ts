@@ -29,6 +29,10 @@ export class ContextEngine {
     this.registerHandlebarsHelpers();
   }
 
+  getBuiltinVariables(): string[] {
+    return [...this.builtinVariables];
+  }
+
   /**
    * Extract context from current VS Code editor state
    */

@@ -118,6 +118,9 @@ export class SettingsPanel {
           case 'save':
             await this._saveSettings(message.data);
             break;
+          case 'cancel':
+            this._panel.dispose();
+            break;
         }
       },
       null,
@@ -500,14 +503,15 @@ export class SettingsPanel {
       <h1>${t('Prompt by Prompt Settings')}</h1>
 
       <div class="tabs">
-        <button class="tab active" onclick="showTab('general')">${t('General Settings')}</button>
-        <button class="tab" onclick="showTab('providers')">${t('Prompt Generator Configuration')}</button>
+        <button class="tab active" onclick="showTab(event, 'general')">${t('Daily Workflow')}</button>
+        <button class="tab" onclick="showTab(event, 'providers')">${t('Prompt Generator')}</button>
       </div>
 
       <!-- General Tab -->
       <div id="tab-general" class="tab-content active">
         <div class="section">
-          <h2>${t('General Settings')}</h2>
+          <h2>${t('Daily Workflow')}</h2>
+          <div class="hint" style="margin-bottom: 16px;">${t('These settings shape the default run experience: how execution is selected, which agent is recommended first, and where new prompts are stored.')}</div>
           
           <div class="form-group">
             <label for="uiLanguage">${t('UI Language')}</label>
@@ -520,24 +524,24 @@ export class SettingsPanel {
             </select>
           </div>
 
-          <h2>${t('Agent Settings')}</h2>
+          <h2>${t('Execution Defaults')}</h2>
           
           <div class="form-group">
-            <label for="defaultAgent">${t('Default Agent')}</label>
+            <label for="defaultAgent">${t('Initial Recommended Agent')}</label>
             <select id="defaultAgent" onchange="updateAgentVisibility()">
               ${agentOptions.map((agent) => `<option value="${agent.type}" ${settings.defaultAgent === agent.type ? 'selected' : ''}>${this._escapeHtml(agent.label)}</option>`).join('')}
             </select>
-            <div class="hint">${t('The default agent to send prompts to when executing')}</div>
+            <div class="hint">${t('This is the initial recommendation only. Depending on the selection mode, runs may reuse per-prompt history instead of this value.')}</div>
           </div>
 
           <div class="form-group">
-            <label for="executionSelectionMode">Execution Selection Mode</label>
+            <label for="executionSelectionMode">${t('Execution Selection Mode')}</label>
             <select id="executionSelectionMode">
-              <option value="last-execution" ${settings.executionSelectionMode === 'last-execution' ? 'selected' : ''}>Use last execution (per prompt)</option>
-              <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>Always use initial recommendation</option>
-              <option value="ask-every-time" ${settings.executionSelectionMode === 'ask-every-time' ? 'selected' : ''}>Ask every run</option>
+              <option value="last-execution" ${settings.executionSelectionMode === 'last-execution' ? 'selected' : ''}>${t('Reuse last execution per prompt')}</option>
+              <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>${t('Always use initial recommendation')}</option>
+              <option value="ask-every-time" ${settings.executionSelectionMode === 'ask-every-time' ? 'selected' : ''}>${t('Ask every run')}</option>
             </select>
-            <div class="hint">Choose whether runs should reuse per-prompt history, always follow initial defaults, or ask each time.</div>
+            <div class="hint">${t('Priority is: explicit choice in the current run > per-prompt last execution > initial recommendation.')}</div>
           </div>
 
           <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
@@ -547,7 +551,7 @@ export class SettingsPanel {
           </div>
 
           <div class="form-group" id="sendBehaviorGroup" style="display: ${['clipboard', 'file'].includes(settings.defaultAgent) ? 'none' : 'block'}">
-            <label for="sendBehavior">${t('ui.settings.sendBehavior')}</label>
+            <label for="sendBehavior">${t('Initial Recommended Behavior')}</label>
             <select id="sendBehavior">
               ${sendBehaviorOptions.map((behavior) => `
                 <option value="${behavior}" ${settings.sendBehavior === behavior ? 'selected' : ''}>
@@ -561,10 +565,11 @@ export class SettingsPanel {
         </div>
         
         <div class="section">
-          <h2>${t('Storage Settings')}</h2>
+          <h2>${t('Prompt Storage')}</h2>
+          <div class="hint" style="margin-bottom: 16px;">${t('Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.')}</div>
 
           <div class="form-group">
-            <label for="defaultTarget">${t('Target')}</label>
+            <label for="defaultTarget">${t('Default Save Location')}</label>
             <select id="defaultTarget">
               <option value="global" ${settings.defaultTarget === 'global' ? 'selected' : ''}>${t('Global')}</option>
               <option value="workspace" ${settings.defaultTarget === 'workspace' ? 'selected' : ''}>${t('Workspace')}</option>
@@ -577,8 +582,8 @@ export class SettingsPanel {
       <!-- AI Providers Tab -->
       <div id="tab-providers" class="tab-content">
         <div class="section">
-          <h2>${t('AI Provider Configuration')}</h2>
-          <div class="hint" style="margin-bottom: 16px;">${t('ui.settings.aiProviderDescription')}</div>
+          <h2>${t('Generator Provider')}</h2>
+          <div class="hint" style="margin-bottom: 16px;">${t('These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.')}</div>
           
           <div class="form-group">
             <label for="providerSelector">${t('Default Provider')}</label>
@@ -600,8 +605,8 @@ export class SettingsPanel {
         </div>
         
         <div class="section">
-          <h2>${t('Prompt Generator')}</h2>
-          <p>${t('Configure the system prompt used by the AI when generating new prompt templates.')}</p>
+          <h2>${t('Generator System Prompt')}</h2>
+          <p>${t('Configure the instruction used when the built-in prompt generator drafts a new template.')}</p>
           
             <div class="form-group">
               <label for="generatorSystemPrompt">${t('System Prompt')}</label>
@@ -614,7 +619,7 @@ export class SettingsPanel {
 
       <div class="buttons">
         <button type="button" class="primary" onclick="saveSettings()">${t('Save Settings')}</button>
-        <button type="button" class="secondary" onclick="resetGeneratorPrompt()">${t('Reset to Default')}</button>
+        <button type="button" class="secondary" onclick="cancel()">${t('Cancel')}</button>
       </div>
   </div>
 
@@ -626,7 +631,7 @@ export class SettingsPanel {
       }, {})
     )};
 
-    function showTab(tabName) {
+    function showTab(event, tabName) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.getElementById('tab-' + tabName).classList.add('active');
