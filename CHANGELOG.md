@@ -1,5 +1,18 @@
 # Changelog
 
+# [1.11.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.10.0...v1.11.0) (2026-03-23)
+
+
+### Features
+
+* Add diagnostics logging and new command to show diagnostics in output channel ([819e8cf](https://github.com/Aknirex/prompt-by-prompt/commit/819e8cf00893c2f31c18a34de06f2668a7b03e7f))
+* Add preview and selection commands for execution targets ([e31c196](https://github.com/Aknirex/prompt-by-prompt/commit/e31c196135923b9ec06f1b358ca172dbfb87173f))
+* Migrate legacy global prompts to file-based storage and enhance prompt management ([c77c2ab](https://github.com/Aknirex/prompt-by-prompt/commit/c77c2ab00f2c5129618ea5531cad6e4f547ae8d8))
+* Refactor agent capabilities and execution model ([a299aee](https://github.com/Aknirex/prompt-by-prompt/commit/a299aee77dbc8600a88ba32f2d593b730defc8f9))
+* Refactor RuleManager to enhance rule handling and introduce profiles ([156f05e](https://github.com/Aknirex/prompt-by-prompt/commit/156f05e506c810c01224e53e2cccbee639f7424c))
+* **settingsPanel:** add provider configuration checks and enhance UI layout ([ab425e0](https://github.com/Aknirex/prompt-by-prompt/commit/ab425e01964cc596dcabdbfb08ab8edcb2362621))
+* **settingsPanel:** enhance settings UI and add cancel functionality ([81b0eba](https://github.com/Aknirex/prompt-by-prompt/commit/81b0ebac874b51c16b72f4224566d4bf8891d638))
+
 # [1.10.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.9.0...v1.10.0) (2026-03-18)
 
 
