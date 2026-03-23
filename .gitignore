@@ -25,5 +25,3 @@ coverage/
 .env
 .env.local
 
-# Documentation
-docs/
