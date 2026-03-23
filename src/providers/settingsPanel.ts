@@ -290,10 +290,41 @@ export class SettingsPanel {
     });
   }
 
+  private _isProviderConfigured(settings: SettingsConfig, providerId: string): boolean {
+    switch (providerId) {
+      case 'ollama':
+        return Boolean(settings.ollamaEndpoint && settings.ollamaModel);
+      case 'openai':
+        return Boolean(settings.openaiApiKey && settings.openaiModel);
+      case 'anthropic':
+        return Boolean(settings.claudeApiKey && settings.claudeModel);
+      case 'groq':
+        return Boolean(settings.groqApiKey && settings.groqModel);
+      case 'google':
+        return Boolean(settings.geminiApiKey && settings.geminiModel);
+      case 'openrouter':
+        return Boolean(settings.openrouterApiKey && settings.openrouterModel);
+      case 'deepseek':
+        return Boolean(settings.deepseekApiKey && settings.deepseekModel);
+      case 'mistral':
+        return Boolean(settings.mistralApiKey && settings.mistralModel);
+      case 'xai':
+        return Boolean(settings.xaiApiKey && settings.xaiModel);
+      case 'azure':
+        return Boolean(settings.azureApiKey && settings.azureEndpoint && settings.azureModel);
+      case 'custom':
+        return Boolean(settings.customProviderUrl);
+      default:
+        return false;
+    }
+  }
+
   private _getHtmlForWebview(_webview: vscode.Webview): string {
     const settings = this._getSettings();
     const agentOptions = this._getAgentOptionData();
     const sendBehaviorOptions = ['send', 'append', 'overwrite'] as const;
+    const selectedAgent = agentOptions.find((agent) => agent.type === settings.defaultAgent);
+    const selectedProviderConfigured = this._isProviderConfigured(settings, settings.defaultModel);
     
     return `<!DOCTYPE html>
   <html lang="en">
@@ -313,6 +344,18 @@ export class SettingsPanel {
       }
       
       .container { max-width: 900px; margin: 0 auto; }
+
+      .hero {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--vscode-descriptionForeground);
+        line-height: 1.45;
+      }
       
       h1 {
         margin-bottom: 20px;
@@ -333,6 +376,28 @@ export class SettingsPanel {
         padding: 16px;
         border-radius: 0;
         margin-bottom: 20px;
+      }
+
+      .overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+
+      .overview-card {
+        background-color: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-panel-border);
+        padding: 12px;
+      }
+
+      .overview-card strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.9em;
+      }
+
+      .overview-card span {
+        font-size: 1.05em;
       }
       
       .form-group { margin-bottom: 14px; }
@@ -469,6 +534,7 @@ export class SettingsPanel {
         margin-bottom: 16px;
         border-bottom: 1px solid var(--vscode-panel-border);
         padding-bottom: 8px;
+        flex-wrap: wrap;
       }
       
       .tab {
@@ -496,47 +562,58 @@ export class SettingsPanel {
       .provider-card .form-group:last-child {
         margin-bottom: 0;
       }
+
+      .inline-note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--vscode-panel-border);
+        background-color: var(--vscode-editor-background);
+        color: var(--vscode-descriptionForeground);
+        line-height: 1.45;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>${t('Prompt by Prompt Settings')}</h1>
-
-      <div class="tabs">
-        <button class="tab active" onclick="showTab(event, 'general')">${t('Daily Workflow')}</button>
-        <button class="tab" onclick="showTab(event, 'providers')">${t('Prompt Generator')}</button>
+      <div class="hero">
+        <div>
+          <h1>${t('Prompt by Prompt Settings')}</h1>
+          <p>${t('Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.')}</p>
+        </div>
+        <div class="overview-grid">
+          <div class="overview-card">
+            <strong>${t('Run Mode')}</strong>
+            <span>${this._escapeHtml(settings.executionSelectionMode)}</span>
+          </div>
+          <div class="overview-card">
+            <strong>${t('Recommended Agent')}</strong>
+            <span>${this._escapeHtml(selectedAgent?.label ?? settings.defaultAgent)}</span>
+          </div>
+          <div class="overview-card">
+            <strong>${t('Prompt Storage')}</strong>
+            <span>${this._escapeHtml(settings.defaultTarget)}</span>
+          </div>
+          <div class="overview-card">
+            <strong>${t('Generator')}</strong>
+            <span>${this._escapeHtml(settings.defaultModel)}${selectedProviderConfigured ? '' : ` (${t('needs setup')})`}</span>
+          </div>
+        </div>
       </div>
 
-      <!-- General Tab -->
-      <div id="tab-general" class="tab-content active">
-        <div class="section">
-          <h2>${t('Daily Workflow')}</h2>
-          <div class="hint" style="margin-bottom: 16px;">${t('These settings shape the default run experience: how execution is selected, which agent is recommended first, and where new prompts are stored.')}</div>
-          
-          <div class="form-group">
-            <label for="uiLanguage">${t('UI Language')}</label>
-            <select id="uiLanguage">
-              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>${t('English')}</option>
-              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>${t('Japanese')}</option>
-              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>${t('Spanish')}</option>
-              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>${t('Korean')}</option>
-              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>${t('Chinese')}</option>
-            </select>
-          </div>
+      <div class="tabs">
+        <button class="tab active" onclick="showTab(event, 'run')">${t('Run Defaults')}</button>
+        <button class="tab" onclick="showTab(event, 'storage')">${t('Storage & UI')}</button>
+        <button class="tab" onclick="showTab(event, 'generator')">${t('Prompt Generator')}</button>
+      </div>
 
+      <div id="tab-run" class="tab-content active">
+        <div class="section">
           <h2>${t('Execution Defaults')}</h2>
-          
-          <div class="form-group">
-            <label for="defaultAgent">${t('Initial Recommended Agent')}</label>
-            <select id="defaultAgent" onchange="updateAgentVisibility()">
-              ${agentOptions.map((agent) => `<option value="${agent.type}" ${settings.defaultAgent === agent.type ? 'selected' : ''}>${this._escapeHtml(agent.label)}</option>`).join('')}
-            </select>
-            <div class="hint">${t('This is the initial recommendation only. Depending on the selection mode, runs may reuse per-prompt history instead of this value.')}</div>
-          </div>
+          <div class="hint" style="margin-bottom: 16px;">${t('These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.')}</div>
 
           <div class="form-group">
             <label for="executionSelectionMode">${t('Execution Selection Mode')}</label>
-            <select id="executionSelectionMode">
+            <select id="executionSelectionMode" onchange="updateExecutionSummary()">
               <option value="last-execution" ${settings.executionSelectionMode === 'last-execution' ? 'selected' : ''}>${t('Reuse last execution per prompt')}</option>
               <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>${t('Always use initial recommendation')}</option>
               <option value="ask-every-time" ${settings.executionSelectionMode === 'ask-every-time' ? 'selected' : ''}>${t('Ask every run')}</option>
@@ -544,10 +621,12 @@ export class SettingsPanel {
             <div class="hint">${t('Priority is: explicit choice in the current run > per-prompt last execution > initial recommendation.')}</div>
           </div>
 
-          <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
-            <label for="outputDirectory">${t('Output Directory')}</label>
-            <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/">
-            <div class="hint">${t('Directory for generated markdown files (relative to workspace or absolute path)')}</div>
+          <div class="form-group">
+            <label for="defaultAgent">${t('Initial Recommended Agent')}</label>
+            <select id="defaultAgent" onchange="updateAgentVisibility()">
+              ${agentOptions.map((agent) => `<option value="${agent.type}" ${settings.defaultAgent === agent.type ? 'selected' : ''}>${this._escapeHtml(agent.label)}</option>`).join('')}
+            </select>
+            <div class="hint">${t('This is the initial recommendation only. Depending on the selection mode, runs may reuse per-prompt history instead of this value.')}</div>
           </div>
 
           <div class="form-group" id="sendBehaviorGroup" style="display: ${['clipboard', 'file'].includes(settings.defaultAgent) ? 'none' : 'block'}">
@@ -561,9 +640,18 @@ export class SettingsPanel {
             </select>
             <div class="hint" id="sendBehaviorHint"></div>
           </div>
-          
+
+          <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
+            <label for="outputDirectory">${t('Output Directory')}</label>
+            <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/">
+            <div class="hint">${t('Directory for generated markdown files (relative to workspace or absolute path)')}</div>
+          </div>
+
+          <div class="inline-note" id="executionModeSummary"></div>
         </div>
-        
+      </div>
+
+      <div id="tab-storage" class="tab-content">
         <div class="section">
           <h2>${t('Prompt Storage')}</h2>
           <div class="hint" style="margin-bottom: 16px;">${t('Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.')}</div>
@@ -576,11 +664,28 @@ export class SettingsPanel {
             </select>
             <div class="hint">${t('Where to save new prompts by default. Global prompts are available in all projects.')}</div>
           </div>
+
+          <div class="inline-note">${t('This setting only affects prompt creation. It does not change where prompts are sent when you run them.')}</div>
+        </div>
+
+        <div class="section">
+          <h2>${t('Interface')}</h2>
+          <div class="hint" style="margin-bottom: 16px;">${t('Lower-frequency preferences live here so they do not compete with daily run decisions.')}</div>
+
+          <div class="form-group">
+            <label for="uiLanguage">${t('UI Language')}</label>
+            <select id="uiLanguage">
+              <option value="en" ${settings.uiLanguage === 'en' ? 'selected' : ''}>${t('English')}</option>
+              <option value="ja" ${settings.uiLanguage === 'ja' ? 'selected' : ''}>${t('Japanese')}</option>
+              <option value="es" ${settings.uiLanguage === 'es' ? 'selected' : ''}>${t('Spanish')}</option>
+              <option value="ko" ${settings.uiLanguage === 'ko' ? 'selected' : ''}>${t('Korean')}</option>
+              <option value="zh-cn" ${settings.uiLanguage === 'zh-cn' ? 'selected' : ''}>${t('Chinese')}</option>
+            </select>
+          </div>
         </div>
       </div>
-      
-      <!-- AI Providers Tab -->
-      <div id="tab-providers" class="tab-content">
+
+      <div id="tab-generator" class="tab-content">
         <div class="section">
           <h2>${t('Generator Provider')}</h2>
           <div class="hint" style="margin-bottom: 16px;">${t('These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.')}</div>
@@ -598,6 +703,8 @@ export class SettingsPanel {
             <label for="customProviderUrl">${t('Provider URL')}</label>
             <input type="text" id="customProviderUrl" value="${this._escapeHtml(settings.customProviderUrl)}" placeholder="https://api.example.com">
           </div>
+
+          <div class="inline-note" id="providerStatusNote">${selectedProviderConfigured ? t('The selected generator provider looks configured.') : t('The selected generator provider still needs setup before it can draft prompts.')}</div>
           
           <div id="provider-configs">
             ${this._getProviderConfigsHtml(settings)}
@@ -630,6 +737,19 @@ export class SettingsPanel {
         return accumulator;
       }, {})
     )};
+    const providerConfiguredMap = ${JSON.stringify({
+      anthropic: this._isProviderConfigured(settings, 'anthropic'),
+      azure: this._isProviderConfigured(settings, 'azure'),
+      custom: this._isProviderConfigured(settings, 'custom'),
+      deepseek: this._isProviderConfigured(settings, 'deepseek'),
+      google: this._isProviderConfigured(settings, 'google'),
+      groq: this._isProviderConfigured(settings, 'groq'),
+      mistral: this._isProviderConfigured(settings, 'mistral'),
+      ollama: this._isProviderConfigured(settings, 'ollama'),
+      openai: this._isProviderConfigured(settings, 'openai'),
+      openrouter: this._isProviderConfigured(settings, 'openrouter'),
+      xai: this._isProviderConfigured(settings, 'xai')
+    })};
 
     function showTab(event, tabName) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -641,6 +761,11 @@ export class SettingsPanel {
     function showProviderConfig(providerId) {
       document.querySelectorAll('.provider-config').forEach(el => el.style.display = 'none');
       document.getElementById('config-' + providerId).style.display = 'block';
+      document.getElementById('customProviderUrlGroup').style.display = providerId === 'custom' ? 'block' : 'none';
+      const configured = providerConfiguredMap[providerId];
+      document.getElementById('providerStatusNote').textContent = configured
+        ? '${t('The selected generator provider looks configured.')}'
+        : '${t('The selected generator provider still needs setup before it can draft prompts.')}';
     }
     
     function resetGeneratorPrompt() {
@@ -677,7 +802,6 @@ export class SettingsPanel {
         azureEndpoint: document.getElementById('azureEndpoint')?.value || '',
         azureModel: document.getElementById('azureModel')?.value || '',
         generatorSystemPrompt: document.getElementById('generatorSystemPrompt').value,
-        outputDirectory: document.getElementById('outputDirectory').value,
         uiLanguage: document.getElementById('uiLanguage').value
       };
       
@@ -711,9 +835,33 @@ export class SettingsPanel {
       sendBehaviorHint.textContent = supportedBehaviors.length > 0
         ? 'Supported by this agent: ' + supportedBehaviors.join(', ')
         : 'This target uses its own delivery flow.';
+
+      updateExecutionSummary();
     }
 
-    document.addEventListener('DOMContentLoaded', updateAgentVisibility);
+    function updateExecutionSummary() {
+      const mode = document.getElementById('executionSelectionMode').value;
+      const agent = document.getElementById('defaultAgent');
+      const agentLabel = agent.options[agent.selectedIndex]?.text || agent.value;
+      const summary = document.getElementById('executionModeSummary');
+
+      if (mode === 'last-execution') {
+        summary.textContent = 'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.';
+        return;
+      }
+
+      if (mode === 'initial-recommendation') {
+        summary.textContent = 'Each run will start from the recommended agent ' + agentLabel + ' and its supported default behavior.';
+        return;
+      }
+
+      summary.textContent = 'Each run will ask for a target again, so these defaults only help with ordering and fallback.';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateAgentVisibility();
+      showProviderConfig(document.getElementById('providerSelector').value);
+    });
   </script>
 </body>
 </html>`;

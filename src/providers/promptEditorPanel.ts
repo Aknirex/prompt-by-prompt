@@ -3,14 +3,12 @@
  */
 
 import * as vscode from 'vscode';
+import * as yaml from 'js-yaml';
 import { PromptTemplate, PromptVariable } from '../types/prompt';
 import { AIService, AIProvider, DEFAULT_GENERATOR_SYSTEM_PROMPT } from '../services/aiService';
 import { ContextEngine } from '../services/contextEngine';
 import { t } from '../utils/i18n';
 
-/**
- * Result from the prompt editor
- */
 export interface PromptEditorResult {
   name: string;
   description: string;
@@ -26,9 +24,15 @@ interface PreviewRequestData {
   variables?: PromptVariable[];
 }
 
-/**
- * Prompt Editor Panel using Webview
- */
+interface PromptEditorDraft {
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  template: string;
+  variables?: PromptVariable[];
+}
+
 export class PromptEditorPanel {
   public static currentPanel: PromptEditorPanel | undefined;
   public static readonly viewType = 'pbp.promptEditor';
@@ -117,6 +121,9 @@ export class PromptEditorPanel {
             }
             this._panel.dispose();
             break;
+          case 'saveFromYaml':
+            await this._handleSaveFromYaml(message.data);
+            break;
           case 'cancel':
             this._panel.dispose();
             break;
@@ -125,6 +132,15 @@ export class PromptEditorPanel {
             break;
           case 'preview':
             await this._handlePreview(message.data);
+            break;
+          case 'syncYaml':
+            this._panel.webview.postMessage({
+              command: 'syncYamlResult',
+              yaml: this._serializeDraft(message.data),
+            });
+            break;
+          case 'applyYaml':
+            await this._handleApplyYaml(message.data);
             break;
         }
       },
@@ -205,6 +221,39 @@ export class PromptEditorPanel {
     }
   }
 
+  private async _handleSaveFromYaml(data: { yamlText: string; target: 'workspace' | 'global' }): Promise<void> {
+    try {
+      const parsed = this._parseDraftYaml(data.yamlText);
+      if (this._onSave) {
+        this._onSave({
+          ...parsed,
+          target: data.target,
+        });
+      }
+      this._panel.dispose();
+    } catch (error) {
+      this._panel.webview.postMessage({
+        command: 'saveError',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private async _handleApplyYaml(data: { yamlText: string }): Promise<void> {
+    try {
+      const parsed = this._parseDraftYaml(data.yamlText);
+      this._panel.webview.postMessage({
+        command: 'applyYamlResult',
+        data: parsed,
+      });
+    } catch (error) {
+      this._panel.webview.postMessage({
+        command: 'applyYamlResult',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private _buildPreviewVariables(template: string, variables: PromptVariable[]): Record<string, string> {
     const previewVariables: Record<string, string> = {};
     const variableMap = new Map(variables.map((variable) => [variable.name, variable]));
@@ -248,6 +297,94 @@ export class PromptEditorPanel {
     return variable.placeholder || `[${variable.name}]`;
   }
 
+  private _serializeDraft(data: PromptEditorDraft): string {
+    const normalized = this._normalizeDraft(data);
+    return yaml.dump(
+      {
+        name: normalized.name,
+        description: normalized.description,
+        category: normalized.category,
+        tags: normalized.tags,
+        variables: normalized.variables?.length ? normalized.variables : undefined,
+        template: normalized.template,
+      },
+      {
+        indent: 2,
+        lineWidth: -1,
+        quotingType: '"',
+        forceQuotes: false,
+      }
+    );
+  }
+
+  private _parseDraftYaml(yamlText: string): PromptEditorDraft {
+    const parsed = yaml.load(yamlText);
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error(t('YAML must describe a prompt object.'));
+    }
+
+    return this._normalizeDraft(parsed as Partial<PromptEditorDraft>);
+  }
+
+  private _normalizeDraft(data: Partial<PromptEditorDraft>): PromptEditorDraft {
+    let tags: string[] = [];
+    if (Array.isArray(data.tags)) {
+      tags = data.tags.map((tag) => String(tag).trim()).filter(Boolean);
+    }
+
+    return {
+      name: typeof data.name === 'string' ? data.name : '',
+      description: typeof data.description === 'string' ? data.description : '',
+      category: typeof data.category === 'string' ? data.category : '',
+      tags,
+      template: typeof data.template === 'string' ? data.template : '',
+      variables: this._normalizeVariables(data.variables),
+    };
+  }
+
+  private _normalizeVariables(variables: unknown): PromptVariable[] | undefined {
+    if (!Array.isArray(variables)) {
+      return undefined;
+    }
+
+    const normalized = variables.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return [];
+      }
+
+      const record = entry as Record<string, unknown>;
+      const name = typeof record.name === 'string' ? record.name.trim() : '';
+      if (!name) {
+        return [];
+      }
+
+      const type = record.type;
+      const normalizedType: PromptVariable['type'] =
+        type === 'number' || type === 'boolean' || type === 'enum' ? type : 'string';
+      const values = Array.isArray(record.values)
+        ? record.values.map((value) => String(value)).filter(Boolean)
+        : undefined;
+
+      return [{
+        name,
+        description: typeof record.description === 'string' ? record.description : name,
+        type: normalizedType,
+        required: Boolean(record.required),
+        default:
+          typeof record.default === 'string' ||
+          typeof record.default === 'number' ||
+          typeof record.default === 'boolean'
+            ? record.default
+            : undefined,
+        placeholder: typeof record.placeholder === 'string' ? record.placeholder : undefined,
+        multiline: Boolean(record.multiline),
+        values: normalizedType === 'enum' && values && values.length > 0 ? values : undefined,
+      }];
+    });
+
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
   private _update(): void {
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
   }
@@ -259,6 +396,14 @@ export class PromptEditorPanel {
     const config = vscode.workspace.getConfiguration('pbp');
     const defaultProvider = config.get('defaultModel') || 'ollama';
     const defaultModel = config.get(`${defaultProvider}Model`) || '';
+    const initialYamlDraft = this._escapeHtml(this._serializeDraft({
+      name: prompt?.name || '',
+      description: prompt?.description || '',
+      category: prompt?.category || '',
+      tags: prompt?.tags || [],
+      template: prompt?.template || '',
+      variables: prompt?.variables,
+    }));
     const builtinVariableCards = this._builtinVariables.map((variable) => `
       <div class="builtin-card">
         <code>{{${this._escapeHtml(variable)}}}</code>
@@ -444,7 +589,8 @@ export class PromptEditorPanel {
 
     .variables-toolbar,
     .template-toolbar,
-    .preview-toolbar {
+    .preview-toolbar,
+    .editor-mode-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -484,6 +630,43 @@ export class PromptEditorPanel {
     .checkbox-inline label {
       margin: 0;
       font-weight: 500;
+    }
+
+    .editor-mode-buttons {
+      display: inline-flex;
+      border: 1px solid var(--vscode-panel-border);
+    }
+
+    .editor-mode-btn {
+      background: transparent;
+      color: var(--vscode-editor-foreground);
+      border: none;
+      padding: 8px 14px;
+    }
+
+    .editor-mode-btn.active {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+
+    .editor-mode-panel {
+      display: none;
+    }
+
+    .editor-mode-panel.active {
+      display: block;
+    }
+
+    .yaml-toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .yaml-editor {
+      min-height: 420px;
+      font-family: var(--vscode-editor-font-family);
     }
 
     .remove-variable-btn {
@@ -580,6 +763,7 @@ export class PromptEditorPanel {
       padding: 10px 12px;
       border: 1px solid transparent;
       line-height: 1.45;
+      margin-bottom: 12px;
     }
 
     .message.active { display: block; }
@@ -608,7 +792,9 @@ export class PromptEditorPanel {
 
       .provider-row,
       .generator-input-row,
-      .actions {
+      .actions,
+      .template-toolbar,
+      .editor-mode-toolbar {
         flex-direction: column;
         align-items: stretch;
       }
@@ -617,7 +803,8 @@ export class PromptEditorPanel {
         justify-content: stretch;
       }
 
-      .actions-right button {
+      .actions-right button,
+      .editor-mode-buttons {
         width: 100%;
       }
     }
@@ -633,6 +820,7 @@ export class PromptEditorPanel {
       <div>
         <span class="pill">${isNew ? t('New Template') : t('Editing Existing Template')}</span>
         <span class="pill">${t('Schema + Preview')}</span>
+        <span class="pill">${t('Form + YAML')}</span>
       </div>
     </div>
 
@@ -670,6 +858,7 @@ export class PromptEditorPanel {
       <div class="message error" id="errorMessage"></div>
     </div>
     ` : ''}
+
     <div class="section">
       <h2>${t('Prompt Metadata')}</h2>
       <div class="grid-two">
@@ -712,23 +901,56 @@ export class PromptEditorPanel {
 
     <div class="layout">
       <div class="section">
-        <div class="template-toolbar">
+        <div class="editor-mode-toolbar">
           <div>
-            <h2>${t('Prompt Template')}</h2>
-            <div class="hint">${t('Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.')}</div>
+            <h2>${t('Prompt Editor')}</h2>
+            <div class="hint">${t('Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.')}</div>
           </div>
-          <button type="button" class="secondary" onclick="requestPreview()">${t('Refresh Preview')}</button>
-        </div>
-        <div class="form-group">
-          <label for="template">${t('Prompt')} *</label>
-          <textarea id="template" class="template" placeholder="${t('Enter your prompt here...')}">${this._escapeHtml(prompt?.template || '')}</textarea>
-        </div>
-        <div>
-          <label>${t('Built-in Context Variables')}</label>
-          <div class="builtin-grid">
-            ${builtinVariableCards}
+          <div class="editor-mode-buttons">
+            <button type="button" class="editor-mode-btn active" id="mode-form" onclick="showEditorMode('form')">${t('Form View')}</button>
+            <button type="button" class="editor-mode-btn" id="mode-yaml" onclick="showEditorMode('yaml')">${t('YAML View')}</button>
           </div>
-          <div class="hint">${t('Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.')}</div>
+        </div>
+
+        <div class="editor-mode-panel active" id="editor-panel-form">
+          <div class="template-toolbar">
+            <div>
+              <h2>${t('Prompt Template')}</h2>
+              <div class="hint">${t('Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.')}</div>
+            </div>
+            <button type="button" class="secondary" onclick="requestPreview()">${t('Refresh Preview')}</button>
+          </div>
+          <div class="form-group">
+            <label for="template">${t('Prompt')} *</label>
+            <textarea id="template" class="template" placeholder="${t('Enter your prompt here...')}">${this._escapeHtml(prompt?.template || '')}</textarea>
+          </div>
+          <div>
+            <label>${t('Built-in Context Variables')}</label>
+            <div class="builtin-grid">
+              ${builtinVariableCards}
+            </div>
+            <div class="hint">${t('Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.')}</div>
+          </div>
+        </div>
+
+        <div class="editor-mode-panel" id="editor-panel-yaml">
+          <div class="template-toolbar">
+            <div>
+              <h2>${t('Prompt YAML')}</h2>
+              <div class="hint">${t('Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.')}</div>
+            </div>
+            <button type="button" class="secondary" onclick="requestPreview()">${t('Refresh Preview')}</button>
+          </div>
+          <div class="yaml-toolbar">
+            <button type="button" class="secondary" onclick="syncFormToYaml()">${t('Sync Form to YAML')}</button>
+            <button type="button" class="secondary" onclick="applyYamlToForm()">${t('Apply YAML to Form')}</button>
+          </div>
+          <div class="message info active" id="yamlStatus">${t('YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.')}</div>
+          <div class="message error" id="yamlError"></div>
+          <div class="form-group">
+            <label for="yamlEditor">${t('Prompt Definition')}</label>
+            <textarea id="yamlEditor" class="yaml-editor" spellcheck="false">${initialYamlDraft}</textarea>
+          </div>
         </div>
       </div>
 
@@ -747,7 +969,7 @@ export class PromptEditorPanel {
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="variableSchemaSection">
       <div class="variables-toolbar">
         <div>
           <h2>${t('Variable Schema')}</h2>
@@ -774,6 +996,7 @@ export class PromptEditorPanel {
     const providers = ${JSON.stringify(providers)};
     let variableCount = ${prompt?.variables?.length || 0};
     let previewTimer = undefined;
+    let currentEditorMode = 'form';
 
     document.addEventListener('DOMContentLoaded', () => {
       updateModels();
@@ -812,6 +1035,15 @@ export class PromptEditorPanel {
       });
     }
 
+    function showEditorMode(mode) {
+      currentEditorMode = mode;
+      document.getElementById('editor-panel-form').classList.toggle('active', mode === 'form');
+      document.getElementById('editor-panel-yaml').classList.toggle('active', mode === 'yaml');
+      document.getElementById('mode-form').classList.toggle('active', mode === 'form');
+      document.getElementById('mode-yaml').classList.toggle('active', mode === 'yaml');
+      document.getElementById('variableSchemaSection').style.display = mode === 'form' ? 'block' : 'none';
+    }
+
     function schedulePreview() {
       clearTimeout(previewTimer);
       previewTimer = setTimeout(requestPreview, 220);
@@ -820,7 +1052,9 @@ export class PromptEditorPanel {
     function requestPreview() {
       const previewStatus = document.getElementById('previewStatus');
       const previewError = document.getElementById('previewError');
-      previewStatus.textContent = '${t('Refreshing preview...')}';
+      previewStatus.textContent = currentEditorMode === 'yaml'
+        ? '${t('Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.')}'
+        : '${t('Refreshing preview...')}';
       previewStatus.classList.add('active');
       previewError.classList.remove('active');
 
@@ -855,19 +1089,40 @@ export class PromptEditorPanel {
           }
           break;
         case 'previewResult':
-          const previewBox = document.getElementById('previewBox');
-          const previewStatus = document.getElementById('previewStatus');
-          const previewError = document.getElementById('previewError');
-          if (message.error) {
-            previewError.textContent = message.error;
-            previewError.classList.add('active');
-            previewStatus.textContent = '${t('Preview unavailable right now.')}';
-            previewBox.textContent = '';
-          } else {
-            previewError.classList.remove('active');
-            previewStatus.textContent = '${t('Preview uses current editor context plus schema defaults.')}';
-            previewBox.textContent = message.preview || '';
+          {
+            const previewBox = document.getElementById('previewBox');
+            const previewStatus = document.getElementById('previewStatus');
+            const previewError = document.getElementById('previewError');
+            if (message.error) {
+              previewError.textContent = message.error;
+              previewError.classList.add('active');
+              previewStatus.textContent = '${t('Preview unavailable right now.')}';
+              previewBox.textContent = '';
+            } else {
+              previewError.classList.remove('active');
+              previewStatus.textContent = currentEditorMode === 'yaml'
+                ? '${t('Preview still reflects the form state. Apply YAML to form to preview YAML edits.')}'
+                : '${t('Preview uses current editor context plus schema defaults.')}';
+              previewBox.textContent = message.preview || '';
+            }
           }
+          break;
+        case 'syncYamlResult':
+          document.getElementById('yamlEditor').value = message.yaml || '';
+          setYamlInfo('${t('YAML refreshed from the current form state.')}', false);
+          break;
+        case 'applyYamlResult':
+          if (message.error) {
+            setYamlInfo(message.error, true);
+            return;
+          }
+          applyFormState(message.data);
+          setYamlInfo('${t('YAML applied to the shared form state.')}', false);
+          showEditorMode('form');
+          requestPreview();
+          break;
+        case 'saveError':
+          setYamlInfo(message.error || '${t('Failed to save YAML prompt definition.')}', true);
           break;
       }
     });
@@ -880,6 +1135,36 @@ export class PromptEditorPanel {
         command: 'generate',
         data: { description, provider, model }
       });
+    }
+
+    function syncFormToYaml() {
+      vscode.postMessage({
+        command: 'syncYaml',
+        data: collectFormState()
+      });
+    }
+
+    function applyYamlToForm() {
+      vscode.postMessage({
+        command: 'applyYaml',
+        data: {
+          yamlText: document.getElementById('yamlEditor').value
+        }
+      });
+    }
+
+    function setYamlInfo(message, isError) {
+      const status = document.getElementById('yamlStatus');
+      const error = document.getElementById('yamlError');
+      if (isError) {
+        error.textContent = message;
+        error.classList.add('active');
+        status.classList.remove('active');
+      } else {
+        status.textContent = message;
+        status.classList.add('active');
+        error.classList.remove('active');
+      }
     }
 
     function createVariableMarkup(id, variable = {}) {
@@ -935,8 +1220,13 @@ export class PromptEditorPanel {
     }
 
     function addVariable(variable = {}) {
-      variableCount += 1;
       const list = document.getElementById('variables-list');
+      const emptyState = list.querySelector('.hint');
+      if (emptyState) {
+        emptyState.remove();
+      }
+
+      variableCount += 1;
       const wrapper = document.createElement('div');
       wrapper.innerHTML = createVariableMarkup(variableCount, variable);
       list.appendChild(wrapper.firstElementChild);
@@ -971,6 +1261,12 @@ export class PromptEditorPanel {
       if (element) {
         element.remove();
       }
+
+      const list = document.getElementById('variables-list');
+      if (list.children.length === 0) {
+        list.innerHTML = '<div class="hint">${t('No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.')}</div>';
+      }
+
       schedulePreview();
     }
 
@@ -1012,14 +1308,51 @@ export class PromptEditorPanel {
       return variables;
     }
 
+    function collectFormState() {
+      return {
+        name: document.getElementById('name').value.trim(),
+        category: document.getElementById('category').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        tags: document.getElementById('tags').value.split(',').map((tag) => tag.trim()).filter(Boolean),
+        template: document.getElementById('template').value,
+        variables: getVariables()
+      };
+    }
+
+    function applyFormState(state) {
+      document.getElementById('name').value = state.name || '';
+      document.getElementById('category').value = state.category || '';
+      document.getElementById('description').value = state.description || '';
+      document.getElementById('tags').value = Array.isArray(state.tags) ? state.tags.join(', ') : '';
+      document.getElementById('template').value = state.template || '';
+
+      const list = document.getElementById('variables-list');
+      list.innerHTML = '';
+      variableCount = 0;
+
+      const variables = Array.isArray(state.variables) ? state.variables : [];
+      if (variables.length === 0) {
+        list.innerHTML = '<div class="hint">${t('No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.')}</div>';
+      } else {
+        variables.forEach((variable) => addVariable(variable));
+      }
+    }
+
     function savePrompt() {
-      const name = document.getElementById('name').value.trim();
-      const category = document.getElementById('category').value.trim();
-      const description = document.getElementById('description').value.trim();
-      const tags = document.getElementById('tags').value.split(',').map((tag) => tag.trim()).filter(Boolean);
-      const template = document.getElementById('template').value;
       const target = document.querySelector('input[name="target"]:checked')?.value || 'global';
-      const variables = getVariables();
+
+      if (currentEditorMode === 'yaml') {
+        vscode.postMessage({
+          command: 'saveFromYaml',
+          data: {
+            yamlText: document.getElementById('yamlEditor').value,
+            target
+          }
+        });
+        return;
+      }
+
+      const { name, category, description, tags, template, variables } = collectFormState();
 
       if (!name) {
         alert('${t('Name is required')}');
