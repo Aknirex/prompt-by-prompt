@@ -25,3 +25,10 @@ coverage/
 .env
 .env.local
 
+# Legacy docs drafts
+docs/-1-original-ideas/
+docs/04-features/
+docs/00-overview.md
+docs/01-product-requirements.md
+docs/KNOWN-ISSUES-3.18
+
