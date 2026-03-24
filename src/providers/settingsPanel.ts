@@ -131,54 +131,63 @@ export class SettingsPanel {
   private async _saveSettings(data: SettingsConfig): Promise<void> {
     const config = vscode.workspace.getConfiguration('pbp');
     const normalizedBehavior = this._normalizeBehavior(data.defaultAgent, data.sendBehavior);
+    const saveWarnings: string[] = [];
     
     try {
+      const updateSetting = async (key: string, value: unknown): Promise<void> => {
+        try {
+          await config.update(key, value, vscode.ConfigurationTarget.Global);
+        } catch (error) {
+          saveWarnings.push(`${key}: ${error}`);
+        }
+      };
+
       // Agent settings
-      await config.update('defaultAgent', data.defaultAgent, vscode.ConfigurationTarget.Global);
-      await config.update('sendBehavior', normalizedBehavior, vscode.ConfigurationTarget.Global);
-      await config.update('executionSelectionMode', data.executionSelectionMode, vscode.ConfigurationTarget.Global);
-      await config.update(
-        'rememberLastExecution',
-        data.executionSelectionMode === 'last-execution',
-        vscode.ConfigurationTarget.Global
-      );
-      await config.update('defaultTarget', data.defaultTarget, vscode.ConfigurationTarget.Global);
+      await updateSetting('defaultAgent', data.defaultAgent);
+      await updateSetting('sendBehavior', normalizedBehavior);
+      await updateSetting('executionSelectionMode', data.executionSelectionMode);
+      await updateSetting('rememberLastExecution', data.executionSelectionMode === 'last-execution');
+      await updateSetting('defaultTarget', data.defaultTarget);
       
       // AI Provider settings
-      await config.update('defaultModel', data.defaultModel, vscode.ConfigurationTarget.Global);
-      await config.update('customProviderUrl', data.customProviderUrl, vscode.ConfigurationTarget.Global);
+      await updateSetting('defaultModel', data.defaultModel);
+      await updateSetting('customProviderUrl', data.customProviderUrl);
       
       // Provider-specific settings
-      await config.update('ollamaEndpoint', data.ollamaEndpoint, vscode.ConfigurationTarget.Global);
-      await config.update('ollamaModel', data.ollamaModel, vscode.ConfigurationTarget.Global);
-      await config.update('openaiApiKey', data.openaiApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('openaiModel', data.openaiModel, vscode.ConfigurationTarget.Global);
-      await config.update('claudeApiKey', data.claudeApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('claudeModel', data.claudeModel, vscode.ConfigurationTarget.Global);
-      await config.update('groqApiKey', data.groqApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('groqModel', data.groqModel, vscode.ConfigurationTarget.Global);
-      await config.update('geminiApiKey', data.geminiApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('geminiModel', data.geminiModel, vscode.ConfigurationTarget.Global);
-      await config.update('openrouterApiKey', data.openrouterApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('openrouterModel', data.openrouterModel, vscode.ConfigurationTarget.Global);
-      await config.update('deepseekApiKey', data.deepseekApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('deepseekModel', data.deepseekModel, vscode.ConfigurationTarget.Global);
-      await config.update('mistralApiKey', data.mistralApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('mistralModel', data.mistralModel, vscode.ConfigurationTarget.Global);
-      await config.update('xaiApiKey', data.xaiApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('xaiModel', data.xaiModel, vscode.ConfigurationTarget.Global);
-      await config.update('azureApiKey', data.azureApiKey, vscode.ConfigurationTarget.Global);
-      await config.update('azureEndpoint', data.azureEndpoint, vscode.ConfigurationTarget.Global);
-      await config.update('azureModel', data.azureModel, vscode.ConfigurationTarget.Global);
+      await updateSetting('ollamaEndpoint', data.ollamaEndpoint);
+      await updateSetting('ollamaModel', data.ollamaModel);
+      await updateSetting('openaiApiKey', data.openaiApiKey);
+      await updateSetting('openaiModel', data.openaiModel);
+      await updateSetting('claudeApiKey', data.claudeApiKey);
+      await updateSetting('claudeModel', data.claudeModel);
+      await updateSetting('groqApiKey', data.groqApiKey);
+      await updateSetting('groqModel', data.groqModel);
+      await updateSetting('geminiApiKey', data.geminiApiKey);
+      await updateSetting('geminiModel', data.geminiModel);
+      await updateSetting('openrouterApiKey', data.openrouterApiKey);
+      await updateSetting('openrouterModel', data.openrouterModel);
+      await updateSetting('deepseekApiKey', data.deepseekApiKey);
+      await updateSetting('deepseekModel', data.deepseekModel);
+      await updateSetting('mistralApiKey', data.mistralApiKey);
+      await updateSetting('mistralModel', data.mistralModel);
+      await updateSetting('xaiApiKey', data.xaiApiKey);
+      await updateSetting('xaiModel', data.xaiModel);
+      await updateSetting('azureApiKey', data.azureApiKey);
+      await updateSetting('azureEndpoint', data.azureEndpoint);
+      await updateSetting('azureModel', data.azureModel);
       
       // Generator system prompt
       await this._context.globalState.update('pbp.generatorSystemPrompt', data.generatorSystemPrompt);
 
       // File output settings
-      await config.update('outputDirectory', data.outputDirectory, vscode.ConfigurationTarget.Global);
-      await config.update('uiLanguage', data.uiLanguage, vscode.ConfigurationTarget.Global);
+      await updateSetting('outputDirectory', data.outputDirectory);
+      await updateSetting('uiLanguage', data.uiLanguage);
       
-      vscode.window.showInformationMessage(t('Settings saved successfully!'));
+      if (saveWarnings.length > 0) {
+        vscode.window.showWarningMessage(t('Settings saved with partial issues: {0}', saveWarnings.join(' | ')));
+      } else {
+        vscode.window.showInformationMessage(t('Settings saved successfully!'));
+      }
       this._panel.dispose();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to save settings: ${error}`);
@@ -586,7 +595,7 @@ export class SettingsPanel {
             <span>${this._escapeHtml(settings.executionSelectionMode)}</span>
           </div>
           <div class="overview-card">
-            <strong>${t('Recommended Agent')}</strong>
+            <strong>${t('Preset Agent')}</strong>
             <span>${this._escapeHtml(selectedAgent?.label ?? settings.defaultAgent)}</span>
           </div>
           <div class="overview-card">
@@ -615,22 +624,22 @@ export class SettingsPanel {
             <label for="executionSelectionMode">${t('Execution Selection Mode')}</label>
             <select id="executionSelectionMode" onchange="updateExecutionSummary()">
               <option value="last-execution" ${settings.executionSelectionMode === 'last-execution' ? 'selected' : ''}>${t('Reuse last execution per prompt')}</option>
-              <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>${t('Always use initial recommendation')}</option>
+              <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>${t('Preset')}</option>
               <option value="ask-every-time" ${settings.executionSelectionMode === 'ask-every-time' ? 'selected' : ''}>${t('Ask every run')}</option>
             </select>
-            <div class="hint">${t('Priority is: explicit choice in the current run > per-prompt last execution > initial recommendation.')}</div>
+            <div class="hint">${t('Priority is: explicit choice in the current run > per-prompt last execution > preset.')}</div>
           </div>
 
-          <div class="form-group">
-            <label for="defaultAgent">${t('Initial Recommended Agent')}</label>
+          <div class="form-group" id="presetAgentGroup" style="display: ${settings.executionSelectionMode === 'initial-recommendation' ? 'block' : 'none'}">
+            <label for="defaultAgent">${t('Preset Agent')}</label>
             <select id="defaultAgent" onchange="updateAgentVisibility()">
               ${agentOptions.map((agent) => `<option value="${agent.type}" ${settings.defaultAgent === agent.type ? 'selected' : ''}>${this._escapeHtml(agent.label)}</option>`).join('')}
             </select>
-            <div class="hint">${t('This is the initial recommendation only. Depending on the selection mode, runs may reuse per-prompt history instead of this value.')}</div>
+            <div class="hint">${t('This preset is only used when execution selection mode is set to preset.')}</div>
           </div>
 
-          <div class="form-group" id="sendBehaviorGroup" style="display: ${['clipboard', 'file'].includes(settings.defaultAgent) ? 'none' : 'block'}">
-            <label for="sendBehavior">${t('Initial Recommended Behavior')}</label>
+          <div class="form-group" id="sendBehaviorGroup" style="display: ${settings.executionSelectionMode === 'initial-recommendation' && !['clipboard', 'file'].includes(settings.defaultAgent) ? 'block' : 'none'}">
+            <label for="sendBehavior">${t('Preset Behavior')}</label>
             <select id="sendBehavior">
               ${sendBehaviorOptions.map((behavior) => `
                 <option value="${behavior}" ${settings.sendBehavior === behavior ? 'selected' : ''}>
@@ -641,7 +650,7 @@ export class SettingsPanel {
             <div class="hint" id="sendBehaviorHint"></div>
           </div>
 
-          <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.defaultAgent === 'file' ? 'block' : 'none'}">
+          <div class="form-group" id="outputDirectoryGroup" style="display: ${settings.executionSelectionMode === 'initial-recommendation' && settings.defaultAgent === 'file' ? 'block' : 'none'}">
             <label for="outputDirectory">${t('Output Directory')}</label>
             <input type="text" id="outputDirectory" value="${this._escapeHtml(settings.outputDirectory)}" placeholder=".prompts/">
             <div class="hint">${t('Directory for generated markdown files (relative to workspace or absolute path)')}</div>
@@ -820,8 +829,12 @@ export class SettingsPanel {
       const sendBehaviorHint = document.getElementById('sendBehaviorHint');
       const supportedBehaviors = agentBehaviorMap[defaultAgent] || [];
 
-      document.getElementById('outputDirectoryGroup').style.display = defaultAgent === 'file' ? 'block' : 'none';
-      document.getElementById('sendBehaviorGroup').style.display = ['clipboard', 'file'].includes(defaultAgent) ? 'none' : 'block';
+      const mode = document.getElementById('executionSelectionMode').value;
+      const presetVisible = mode === 'initial-recommendation';
+
+      document.getElementById('presetAgentGroup').style.display = presetVisible ? 'block' : 'none';
+      document.getElementById('outputDirectoryGroup').style.display = presetVisible && defaultAgent === 'file' ? 'block' : 'none';
+      document.getElementById('sendBehaviorGroup').style.display = presetVisible && !['clipboard', 'file'].includes(defaultAgent) ? 'block' : 'none';
 
       Array.from(sendBehaviorSelect.options).forEach((option) => {
         option.hidden = !supportedBehaviors.includes(option.value);
@@ -851,7 +864,7 @@ export class SettingsPanel {
       }
 
       if (mode === 'initial-recommendation') {
-        summary.textContent = 'Each run will start from the recommended agent ' + agentLabel + ' and its supported default behavior.';
+        summary.textContent = 'Each run will start from the preset agent ' + agentLabel + ' and its supported preset behavior.';
         return;
       }
 
