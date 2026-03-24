@@ -16,6 +16,8 @@ import { RuleManager } from './ruleManager';
 import { t } from '../utils/i18n';
 
 const EXECUTION_HISTORY_KEY = 'pbp.executionHistory';
+const EXECUTION_SELECTION_MODE_STATE_KEY = 'pbp.executionSelectionMode';
+const REMEMBER_LAST_EXECUTION_STATE_KEY = 'pbp.rememberLastExecution';
 
 interface ExecutionSelection {
   target: ExecutionTarget;
@@ -423,7 +425,16 @@ export class ExecutionService {
       return configured;
     }
 
-    const rememberLastExecution = config.get<boolean>('rememberLastExecution');
+    const globalMode = this.context.globalState.get<string>(EXECUTION_SELECTION_MODE_STATE_KEY);
+    if (
+      globalMode === 'last-execution' ||
+      globalMode === 'initial-recommendation' ||
+      globalMode === 'ask-every-time'
+    ) {
+      return globalMode;
+    }
+
+    const rememberLastExecution = this.getRememberLastExecution(config);
     return rememberLastExecution === false ? 'ask-every-time' : 'last-execution';
   }
 
@@ -685,7 +696,7 @@ export class ExecutionService {
     }
 
     const config = vscode.workspace.getConfiguration('pbp');
-    if (config.get<boolean>('rememberLastExecution') === false) {
+    if (this.getRememberLastExecution(config) === false) {
       return;
     }
 
@@ -723,5 +734,14 @@ export class ExecutionService {
     }
 
     return this.getSupportedBehaviors(record.target.agentType).includes(record.behavior);
+  }
+
+  private getRememberLastExecution(config: vscode.WorkspaceConfiguration): boolean | undefined {
+    const configured = config.get<boolean>('rememberLastExecution');
+    if (typeof configured === 'boolean') {
+      return configured;
+    }
+
+    return this.context.globalState.get<boolean>(REMEMBER_LAST_EXECUTION_STATE_KEY);
   }
 }

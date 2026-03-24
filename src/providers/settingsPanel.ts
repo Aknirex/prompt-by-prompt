@@ -63,6 +63,8 @@ export interface SettingsConfig {
 export class SettingsPanel {
   public static currentPanel: SettingsPanel | undefined;
   public static readonly viewType = 'pbp.settings';
+  private static readonly EXECUTION_SELECTION_MODE_STATE_KEY = 'pbp.executionSelectionMode';
+  private static readonly REMEMBER_LAST_EXECUTION_STATE_KEY = 'pbp.rememberLastExecution';
   
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
@@ -145,9 +147,25 @@ export class SettingsPanel {
       // Agent settings
       await updateSetting('defaultAgent', data.defaultAgent);
       await updateSetting('sendBehavior', normalizedBehavior);
-      await updateSetting('executionSelectionMode', data.executionSelectionMode);
-      await updateSetting('rememberLastExecution', data.executionSelectionMode === 'last-execution');
       await updateSetting('defaultTarget', data.defaultTarget);
+
+      const rememberLastExecution = data.executionSelectionMode === 'last-execution';
+      await this._context.globalState.update(
+        SettingsPanel.EXECUTION_SELECTION_MODE_STATE_KEY,
+        data.executionSelectionMode
+      );
+      await this._context.globalState.update(
+        SettingsPanel.REMEMBER_LAST_EXECUTION_STATE_KEY,
+        rememberLastExecution
+      );
+
+      if (this._isRegisteredSetting(config, 'executionSelectionMode')) {
+        await updateSetting('executionSelectionMode', data.executionSelectionMode);
+      }
+
+      if (this._isRegisteredSetting(config, 'rememberLastExecution')) {
+        await updateSetting('rememberLastExecution', rememberLastExecution);
+      }
       
       // AI Provider settings
       await updateSetting('defaultModel', data.defaultModel);
@@ -188,7 +206,6 @@ export class SettingsPanel {
       } else {
         vscode.window.showInformationMessage(t('Settings saved successfully!'));
       }
-      this._panel.dispose();
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to save settings: ${error}`);
     }
@@ -196,13 +213,13 @@ export class SettingsPanel {
 
   private _getSettings(): SettingsConfig {
     const config = vscode.workspace.getConfiguration('pbp');
-    const configuredMode = config.get<string>('executionSelectionMode');
+    const configuredMode = this._getStoredExecutionSelectionMode(config);
     const executionSelectionMode: SettingsConfig['executionSelectionMode'] =
       configuredMode === 'last-execution' ||
       configuredMode === 'initial-recommendation' ||
       configuredMode === 'ask-every-time'
         ? configuredMode
-        : ((config.get('rememberLastExecution') ?? true) ? 'last-execution' : 'ask-every-time');
+        : (this._getRememberLastExecution(config) ? 'last-execution' : 'ask-every-time');
     
     const defaultAgent = this._getStoredAgent(config.get<string>('defaultAgent'));
     const sendBehavior = this._normalizeBehavior(
@@ -280,6 +297,38 @@ export class SettingsPanel {
     }
 
     return behaviors.includes('send') ? 'send' : behaviors[0];
+  }
+
+  private _isRegisteredSetting(
+    config: vscode.WorkspaceConfiguration,
+    key: string
+  ): boolean {
+    return config.inspect(key) !== undefined;
+  }
+
+  private _getStoredExecutionSelectionMode(
+    config: vscode.WorkspaceConfiguration
+  ): string | undefined {
+    const configuredMode = config.get<string>('executionSelectionMode');
+    if (configuredMode) {
+      return configuredMode;
+    }
+
+    return this._context.globalState.get<string>(SettingsPanel.EXECUTION_SELECTION_MODE_STATE_KEY);
+  }
+
+  private _getRememberLastExecution(
+    config: vscode.WorkspaceConfiguration
+  ): boolean {
+    const configuredValue = config.get<boolean>('rememberLastExecution');
+    if (typeof configuredValue === 'boolean') {
+      return configuredValue;
+    }
+
+    return this._context.globalState.get<boolean>(
+      SettingsPanel.REMEMBER_LAST_EXECUTION_STATE_KEY,
+      true
+    );
   }
 
   private _getAgentOptionData() {
@@ -622,7 +671,7 @@ export class SettingsPanel {
 
           <div class="form-group">
             <label for="executionSelectionMode">${t('Execution Selection Mode')}</label>
-            <select id="executionSelectionMode" onchange="updateExecutionSummary()">
+            <select id="executionSelectionMode" onchange="updateAgentVisibility()">
               <option value="last-execution" ${settings.executionSelectionMode === 'last-execution' ? 'selected' : ''}>${t('Reuse last execution per prompt')}</option>
               <option value="initial-recommendation" ${settings.executionSelectionMode === 'initial-recommendation' ? 'selected' : ''}>${t('Preset')}</option>
               <option value="ask-every-time" ${settings.executionSelectionMode === 'ask-every-time' ? 'selected' : ''}>${t('Ask every run')}</option>
