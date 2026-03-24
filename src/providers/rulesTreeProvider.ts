@@ -32,7 +32,7 @@ class RuleItem extends vscode.TreeItem {
 
     this.command = {
       command: 'vscode.open',
-      title: 'Edit Rule',
+      title: t('Edit Rule'),
       arguments: [vscode.Uri.file(rule.path)]
     };
   }
@@ -41,14 +41,16 @@ class RuleItem extends vscode.TreeItem {
 class RuleProfileItem extends vscode.TreeItem {
   constructor(public readonly profile: RuleProfile) {
     super(profile.name, vscode.TreeItemCollapsibleState.None);
-    this.description = profile.isActive ? `(${t('Active')})` : `${profile.enabledRuleIds.length} global`;
+    this.description = profile.isActive
+      ? `(${t('Active')})`
+      : t('{0} global', profile.enabledRuleIds.length);
     this.contextValue = profile.isActive ? 'ruleProfileItem_active' : 'ruleProfileItem';
     this.iconPath = new vscode.ThemeIcon(profile.isActive ? 'layers-active' : 'layers');
     this.command = profile.isActive
       ? undefined
       : {
           command: 'pbp.setActiveRuleProfile',
-          title: 'Set Active Rule Profile',
+          title: t('Set Active Rule Profile'),
           arguments: [this]
         };
   }

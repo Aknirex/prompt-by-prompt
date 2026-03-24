@@ -32,7 +32,7 @@ class PromptItem extends vscode.TreeItem {
       this.iconPath = this.getIconForCategory(prompt.category);
       this.command = {
         command: 'pbp.runPrompt',
-        title: 'Run Prompt',
+        title: t('Run Prompt'),
         arguments: [prompt]
       };
     } else {
@@ -48,14 +48,14 @@ class PromptItem extends vscode.TreeItem {
     md.appendMarkdown(`${prompt.description}\n\n`);
     
     if (prompt.tags.length > 0) {
-      md.appendMarkdown(`**Tags:** ${prompt.tags.join(', ')}\n\n`);
+      md.appendMarkdown(`**${t('Tags')}:** ${prompt.tags.join(', ')}\n\n`);
     }
     
     if (prompt.author) {
-      md.appendMarkdown(`**Author:** ${prompt.author}\n\n`);
+      md.appendMarkdown(`**${t('Author')}:** ${prompt.author}\n\n`);
     }
     
-    md.appendMarkdown(`**Source:** ${prompt.source || 'unknown'}`);
+    md.appendMarkdown(`**${t('Source')}:** ${prompt.source || t('Unknown')}`);
     
     return md;
   }

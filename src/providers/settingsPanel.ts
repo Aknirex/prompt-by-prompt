@@ -692,7 +692,7 @@ export class SettingsPanel {
             <select id="sendBehavior">
               ${sendBehaviorOptions.map((behavior) => `
                 <option value="${behavior}" ${settings.sendBehavior === behavior ? 'selected' : ''}>
-                  ${behavior === 'send' ? t('ui.settings.send') : behavior === 'append' ? t('ui.settings.append') : 'Overwrite Input Box'}
+                  ${behavior === 'send' ? t('ui.settings.send') : behavior === 'append' ? t('ui.settings.append') : t('Overwrite Input Box')}
                 </option>
               `).join('')}
             </select>
@@ -895,8 +895,8 @@ export class SettingsPanel {
       }
 
       sendBehaviorHint.textContent = supportedBehaviors.length > 0
-        ? 'Supported by this agent: ' + supportedBehaviors.join(', ')
-        : 'This target uses its own delivery flow.';
+        ? '${t('Supported by this agent: {0}')}'.replace('{0}', supportedBehaviors.join(', '))
+        : '${t('This target uses its own delivery flow.')}';
 
       updateExecutionSummary();
     }
@@ -908,16 +908,16 @@ export class SettingsPanel {
       const summary = document.getElementById('executionModeSummary');
 
       if (mode === 'last-execution') {
-        summary.textContent = 'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.';
+        summary.textContent = '${t('Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.')}';
         return;
       }
 
       if (mode === 'initial-recommendation') {
-        summary.textContent = 'Each run will start from the preset agent ' + agentLabel + ' and its supported preset behavior.';
+        summary.textContent = '${t('Each run will start from the preset agent {0} and its supported preset behavior.')}'.replace('{0}', agentLabel);
         return;
       }
 
-      summary.textContent = 'Each run will ask for a target again, so these defaults only help with ordering and fallback.';
+      summary.textContent = '${t('Each run will ask for a target again, so these defaults only help with ordering and fallback.')}';
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -950,19 +950,19 @@ export class SettingsPanel {
         <div id="config-${p.id}" class="provider-config" style="display: ${isSelected ? 'block' : 'none'}">
           ${p.hasEndpoint ? `
             <div class="form-group">
-              <label for="${p.isLocal ? 'ollamaEndpoint' : 'azureEndpoint'}">Endpoint</label>
+              <label for="${p.isLocal ? 'ollamaEndpoint' : 'azureEndpoint'}">${t('Endpoint')}</label>
               <input type="text" id="${p.isLocal ? 'ollamaEndpoint' : 'azureEndpoint'}" value="${this._escapeHtml(p.endpoint || '')}" placeholder="${p.isLocal ? 'http://localhost:11434' : 'https://your-resource.openai.azure.com'}">
             </div>
           ` : ''}
           ${!p.isLocal ? `
             <div class="form-group">
-              <label for="${p.apiKeyId}">API Key</label>
-              <input type="password" id="${p.apiKeyId}" class="api-key-input" value="${this._escapeHtml(p.apiKey || '')}" placeholder="Enter API key">
+              <label for="${p.apiKeyId}">${t('API Key')}</label>
+              <input type="password" id="${p.apiKeyId}" class="api-key-input" value="${this._escapeHtml(p.apiKey || '')}" placeholder="${t('Enter API key')}">
             </div>
           ` : ''}
           <div class="form-group">
-            <label for="${p.modelId}">Model</label>
-            <input type="text" id="${p.modelId}" value="${this._escapeHtml(p.model || '')}" placeholder="Default model">
+            <label for="${p.modelId}">${t('Model')}</label>
+            <input type="text" id="${p.modelId}" value="${this._escapeHtml(p.model || '')}" placeholder="${t('Default model')}">
           </div>
         </div>
       `;

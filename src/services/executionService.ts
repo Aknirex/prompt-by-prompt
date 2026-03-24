@@ -555,8 +555,8 @@ export class ExecutionService {
     items.sort((left, right) => left.sortOrder - right.sortOrder || left.label.localeCompare(right.label));
 
     const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: 'Select execution target',
-      title: 'Prompt by Prompt',
+      placeHolder: t('Select execution target'),
+      title: t('Prompt by Prompt'),
     });
 
     return selected?.target;
@@ -564,30 +564,30 @@ export class ExecutionService {
 
   private describeAgent(capabilities: { canAutoSubmit: boolean; canAppendInput: boolean; canFillInput: boolean }): string {
     if (capabilities.canAutoSubmit && capabilities.canAppendInput && capabilities.canFillInput) {
-      return 'send + append + overwrite';
+      return t('send + append + overwrite');
     }
 
     if (capabilities.canAutoSubmit && capabilities.canAppendInput) {
-      return 'send + append';
+      return t('send + append');
     }
 
     if (capabilities.canAutoSubmit && capabilities.canFillInput) {
-      return 'send + overwrite';
+      return t('send + overwrite');
     }
 
     if (capabilities.canAutoSubmit) {
-      return 'send';
+      return t('send');
     }
 
     if (capabilities.canAppendInput) {
-      return 'append';
+      return t('append');
     }
 
     if (capabilities.canFillInput) {
-      return 'overwrite';
+      return t('overwrite');
     }
 
-    return 'clipboard fallback';
+    return t('clipboard fallback');
   }
 
   private async selectBehavior(agentType: AgentType): Promise<ExecutionBehavior | undefined | null> {
@@ -629,8 +629,8 @@ export class ExecutionService {
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: `Select behavior for ${adapter.name}`,
-      title: 'Prompt by Prompt',
+      placeHolder: t('Select behavior for {0}', adapter.name),
+      title: t('Prompt by Prompt'),
     });
 
     return selected?.behavior ?? null;
@@ -639,13 +639,13 @@ export class ExecutionService {
   private describeBehavior(behavior: ExecutionBehavior, agentName: string): string {
     switch (behavior) {
       case 'append':
-        return `Append to ${agentName} input without auto-submit`;
+        return t('Append to {0} input without auto-submit', agentName);
       case 'overwrite':
-        return `Overwrite ${agentName} input without auto-submit`;
+        return t('Overwrite {0} input without auto-submit', agentName);
       case 'insert':
-        return `Insert at top of ${agentName} input`;
+        return t('Insert at top of {0} input', agentName);
       default:
-        return `Send immediately to ${agentName}`;
+        return t('Send immediately to {0}', agentName);
     }
   }
 

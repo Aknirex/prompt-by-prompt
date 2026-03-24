@@ -16,6 +16,7 @@ import {
   isExtensionAvailable,
 } from '../types/agent';
 import { ExecutionBehavior } from '../types/execution';
+import { t } from '../utils/i18n';
 
 // Output channel for logging
 let logChannel: vscode.OutputChannel;
@@ -85,7 +86,7 @@ export class ClipboardAdapter implements AgentAdapter {
 
   async sendPrompt(prompt: string): Promise<SendResult> {
     await vscode.env.clipboard.writeText(prompt);
-    vscode.window.showInformationMessage('Prompt copied to clipboard!');
+    vscode.window.showInformationMessage(t('Prompt copied to clipboard!'));
     return { success: true };
   }
 
@@ -123,8 +124,8 @@ export class FileAdapter implements AgentAdapter {
     const fileName = `prompt-${new Date().getTime()}.txt`;
     
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-      vscode.window.showErrorMessage('No workspace folder found.');
-      return { success: false, reason: 'command_failed', message: 'No workspace folder found.' };
+      vscode.window.showErrorMessage(t('No workspace folder found.'));
+      return { success: false, reason: 'command_failed', message: t('No workspace folder found.') };
     }
 
     const folderUri = vscode.workspace.workspaceFolders[0].uri;
@@ -134,7 +135,7 @@ export class FileAdapter implements AgentAdapter {
     await vscode.workspace.fs.createDirectory(outputUri);
     await vscode.workspace.fs.writeFile(fileUri, Buffer.from(prompt));
     
-    vscode.window.showInformationMessage(`Prompt saved to ${fileUri.fsPath}`);
+    vscode.window.showInformationMessage(t('Prompt saved to {0}', fileUri.fsPath));
     return { success: true };
   }
 

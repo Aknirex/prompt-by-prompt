@@ -59,6 +59,56 @@ const en_dict: Record<string, string> = {
     'Invalid rule item': 'Invalid rule item',
     'needs setup': 'needs setup',
     'Save to File': 'Save to File',
+    'Overwrite Input Box': 'Overwrite Input Box',
+    'Supported by this agent: {0}': 'Supported by this agent: {0}',
+    'This target uses its own delivery flow.': 'This target uses its own delivery flow.',
+    'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.': 'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.',
+    'Each run will start from the preset agent {0} and its supported preset behavior.': 'Each run will start from the preset agent {0} and its supported preset behavior.',
+    'Each run will ask for a target again, so these defaults only help with ordering and fallback.': 'Each run will ask for a target again, so these defaults only help with ordering and fallback.',
+    'Endpoint': 'Endpoint',
+    'API Key': 'API Key',
+    'Enter API key': 'Enter API key',
+    'Default model': 'Default model',
+    'Edit Rule': 'Edit Rule',
+    'Set Active Rule Profile': 'Set Active Rule Profile',
+    'Active Profile': 'Active Profile',
+    'Active Rules': 'Active Rules',
+    '{0} global': '{0} global',
+    'Author': 'Author',
+    'Source': 'Source',
+    'Unknown': 'Unknown',
+    'Prompt by Prompt': 'Prompt by Prompt',
+    'No prompts available.': 'No prompts available.',
+    'Prompt by Prompt diagnostics written to the output channel.': 'Prompt by Prompt diagnostics written to the output channel.',
+    'Execution target for "{0}" saved as {1}.': 'Execution target for "{0}" saved as {1}.',
+    'No rule profiles available.': 'No rule profiles available.',
+    '{0} global rule(s)': '{0} global rule(s)',
+    'Select active rule profile': 'Select active rule profile',
+    'Prompt "{0}" created': 'Prompt "{0}" created',
+    'Prompt "{0}" updated': 'Prompt "{0}" updated',
+    'Prompt "{0}" deleted': 'Prompt "{0}" deleted',
+    'my-global-rule': 'my-global-rule',
+    'No workspace folder found.': 'No workspace folder found.',
+    'Prompt saved to {0}': 'Prompt saved to {0}',
+    'Select execution target': 'Select execution target',
+    'send + append + overwrite': 'send + append + overwrite',
+    'send + append': 'send + append',
+    'send + overwrite': 'send + overwrite',
+    'send': 'send',
+    'append': 'append',
+    'overwrite': 'overwrite',
+    'clipboard fallback': 'clipboard fallback',
+    'Select behavior for {0}': 'Select behavior for {0}',
+    'Append to {0} input without auto-submit': 'Append to {0} input without auto-submit',
+    'Overwrite {0} input without auto-submit': 'Overwrite {0} input without auto-submit',
+    'Insert at top of {0} input': 'Insert at top of {0} input',
+    'Send immediately to {0}': 'Send immediately to {0}',
+    'Global rule {0} created.': 'Global rule {0} created.',
+    'Failed to delete {0}: {1}': 'Failed to delete {0}: {1}',
+    'Edit: {0}': 'Edit: {0}',
+    'New Prompt': 'New Prompt',
+    'Failed to generate prompt': 'Failed to generate prompt',
+    'Default': 'Default',
     'Priority is: explicit choice in the current run > per-prompt last execution > preset.': 'Priority is: explicit choice in the current run > per-prompt last execution > preset.',
     'This preset is only used when execution selection mode is set to preset.': 'This preset is only used when execution selection mode is set to preset.',
     'Settings saved with partial issues: {0}': 'Settings saved with partial issues: {0}',
@@ -323,6 +373,56 @@ const ja_dict: Record<string, string> = {
     'Shown during input collection': '入力収集中に表示',
     'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': 'まだスキーマ変数は定義されていません。組み込みエディターコンテキスト以外にユーザー入力が必要な場合は、ここで変数を追加してください。',
     'YAML must describe a prompt object.': 'YAML はプロンプトオブジェクトを記述している必要があります。',
+    'Overwrite Input Box': '入力欄を上書き',
+    'Supported by this agent: {0}': 'このエージェントで利用可能: {0}',
+    'This target uses its own delivery flow.': 'この送信先は独自の受け渡しフローを使います。',
+    'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.': 'PbP はプロンプトごとに、まず最後に動作した送信先と挙動の再利用を試み、だめなら新しく選択します。',
+    'Each run will start from the preset agent {0} and its supported preset behavior.': '各実行はプリセットエージェント {0} と、そのエージェントが対応するプリセット動作から開始します。',
+    'Each run will ask for a target again, so these defaults only help with ordering and fallback.': '毎回送信先を確認するため、これらの既定値は順序付けとフォールバックにのみ使われます。',
+    'Endpoint': 'エンドポイント',
+    'API Key': 'API キー',
+    'Enter API key': 'API キーを入力',
+    'Default model': 'デフォルトモデル',
+    'Edit Rule': 'ルールを編集',
+    'Set Active Rule Profile': '有効なルールプロファイルに設定',
+    'Active Profile': 'アクティブプロファイル',
+    'Active Rules': '有効なルール',
+    '{0} global': 'グローバル {0} 件',
+    'Author': '作成者',
+    'Source': 'ソース',
+    'Unknown': '不明',
+    'Prompt by Prompt': 'Prompt by Prompt',
+    'No prompts available.': '利用できるプロンプトがありません。',
+    'Prompt by Prompt diagnostics written to the output channel.': 'Prompt by Prompt の診断情報を出力チャンネルに書き込みました。',
+    'Execution target for "{0}" saved as {1}.': '"{0}" の実行先を {1} として保存しました。',
+    'No rule profiles available.': '利用できるルールプロファイルがありません。',
+    '{0} global rule(s)': 'グローバルルール {0} 件',
+    'Select active rule profile': '有効にするルールプロファイルを選択',
+    'Prompt "{0}" created': 'プロンプト "{0}" を作成しました',
+    'Prompt "{0}" updated': 'プロンプト "{0}" を更新しました',
+    'Prompt "{0}" deleted': 'プロンプト "{0}" を削除しました',
+    'my-global-rule': 'my-global-rule',
+    'No workspace folder found.': 'ワークスペースフォルダーが見つかりません。',
+    'Prompt saved to {0}': 'プロンプトを {0} に保存しました',
+    'Select execution target': '実行先を選択',
+    'send + append + overwrite': '送信 + 追記 + 上書き',
+    'send + append': '送信 + 追記',
+    'send + overwrite': '送信 + 上書き',
+    'send': '送信',
+    'append': '追記',
+    'overwrite': '上書き',
+    'clipboard fallback': 'クリップボードへフォールバック',
+    'Select behavior for {0}': '{0} の動作を選択',
+    'Append to {0} input without auto-submit': '{0} の入力欄に追記（自動送信なし）',
+    'Overwrite {0} input without auto-submit': '{0} の入力欄を上書き（自動送信なし）',
+    'Insert at top of {0} input': '{0} の入力欄先頭に挿入',
+    'Send immediately to {0}': '{0} にすぐ送信',
+    'Global rule {0} created.': 'グローバルルール {0} を作成しました。',
+    'Failed to delete {0}: {1}': '{0} の削除に失敗しました: {1}',
+    'Edit: {0}': '編集: {0}',
+    'New Prompt': '新しいプロンプト',
+    'Failed to generate prompt': 'プロンプトの生成に失敗しました',
+    'Default': '既定値',
 };
 
 const es_dict: Record<string, string> = {
@@ -533,6 +633,56 @@ const es_dict: Record<string, string> = {
     'Shown during input collection': 'Se muestra durante la recopilación de entrada',
     'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': 'Todavía no hay variables de esquema definidas. Agrega variables aquí cuando el prompt necesite entrada del usuario además del contexto integrado del editor.',
     'YAML must describe a prompt object.': 'El YAML debe describir un objeto de prompt.',
+    'Overwrite Input Box': 'Sobrescribir cuadro de entrada',
+    'Supported by this agent: {0}': 'Compatible con este agente: {0}',
+    'This target uses its own delivery flow.': 'Este destino usa su propio flujo de entrega.',
+    'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.': 'Por cada prompt, PbP intentará reutilizar el último destino y comportamiento que funcionaron antes de volver a una selección nueva.',
+    'Each run will start from the preset agent {0} and its supported preset behavior.': 'Cada ejecución comenzará con el agente predefinido {0} y su comportamiento predefinido compatible.',
+    'Each run will ask for a target again, so these defaults only help with ordering and fallback.': 'Cada ejecución volverá a pedir un destino, así que estos valores predeterminados solo ayudan con el orden y el respaldo.',
+    'Endpoint': 'Punto de enlace',
+    'API Key': 'Clave API',
+    'Enter API key': 'Introduce la clave API',
+    'Default model': 'Modelo predeterminado',
+    'Edit Rule': 'Editar regla',
+    'Set Active Rule Profile': 'Establecer perfil de reglas activo',
+    'Active Profile': 'Perfil activo',
+    'Active Rules': 'Reglas activas',
+    '{0} global': '{0} globales',
+    'Author': 'Autor',
+    'Source': 'Origen',
+    'Unknown': 'Desconocido',
+    'Prompt by Prompt': 'Prompt by Prompt',
+    'No prompts available.': 'No hay prompts disponibles.',
+    'Prompt by Prompt diagnostics written to the output channel.': 'Los diagnósticos de Prompt by Prompt se escribieron en el canal de salida.',
+    'Execution target for "{0}" saved as {1}.': 'El destino de ejecución para "{0}" se guardó como {1}.',
+    'No rule profiles available.': 'No hay perfiles de reglas disponibles.',
+    '{0} global rule(s)': '{0} regla(s) global(es)',
+    'Select active rule profile': 'Selecciona el perfil de reglas activo',
+    'Prompt "{0}" created': 'Prompt "{0}" creado',
+    'Prompt "{0}" updated': 'Prompt "{0}" actualizado',
+    'Prompt "{0}" deleted': 'Prompt "{0}" eliminado',
+    'my-global-rule': 'mi-regla-global',
+    'No workspace folder found.': 'No se encontró ninguna carpeta de espacio de trabajo.',
+    'Prompt saved to {0}': 'Prompt guardado en {0}',
+    'Select execution target': 'Selecciona el destino de ejecución',
+    'send + append + overwrite': 'enviar + añadir + sobrescribir',
+    'send + append': 'enviar + añadir',
+    'send + overwrite': 'enviar + sobrescribir',
+    'send': 'enviar',
+    'append': 'añadir',
+    'overwrite': 'sobrescribir',
+    'clipboard fallback': 'respaldo al portapapeles',
+    'Select behavior for {0}': 'Selecciona el comportamiento para {0}',
+    'Append to {0} input without auto-submit': 'Añadir a la entrada de {0} sin envío automático',
+    'Overwrite {0} input without auto-submit': 'Sobrescribir la entrada de {0} sin envío automático',
+    'Insert at top of {0} input': 'Insertar al principio de la entrada de {0}',
+    'Send immediately to {0}': 'Enviar inmediatamente a {0}',
+    'Global rule {0} created.': 'Se creó la regla global {0}.',
+    'Failed to delete {0}: {1}': 'No se pudo eliminar {0}: {1}',
+    'Edit: {0}': 'Editar: {0}',
+    'New Prompt': 'Nuevo prompt',
+    'Failed to generate prompt': 'No se pudo generar el prompt',
+    'Default': 'Predeterminado',
 };
 
 const ko_dict: Record<string, string> = {
@@ -743,6 +893,56 @@ const ko_dict: Record<string, string> = {
     'Shown during input collection': '입력 수집 중 표시',
     'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': '아직 정의된 스키마 변수가 없습니다. 프롬프트에 내장 편집기 컨텍스트 외의 사용자 입력이 필요하면 여기에 변수를 추가하세요.',
     'YAML must describe a prompt object.': 'YAML은 프롬프트 객체를 설명해야 합니다.',
+    'Overwrite Input Box': '입력 상자 덮어쓰기',
+    'Supported by this agent: {0}': '이 에이전트가 지원함: {0}',
+    'This target uses its own delivery flow.': '이 대상은 자체 전달 흐름을 사용합니다.',
+    'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.': 'PbP는 프롬프트별로 마지막으로 잘 동작한 대상과 동작을 먼저 재사용하고, 실패하면 새로 선택합니다.',
+    'Each run will start from the preset agent {0} and its supported preset behavior.': '각 실행은 프리셋 에이전트 {0}와 그 에이전트가 지원하는 프리셋 동작으로 시작합니다.',
+    'Each run will ask for a target again, so these defaults only help with ordering and fallback.': '매 실행마다 대상을 다시 묻기 때문에, 이 기본값들은 정렬과 대체 용도로만 사용됩니다.',
+    'Endpoint': '엔드포인트',
+    'API Key': 'API 키',
+    'Enter API key': 'API 키 입력',
+    'Default model': '기본 모델',
+    'Edit Rule': '규칙 편집',
+    'Set Active Rule Profile': '활성 규칙 프로필로 설정',
+    'Active Profile': '활성 프로필',
+    'Active Rules': '활성 규칙',
+    '{0} global': '전역 {0}개',
+    'Author': '작성자',
+    'Source': '출처',
+    'Unknown': '알 수 없음',
+    'Prompt by Prompt': 'Prompt by Prompt',
+    'No prompts available.': '사용 가능한 프롬프트가 없습니다.',
+    'Prompt by Prompt diagnostics written to the output channel.': 'Prompt by Prompt 진단 정보를 출력 채널에 기록했습니다.',
+    'Execution target for "{0}" saved as {1}.': '"{0}"의 실행 대상을 {1}(으)로 저장했습니다.',
+    'No rule profiles available.': '사용 가능한 규칙 프로필이 없습니다.',
+    '{0} global rule(s)': '전역 규칙 {0}개',
+    'Select active rule profile': '활성 규칙 프로필 선택',
+    'Prompt "{0}" created': '프롬프트 "{0}"을(를) 만들었습니다',
+    'Prompt "{0}" updated': '프롬프트 "{0}"을(를) 업데이트했습니다',
+    'Prompt "{0}" deleted': '프롬프트 "{0}"을(를) 삭제했습니다',
+    'my-global-rule': 'my-global-rule',
+    'No workspace folder found.': '워크스페이스 폴더를 찾을 수 없습니다.',
+    'Prompt saved to {0}': '프롬프트를 {0}에 저장했습니다',
+    'Select execution target': '실행 대상 선택',
+    'send + append + overwrite': '전송 + 추가 + 덮어쓰기',
+    'send + append': '전송 + 추가',
+    'send + overwrite': '전송 + 덮어쓰기',
+    'send': '전송',
+    'append': '추가',
+    'overwrite': '덮어쓰기',
+    'clipboard fallback': '클립보드 대체 사용',
+    'Select behavior for {0}': '{0}의 동작 선택',
+    'Append to {0} input without auto-submit': '{0} 입력란에 추가(자동 전송 없음)',
+    'Overwrite {0} input without auto-submit': '{0} 입력란 덮어쓰기(자동 전송 없음)',
+    'Insert at top of {0} input': '{0} 입력란 맨 위에 삽입',
+    'Send immediately to {0}': '{0}(으)로 즉시 전송',
+    'Global rule {0} created.': '전역 규칙 {0}을(를) 만들었습니다.',
+    'Failed to delete {0}: {1}': '{0} 삭제 실패: {1}',
+    'Edit: {0}': '편집: {0}',
+    'New Prompt': '새 프롬프트',
+    'Failed to generate prompt': '프롬프트 생성 실패',
+    'Default': '기본값',
 };
 
 const zh_cn_dict: Record<string, string> = {
@@ -953,6 +1153,56 @@ const zh_cn_dict: Record<string, string> = {
     ,'Shown during input collection': '在收集输入时显示'
     ,'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': '当前还没有定义模式变量。如果提示词除了内置编辑器上下文外还需要用户输入，请在这里添加变量。'
     ,'YAML must describe a prompt object.': 'YAML 必须描述一个提示词对象。'
+    ,'Overwrite Input Box': '覆盖输入框'
+    ,'Supported by this agent: {0}': '该 Agent 支持：{0}'
+    ,'This target uses its own delivery flow.': '该目标使用自己的传递流程。'
+    ,'Per prompt, PbP will try to reuse the last working target and behavior before falling back to new selection.': 'PbP 会按提示词优先复用上次成功的目标和行为，只有在无法复用时才会重新选择。'
+    ,'Each run will start from the preset agent {0} and its supported preset behavior.': '每次运行都会从预设 Agent {0} 及其支持的预设行为开始。'
+    ,'Each run will ask for a target again, so these defaults only help with ordering and fallback.': '每次运行都会重新询问目标，因此这些默认值只用于排序和回退。'
+    ,'Endpoint': '端点'
+    ,'API Key': 'API Key'
+    ,'Enter API key': '输入 API Key'
+    ,'Default model': '默认模型'
+    ,'Edit Rule': '编辑规则'
+    ,'Set Active Rule Profile': '设为活动规则配置'
+    ,'Active Profile': '活动配置'
+    ,'Active Rules': '活动规则'
+    ,'{0} global': '{0} 个全局规则'
+    ,'Author': '作者'
+    ,'Source': '来源'
+    ,'Unknown': '未知'
+    ,'Prompt by Prompt': 'Prompt by Prompt'
+    ,'No prompts available.': '当前没有可用提示词。'
+    ,'Prompt by Prompt diagnostics written to the output channel.': '已将 Prompt by Prompt 的诊断信息写入输出通道。'
+    ,'Execution target for "{0}" saved as {1}.': '提示词“{0}”的执行目标已保存为 {1}。'
+    ,'No rule profiles available.': '当前没有可用的规则配置。'
+    ,'{0} global rule(s)': '{0} 个全局规则'
+    ,'Select active rule profile': '选择活动规则配置'
+    ,'Prompt "{0}" created': '提示词“{0}”已创建'
+    ,'Prompt "{0}" updated': '提示词“{0}”已更新'
+    ,'Prompt "{0}" deleted': '提示词“{0}”已删除'
+    ,'my-global-rule': 'my-global-rule'
+    ,'No workspace folder found.': '未找到工作区文件夹。'
+    ,'Prompt saved to {0}': '提示词已保存到 {0}'
+    ,'Select execution target': '选择执行目标'
+    ,'send + append + overwrite': '发送 + 追加 + 覆盖'
+    ,'send + append': '发送 + 追加'
+    ,'send + overwrite': '发送 + 覆盖'
+    ,'send': '发送'
+    ,'append': '追加'
+    ,'overwrite': '覆盖'
+    ,'clipboard fallback': '回退到剪贴板'
+    ,'Select behavior for {0}': '为 {0} 选择行为'
+    ,'Append to {0} input without auto-submit': '追加到 {0} 输入框，不自动提交'
+    ,'Overwrite {0} input without auto-submit': '覆盖 {0} 输入框，不自动提交'
+    ,'Insert at top of {0} input': '插入到 {0} 输入框顶部'
+    ,'Send immediately to {0}': '立即发送到 {0}'
+    ,'Global rule {0} created.': '全局规则 {0} 已创建。'
+    ,'Failed to delete {0}: {1}': '删除 {0} 失败：{1}'
+    ,'Edit: {0}': '编辑：{0}'
+    ,'New Prompt': '新提示词'
+    ,'Failed to generate prompt': '生成提示词失败'
+    ,'Default': '默认'
 };
 
 const dictionaries: Record<string, Record<string, string>> = {

@@ -214,7 +214,7 @@ export class RuleManager {
     }
 
     await fs.promises.writeFile(filePath, `# ${fileName}\n\n`, 'utf-8');
-    vscode.window.showInformationMessage(`Global rule ${fileName} created.`);
+    vscode.window.showInformationMessage(t('Global rule {0} created.', fileName));
     await this.setActiveGlobalRule(filePath);
     await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(filePath));
   }
@@ -258,7 +258,7 @@ export class RuleManager {
       vscode.window.showInformationMessage(`${t('Deleted')} ${path.basename(uri.fsPath)}`);
       await this.scanRuleFiles();
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to delete ${path.basename(uri.fsPath)}: ${error}`);
+      vscode.window.showErrorMessage(t('Failed to delete {0}: {1}', path.basename(uri.fsPath), String(error)));
     }
   }
 

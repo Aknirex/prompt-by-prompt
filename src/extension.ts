@@ -107,7 +107,7 @@ async function pickPromptIfNeeded(value?: unknown): Promise<PromptTemplate | und
 
   const prompts = promptManager.getAllPrompts();
   if (prompts.length === 0) {
-    vscode.window.showWarningMessage('No prompts available.');
+    vscode.window.showWarningMessage(t('No prompts available.'));
     return undefined;
   }
 
@@ -119,7 +119,7 @@ async function pickPromptIfNeeded(value?: unknown): Promise<PromptTemplate | und
 
   const selected = await vscode.window.showQuickPick(items, {
     placeHolder: t('Select a prompt to run'),
-    title: 'Prompt by Prompt',
+    title: t('Prompt by Prompt'),
   });
 
   return selected?.prompt;
@@ -203,7 +203,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('pbp.showDiagnostics', async () => {
       logManifestDiagnostics();
       outputChannel.show(true);
-      void vscode.window.showInformationMessage('Prompt by Prompt diagnostics written to the output channel.');
+      void vscode.window.showInformationMessage(t('Prompt by Prompt diagnostics written to the output channel.'));
     }),
 
     vscode.commands.registerCommand('pbp.runPrompt', async (value?: unknown) => {
@@ -239,7 +239,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       vscode.window.showInformationMessage(
-        `Execution target for "${prompt.name}" saved as ${preset.target.kind === 'agent' ? preset.target.agentType : preset.target.kind}${preset.behavior ? ` (${preset.behavior})` : ''}.`
+        t(
+          'Execution target for "{0}" saved as {1}.',
+          prompt.name,
+          `${preset.target.kind === 'agent' ? preset.target.agentType : preset.target.kind}${preset.behavior ? ` (${preset.behavior})` : ''}`
+        )
       );
     }),
 
@@ -259,19 +263,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('pbp.selectRuleProfile', async () => {
       const profiles = ruleManager.getRuleProfiles();
       if (profiles.length === 0) {
-        vscode.window.showWarningMessage('No rule profiles available.');
+        vscode.window.showWarningMessage(t('No rule profiles available.'));
         return;
       }
 
       const items = profiles.map((profile) => ({
         label: profile.name,
-        description: profile.isActive ? '(Active)' : `${profile.enabledRuleIds.length} global rule(s)`,
+        description: profile.isActive ? `(${t('Active')})` : t('{0} global rule(s)', profile.enabledRuleIds.length),
         profile,
       }));
 
       const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Select active rule profile',
-        title: 'Prompt by Prompt',
+        placeHolder: t('Select active rule profile'),
+        title: t('Prompt by Prompt'),
       });
 
       if (!selected || selected.profile.isActive) {
@@ -303,7 +307,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             result.target
           );
 
-          vscode.window.showInformationMessage(`Prompt "${result.name}" created`);
+          vscode.window.showInformationMessage(t('Prompt "{0}" created', result.name));
         } catch (error) {
           vscode.window.showErrorMessage(`${t('Failed to create prompt')}: ${error}`);
         }
@@ -334,7 +338,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             variables: result.variables,
           });
 
-          vscode.window.showInformationMessage(`Prompt "${result.name}" updated`);
+          vscode.window.showInformationMessage(t('Prompt "{0}" updated', result.name));
         } catch (error) {
           vscode.window.showErrorMessage(`${t('Failed to update prompt')}: ${error}`);
         }
@@ -359,7 +363,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const deleted = await promptManager.deletePrompt(prompt.id);
       if (deleted) {
-        vscode.window.showInformationMessage(`Prompt "${prompt.name}" deleted`);
+        vscode.window.showInformationMessage(t('Prompt "{0}" deleted', prompt.name));
       } else {
         vscode.window.showErrorMessage(t('Failed to delete prompt'));
       }
@@ -386,7 +390,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('pbp.createGlobalRule', async () => {
       const fileName = await vscode.window.showInputBox({
         prompt: t('Enter global rule file name (e.g. general-rules)'),
-        placeHolder: 'my-global-rule',
+        placeHolder: t('my-global-rule'),
       });
 
       if (fileName) {

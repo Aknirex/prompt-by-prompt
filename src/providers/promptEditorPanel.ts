@@ -72,7 +72,7 @@ export class PromptEditorPanel {
 
     const panel = vscode.window.createWebviewPanel(
       PromptEditorPanel.viewType,
-      existingPrompt ? `Edit: ${existingPrompt.name}` : 'New Prompt',
+      existingPrompt ? t('Edit: {0}', existingPrompt.name) : t('New Prompt'),
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -183,7 +183,7 @@ export class PromptEditorPanel {
     } else {
       this._panel.webview.postMessage({
         command: 'generateResult',
-        error: result.error || 'Failed to generate prompt',
+        error: result.error || t('Failed to generate prompt'),
       });
     }
   }
@@ -1014,7 +1014,7 @@ export class PromptEditorPanel {
       const providerId = providerSelect.value;
       const provider = providers.find((item) => item.id === providerId);
 
-      modelSelect.innerHTML = '<option value="">Default</option>';
+      modelSelect.innerHTML = '<option value="">${t('Default')}</option>';
       if (provider && provider.models) {
         provider.models.forEach((model) => {
           const option = document.createElement('option');
