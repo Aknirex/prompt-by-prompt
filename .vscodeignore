@@ -15,6 +15,7 @@ vitest.config.ts
 test/
 .git/
 plans/
+.local/
 node_modules/
 tests/
 test/

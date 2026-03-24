@@ -46,6 +46,34 @@ vi.mock('vscode', async () => {
 });
 
 describe('ExecutionService', () => {
+  function createResolvedRuleSet(overrides: Record<string, unknown> = {}) {
+    return {
+      profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
+      workspaceRules: [],
+      globalRules: [],
+      teamRules: [],
+      activeRules: [],
+      activeEntries: [],
+      inactiveEntries: [],
+      injectionMode: 'text-fallback',
+      notes: [],
+      conflicts: [],
+      ...overrides,
+    };
+  }
+
+  function createEffectivePolicy(overrides: Record<string, unknown> = {}) {
+    return {
+      profileId: 'profile',
+      rules: [],
+      preferences: [],
+      guardrails: [],
+      notes: [],
+      conflicts: [],
+      ...overrides,
+    };
+  }
+
   it('persists per-prompt execution history after a successful run in last-execution mode', async () => {
     configValues.executionSelectionMode = 'last-execution';
     configValues.rememberLastExecution = true;
@@ -87,17 +115,7 @@ describe('ExecutionService', () => {
         sendToAgent: vi.fn(async () => ({ success: true })),
       } as never,
       {
-        resolveRuleSet: vi.fn(() => ({
-          profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
-          workspaceRules: [],
-          globalRules: [],
-          teamRules: [],
-          activeRules: [],
-          activeEntries: [],
-          inactiveEntries: [],
-          injectionMode: 'text-fallback',
-          notes: [],
-          conflicts: [],
+        resolveRuleSet: vi.fn(() => createResolvedRuleSet({
           binding: {
             source: 'workspace',
             packId: 'acme-engineering',
@@ -112,6 +130,13 @@ describe('ExecutionService', () => {
             declaredVersion: '1.4.2',
             resolvedVersion: 'commit-sha',
           },
+        })),
+        resolvePolicy: vi.fn(() => createEffectivePolicy({
+          packId: 'acme-engineering',
+          profileId: 'frontend-standard',
+          declaredVersion: '1.4.2',
+          resolvedVersion: 'commit-sha',
+          bindingSource: 'workspace',
         })),
       } as never,
       vi.fn()
@@ -299,17 +324,7 @@ describe('ExecutionService', () => {
         sendToAgent: vi.fn(async () => ({ success: false, message: 'dispatch failed' })),
       } as never,
       {
-        resolveRuleSet: vi.fn(() => ({
-          profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
-          workspaceRules: [],
-          globalRules: [],
-          teamRules: [],
-          activeRules: [],
-          activeEntries: [],
-          inactiveEntries: [],
-          injectionMode: 'text-fallback',
-          notes: [],
-          conflicts: [],
+        resolveRuleSet: vi.fn(() => createResolvedRuleSet({
           binding: {
             source: 'workspace',
             packId: 'acme-engineering',
@@ -324,6 +339,13 @@ describe('ExecutionService', () => {
             declaredVersion: '1.4.2',
             resolvedVersion: 'commit-sha',
           },
+        })),
+        resolvePolicy: vi.fn(() => createEffectivePolicy({
+          packId: 'acme-engineering',
+          profileId: 'frontend-standard',
+          declaredVersion: '1.4.2',
+          resolvedVersion: 'commit-sha',
+          bindingSource: 'workspace',
         })),
       } as never,
       vi.fn()
@@ -390,17 +412,7 @@ describe('ExecutionService', () => {
         sendToAgent,
       } as never,
       {
-        resolveRuleSet: vi.fn(() => ({
-          profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
-          workspaceRules: [],
-          globalRules: [],
-          teamRules: [],
-          activeRules: [],
-          activeEntries: [],
-          inactiveEntries: [],
-          injectionMode: 'text-fallback',
-          notes: [],
-          conflicts: [],
+        resolveRuleSet: vi.fn(() => createResolvedRuleSet({
           binding: {
             source: 'workspace',
             packId: 'acme-engineering',
@@ -415,6 +427,13 @@ describe('ExecutionService', () => {
             declaredVersion: '1.4.2',
             resolvedVersion: 'commit-sha',
           },
+        })),
+        resolvePolicy: vi.fn(() => createEffectivePolicy({
+          packId: 'acme-engineering',
+          profileId: 'frontend-standard',
+          declaredVersion: '1.4.2',
+          resolvedVersion: 'commit-sha',
+          bindingSource: 'workspace',
         })),
       } as never,
       vi.fn()
@@ -438,6 +457,8 @@ describe('ExecutionService', () => {
     expect(preview?.previewText).toContain('[Dispatch Target]');
     expect(preview?.previewText).toContain('[Effective Policy]');
     expect(preview?.previewText).toContain('- pack: acme-engineering');
+    expect(preview?.previewText).toContain('[Environment Context]');
+    expect(preview?.previewText).toContain('[Editor Context]');
     expect(preview?.previewText).toContain('[Actual Payload]');
     expect(sendToAgent).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
@@ -550,11 +571,8 @@ describe('ExecutionService', () => {
         sendToAgent: vi.fn(async () => ({ success: true })),
       } as never,
       {
-        resolveRuleSet: vi.fn(() => ({
+        resolveRuleSet: vi.fn(() => createResolvedRuleSet({
           profile: { id: 'profile', name: 'Global: team.md', enabledRuleIds: ['g1'], priority: 1, isActive: true },
-          workspaceRules: [],
-          globalRules: [],
-          activeRules: [],
           activeEntries: [
             {
               rule: {
@@ -568,9 +586,22 @@ describe('ExecutionService', () => {
               reason: 'Enabled by active profile "Global: team.md"',
             },
           ],
-          injectionMode: 'text-fallback',
-          notes: [],
-          conflicts: [],
+        })),
+        resolvePolicy: vi.fn(() => createEffectivePolicy({
+          profileId: 'profile',
+          rules: [
+            {
+              id: 'g1',
+              canonicalKey: 'global:team.md',
+              title: 'team.md',
+              body: '# Follow team conventions',
+              source: 'global',
+              priority: 100,
+              required: false,
+              kind: 'instruction',
+              reason: 'Enabled by active profile "Global: team.md"',
+            },
+          ],
         })),
       } as never,
       vi.fn()
@@ -595,8 +626,9 @@ describe('ExecutionService', () => {
     expect(sendToAgent).toHaveBeenCalledTimes(1);
     const [payload, agentType] = sendToAgent.mock.calls[0];
     expect(agentType).toBe('copilot');
-    expect(payload).toContain('Task:\nReview this change');
+    expect(payload).toContain('Policy:\n- profile: profile');
     expect(payload).toContain('Rules:\n- team.md: Enabled by active profile "Global: team.md"');
+    expect(payload).toContain('Task:\nReview this change');
     expect(payload).toContain('Context:\n- project: prompt-by-prompt');
     expect(payload).not.toContain('[Dispatch Target]');
   });
@@ -611,63 +643,73 @@ describe('ExecutionService', () => {
       vi.fn()
     );
 
-    const editorContext = {
-      selection: 'line',
-      filepath: 'src/example.ts',
-      file_content: 'line',
-      lang: 'typescript',
-      project_name: 'prompt-by-prompt',
-      line_number: 1,
-      column_number: 1,
-    };
-    const resolvedRules = {
-      profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
-      workspaceRules: [],
-      globalRules: [],
-      activeRules: [],
-      activeEntries: [
-        {
-          rule: {
+    const envelope = {
+      task: {
+        promptId: 'prompt-1',
+        promptName: 'Example',
+        renderedPrompt: 'Implement feature',
+        variables: {},
+      },
+      policy: createEffectivePolicy({
+        profileId: 'profile',
+        rules: [
+          {
             id: 'w1',
-            name: 'AGENTS.md',
-            path: '/tmp/AGENTS.md',
-            scope: 'workspace',
-            format: 'markdown',
-            content: 'Be precise',
+            canonicalKey: 'workspace:AGENTS.md',
+            title: 'AGENTS.md',
+            body: 'Be precise',
+            source: 'workspace',
+            priority: 300,
+            required: false,
+            kind: 'instruction',
+            reason: 'Workspace rule discovered in the current project | Included for target cline | Applies to all agents',
           },
-          reason: 'Workspace rule discovered in the current project | Included for target cline | Applies to all agents',
+        ],
+      }),
+      context: {
+        environment: { os: 'Windows', shell: 'pwsh', locale: 'zh-cn' },
+        editor: {
+          selection: 'line',
+          file: 'src/example.ts',
+          language: 'typescript',
+          project: 'prompt-by-prompt',
+          line: 1,
+          column: 1,
         },
-      ],
-      injectionMode: 'text-fallback',
-      notes: ['Active profile: Workspace Only'],
-      conflicts: [{ type: 'duplicate-name', message: 'Duplicate rule', ruleIds: ['w1', 'w2'] }],
+      },
+      metadata: {
+        injectionMode: 'segmented-text',
+        notes: ['Active profile: Workspace Only'],
+        conflicts: ['Duplicate rule'],
+      },
     };
 
     const dispatchText = (service as never as {
       buildDispatchText: (
-        renderedPrompt: string,
-        resolvedRules: typeof resolvedRules,
-        editorContext: typeof editorContext,
+        envelope: typeof envelope,
         target: { kind: 'agent'; agentType: 'cline' }
       ) => string;
-    }).buildDispatchText('Implement feature', resolvedRules, editorContext, { kind: 'agent', agentType: 'cline' });
+    }).buildDispatchText(envelope, { kind: 'agent', agentType: 'cline' });
 
     expect(dispatchText).toContain('[Dispatch Strategy]\nTask-oriented bundle for cline');
+    expect(dispatchText).toContain('[Policy]');
     expect(dispatchText).toContain('[Rules]');
     expect(dispatchText).toContain('Why active: Workspace rule discovered in the current project');
     expect(dispatchText).toContain('[Conflicts]\n- Duplicate rule');
 
     const previewText = (service as never as {
       buildPreviewText: (execution: {
+        envelope: typeof envelope;
         target: { kind: 'agent'; agentType: 'cline' };
         behavior: 'send';
-        resolvedRules: typeof resolvedRules;
+        resolvedRules: ReturnType<typeof createResolvedRuleSet>;
         dispatchText: string;
       }) => string;
     }).buildPreviewText({
+      envelope,
       target: { kind: 'agent', agentType: 'cline' },
       behavior: 'send',
-      resolvedRules,
+      resolvedRules: createResolvedRuleSet(),
       dispatchText,
     });
 
@@ -687,72 +729,82 @@ describe('ExecutionService', () => {
       vi.fn()
     );
 
-    const editorContext = {
-      selection: 'const answer = 42;',
-      filepath: 'src/example.ts',
-      file_content: 'const answer = 42;',
-      lang: 'typescript',
-      project_name: 'prompt-by-prompt',
-      line_number: 10,
-      column_number: 5,
-    };
-    const resolvedRules = {
-      profile: { id: 'profile', name: 'Global: team.md', enabledRuleIds: ['g1'], priority: 1, isActive: true },
-      workspaceRules: [],
-      globalRules: [],
-      activeRules: [],
-      activeEntries: [
-        {
-          rule: {
+    const envelope = {
+      task: {
+        promptId: 'prompt-2',
+        promptName: 'Example',
+        renderedPrompt: 'Summarize the selected code',
+        variables: {},
+      },
+      policy: createEffectivePolicy({
+        profileId: 'profile',
+        rules: [
+          {
             id: 'g1',
-            name: 'team.md',
-            path: '/tmp/team.md',
-            scope: 'global',
-            format: 'markdown',
-            content: '# Follow the playbook',
+            canonicalKey: 'global:team.md',
+            title: 'team.md',
+            body: '# Follow the playbook',
+            source: 'global',
+            priority: 100,
+            required: false,
+            kind: 'instruction',
+            reason: 'Enabled by active profile "Global: team.md"',
           },
-          reason: 'Enabled by active profile "Global: team.md"',
+        ],
+      }),
+      context: {
+        environment: { os: 'Windows', shell: 'pwsh', locale: 'zh-cn' },
+        editor: {
+          selection: 'const answer = 42;',
+          file: 'src/example.ts',
+          language: 'typescript',
+          project: 'prompt-by-prompt',
+          line: 10,
+          column: 5,
         },
-      ],
-      injectionMode: 'text-fallback',
-      notes: ['Resolved for target: clipboard'],
-      conflicts: [{ type: 'duplicate-name', message: 'Duplicate rule name detected', ruleIds: ['g1', 'g2'] }],
+      },
+      metadata: {
+        injectionMode: 'segmented-text',
+        notes: ['Resolved for target: clipboard'],
+        conflicts: ['Duplicate rule name detected'],
+      },
     };
 
     const dispatchText = (service as never as {
       buildDispatchText: (
-        renderedPrompt: string,
-        resolvedRules: typeof resolvedRules,
-        editorContext: typeof editorContext,
+        envelope: typeof envelope,
         target: { kind: 'clipboard' }
       ) => string;
-    }).buildDispatchText('Summarize the selected code', resolvedRules, editorContext, { kind: 'clipboard' });
+    }).buildDispatchText(envelope, { kind: 'clipboard' });
 
-    expect(dispatchText).toContain('[Dispatch Strategy]\nStandard preview bundle');
-    expect(dispatchText).toContain('[Task Prompt]\nSummarize the selected code');
-    expect(dispatchText).toContain('[Active Rules]');
-    expect(dispatchText).toContain('Reason: Enabled by active profile "Global: team.md"');
-    expect(dispatchText).toContain('[Rule Notes]\n- Resolved for target: clipboard');
-    expect(dispatchText).toContain('[Rule Conflicts]\n- Duplicate rule name detected');
+    expect(dispatchText).toContain('[Dispatch Strategy]\nSegmented envelope bundle');
+    expect(dispatchText).toContain('[Task]\nSummarize the selected code');
+    expect(dispatchText).toContain('[Rules]');
+    expect(dispatchText).toContain('Why active: Enabled by active profile "Global: team.md"');
+    expect(dispatchText).toContain('[Policy Notes]\n- Resolved for target: clipboard');
+    expect(dispatchText).toContain('[Policy Conflicts]\n- Duplicate rule name detected');
 
     const previewText = (service as never as {
       buildPreviewText: (execution: {
+        envelope: typeof envelope;
         target: { kind: 'clipboard' };
         behavior: undefined;
-        resolvedRules: typeof resolvedRules;
+        resolvedRules: ReturnType<typeof createResolvedRuleSet>;
         dispatchText: string;
       }) => string;
     }).buildPreviewText({
+      envelope,
       target: { kind: 'clipboard' },
       behavior: undefined,
-      resolvedRules,
+      resolvedRules: createResolvedRuleSet(),
       dispatchText,
     });
 
     expect(previewText).toContain('- target: clipboard');
     expect(previewText).toContain('- behavior: default');
+    expect(previewText).toContain('[Environment Context]');
     expect(previewText).toContain('[Actual Payload]');
-    expect(previewText).toContain('Standard preview bundle');
+    expect(previewText).toContain('Segmented envelope bundle');
   });
 
   it('builds chat-oriented dispatch text with summarized rules and truncated selection context', async () => {
@@ -766,48 +818,56 @@ describe('ExecutionService', () => {
     );
 
     const longSelection = 'x'.repeat(220);
-    const editorContext = {
-      selection: longSelection,
-      filepath: 'src/example.ts',
-      file_content: longSelection,
-      lang: 'typescript',
-      project_name: 'prompt-by-prompt',
-      line_number: 8,
-      column_number: 2,
-    };
-    const resolvedRules = {
-      profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: ['w1'], priority: 0, isActive: true },
-      workspaceRules: [],
-      globalRules: [],
-      activeRules: [],
-      activeEntries: [
-        {
-          rule: {
+    const envelope = {
+      task: {
+        promptId: 'prompt-3',
+        promptName: 'Example',
+        renderedPrompt: 'Explain this code',
+        variables: {},
+      },
+      policy: createEffectivePolicy({
+        profileId: 'profile',
+        rules: [
+          {
             id: 'w1',
-            name: 'AGENTS.md',
-            path: '/tmp/AGENTS.md',
-            scope: 'workspace',
-            format: 'markdown',
-            content: 'Prefer small patches',
+            canonicalKey: 'workspace:AGENTS.md',
+            title: 'AGENTS.md',
+            body: 'Prefer small patches',
+            source: 'workspace',
+            priority: 300,
+            required: false,
+            kind: 'instruction',
+            reason: 'Workspace rule discovered in the current project',
           },
-          reason: 'Workspace rule discovered in the current project',
+        ],
+      }),
+      context: {
+        environment: { os: 'Windows', shell: 'pwsh', locale: 'zh-cn' },
+        editor: {
+          selection: longSelection,
+          file: 'src/example.ts',
+          language: 'typescript',
+          project: 'prompt-by-prompt',
+          line: 8,
+          column: 2,
         },
-      ],
-      injectionMode: 'text-fallback',
-      notes: [],
-      conflicts: [],
+      },
+      metadata: {
+        injectionMode: 'segmented-text',
+        notes: [],
+        conflicts: [],
+      },
     };
 
     const dispatchText = (service as never as {
       buildDispatchText: (
-        renderedPrompt: string,
-        resolvedRules: typeof resolvedRules,
-        editorContext: typeof editorContext,
+        envelope: typeof envelope,
         target: { kind: 'agent'; agentType: 'continue' }
       ) => string;
-    }).buildDispatchText('Explain this code', resolvedRules, editorContext, { kind: 'agent', agentType: 'continue' });
+    }).buildDispatchText(envelope, { kind: 'agent', agentType: 'continue' });
 
     expect(dispatchText).toContain('[Dispatch Strategy]\nChat bundle for continue');
+    expect(dispatchText).toContain('[Policy]');
     expect(dispatchText).toContain('[Active Rules]\n- AGENTS.md\n  Why active: Workspace rule discovered in the current project');
     expect(dispatchText).toContain(`- selection: ${'x'.repeat(200)}...`);
     expect(dispatchText).not.toContain(longSelection);

@@ -1,8 +1,10 @@
+import { PromptVariable } from './prompt';
 import { AgentType } from './agent';
 
 export type TeamPolicySourceType = 'git' | 'local-folder';
 export type TeamPolicySourceTrust = 'trusted' | 'untrusted' | 'revoked';
 export type TeamPolicyPackStatus = 'active' | 'outdated' | 'disabled' | 'tampered';
+export type TeamPolicySourceSyncStatus = 'synced' | 'error';
 
 export interface TeamPolicySourceConfig {
   id: string;
@@ -13,6 +15,14 @@ export interface TeamPolicySourceConfig {
   trust?: TeamPolicySourceTrust;
   requestedVersion?: string;
   resolvedVersion?: string;
+}
+
+export interface TeamPolicySourceState {
+  sourceId: string;
+  type: TeamPolicySourceType;
+  status: TeamPolicySourceSyncStatus;
+  lastSyncedAt?: string;
+  lastSyncError?: string;
 }
 
 export interface RuleIdentity {
@@ -27,6 +37,7 @@ export interface SharedPromptTemplate {
   name: string;
   description?: string;
   template: string;
+  variables?: PromptVariable[];
   category?: string;
   tags?: string[];
   source: 'team-pack';

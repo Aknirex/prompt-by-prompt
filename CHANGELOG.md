@@ -1,5 +1,27 @@
 # Changelog
 
+# [1.13.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.12.0...v1.13.0) (2026-03-24)
+
+### Features
+
+* Refactor execution assembly around a structured rule envelope instead of flat prompt-appended rule text
+* Add Rule v2 frontmatter parsing for markdown rules with title, kind, category, priority, required, and preference metadata
+* Add effective policy extraction with separated rules, guardrails, preferences, environment context, and editor context
+* Add passive rule projection with generated `AGENTS.md`-style files, safe overwrite protection, and rebuild command
+* Add a dedicated Team Policies view for sync sources, workspace binding, and installed packs
+* Add an official local reference team policy pack upgraded to Rule v2 examples
+
+# [1.12.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.11.0...v1.12.0) (2026-03-24)
+
+### Features
+
+* Add team policy packs with workspace binding, effective policy preview, and team rule resolution
+* Add team prompt library loading with read-only team templates in the prompt tree
+* Add sync-first team policy source management with git/local sources, shared cache, manual sync, auto-sync, and source status
+* Add connect/retry/reconnect team policy source commands plus rules view source health display
+* Add status bar summary for team policy sync health
+* Add tests for team policy rules, prompts, and git source syncing
+
 # [1.11.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.10.0...v1.11.0) (2026-03-23)
 
 

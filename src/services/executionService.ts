@@ -3,6 +3,8 @@ import { AgentService, getSupportedExecutionBehaviors } from './agentService';
 import { ContextEngine } from './contextEngine';
 import { PromptTemplate } from '../types/prompt';
 import {
+  ExecutionContextPayload,
+  ExecutionEnvelope,
   ExecutionBehavior,
   ExecutionHistoryMap,
   ExecutionHistoryRecord,
@@ -11,7 +13,7 @@ import {
   ResolvedExecution,
 } from '../types/execution';
 import { AgentType } from '../types/agent';
-import { ResolvedRuleSet, RuleScope } from '../types/rule';
+import { EffectivePolicy, ResolvedRuleSet } from '../types/rule';
 import { RuleManager } from './ruleManager';
 import { t } from '../utils/i18n';
 
@@ -110,16 +112,22 @@ export class ExecutionService {
       return undefined;
     }
     const resolvedRules = this.resolveRules(selection.target);
+    const effectivePolicy = this.ruleManager.resolvePolicy({
+      agentType: selection.target.kind === 'agent' ? selection.target.agentType : undefined,
+      supportsStructuredContext: resolvedRules.injectionMode === 'structured-context',
+    });
+    const envelope = this.buildExecutionEnvelope(prompt, renderedPrompt, variables, effectivePolicy, editorContext, resolvedRules);
 
     const resolvedExecution: ResolvedExecution = {
       prompt,
       renderedPrompt,
       resolvedRules,
+      envelope,
       target: selection.target,
       behavior: selection.behavior,
       variables,
       sourceContext: editorContext,
-      dispatchText: this.buildDispatchText(renderedPrompt, resolvedRules, editorContext, selection.target),
+      dispatchText: this.buildDispatchText(envelope, selection.target),
       previewText: '',
     };
     resolvedExecution.previewText = this.buildPreviewText(resolvedExecution);
@@ -172,192 +180,198 @@ export class ExecutionService {
     });
   }
 
-  private buildDispatchText(
-    renderedPrompt: string,
-    resolvedRules: ResolvedRuleSet,
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>,
-    target: ExecutionTarget
-  ): string {
-    if (target.kind === 'agent') {
-      return this.buildAgentDispatchText(renderedPrompt, resolvedRules, editorContext, target.agentType);
-    }
-
-    return this.buildGenericDispatchText(
-      renderedPrompt,
-      resolvedRules,
-      editorContext,
-      'Standard preview bundle'
-    );
-  }
-
   private buildPreviewText(resolvedExecution: ResolvedExecution): string {
     const sections = [
       '[Dispatch Target]',
       `- target: ${this.formatTargetLabel(resolvedExecution.target)}`,
       `- behavior: ${resolvedExecution.behavior ?? 'default'}`,
-      `- injection: ${resolvedExecution.resolvedRules.injectionMode}`,
+      `- injection: ${resolvedExecution.envelope.metadata.injectionMode}`,
     ];
 
-    if (resolvedExecution.resolvedRules.policyVersion) {
+    if (resolvedExecution.envelope.policy.packId) {
       sections.push('');
       sections.push('[Effective Policy]');
-      sections.push(`- pack: ${resolvedExecution.resolvedRules.policyVersion.packId}`);
-      sections.push(`- declaredVersion: ${resolvedExecution.resolvedRules.policyVersion.declaredVersion}`);
-      sections.push(`- resolvedVersion: ${resolvedExecution.resolvedRules.policyVersion.resolvedVersion ?? resolvedExecution.resolvedRules.policyVersion.declaredVersion}`);
-      sections.push(`- binding: ${resolvedExecution.resolvedRules.binding?.source ?? 'implicit'}`);
+      sections.push(`- pack: ${resolvedExecution.envelope.policy.packId}`);
+      sections.push(`- profile: ${resolvedExecution.envelope.policy.profileId ?? 'none'}`);
+      sections.push(`- declaredVersion: ${resolvedExecution.envelope.policy.declaredVersion ?? 'n/a'}`);
+      sections.push(`- resolvedVersion: ${resolvedExecution.envelope.policy.resolvedVersion ?? resolvedExecution.envelope.policy.declaredVersion ?? 'n/a'}`);
+      sections.push(`- binding: ${resolvedExecution.envelope.policy.bindingSource ?? 'implicit'}`);
     }
 
+    if (resolvedExecution.envelope.policy.preferences.length > 0) {
+      sections.push('', '[Preferences]');
+      for (const preference of resolvedExecution.envelope.policy.preferences) {
+        sections.push(`- ${preference.key}: ${preference.value}`);
+      }
+    }
+
+    if (resolvedExecution.envelope.policy.guardrails.length > 0) {
+      sections.push('', '[Guardrails]');
+      for (const guardrail of resolvedExecution.envelope.policy.guardrails) {
+        sections.push(`- ${guardrail.text}`);
+      }
+    }
+
+    sections.push('', '[Environment Context]');
+    sections.push(...this.buildEnvironmentLines(resolvedExecution.envelope.context));
+    sections.push('', '[Editor Context]');
+    sections.push(...this.buildEditorLines(resolvedExecution.envelope.context));
     sections.push('', '[Actual Payload]', resolvedExecution.dispatchText);
     return sections.join('\n');
   }
 
-  private buildGenericDispatchText(
-    renderedPrompt: string,
-    resolvedRules: ResolvedRuleSet,
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>,
-    strategyName: string
-  ): string {
+  private buildGenericDispatchText(envelope: ExecutionEnvelope, strategyName: string): string {
     const sections: string[] = [];
 
     sections.push(`[Dispatch Strategy]\n${strategyName}`);
-    sections.push(`[Task Prompt]\n${renderedPrompt.trim()}`);
+    sections.push(`[Policy]\n${this.buildPolicyLines(envelope.policy).join('\n')}`);
 
-    const ruleSections: string[] = [];
-    for (const entry of resolvedRules.activeEntries) {
-      if (entry.rule.content.trim()) {
-        ruleSections.push(
-          `- ${this.getRuleScopeLabel(entry.rule.scope)} Rule: ${entry.rule.name}\n`
-          + `  Reason: ${entry.reason}\n${entry.rule.content.trim()}`
-        );
-      }
+    if (envelope.policy.preferences.length > 0) {
+      sections.push(`[Preferences]\n${envelope.policy.preferences.map((preference) =>
+        `- ${preference.key}: ${preference.value}`
+      ).join('\n')}`);
     }
 
-    if (ruleSections.length > 0) {
-      sections.push(`[Active Rules]\n${ruleSections.join('\n\n')}`);
+    if (envelope.policy.guardrails.length > 0) {
+      sections.push(`[Guardrails]\n${envelope.policy.guardrails.map((guardrail) => `- ${guardrail.text}`).join('\n')}`);
     }
 
-    if (resolvedRules.notes.length > 0) {
-      sections.push(`[Rule Notes]\n${resolvedRules.notes.map((note: string) => `- ${note}`).join('\n')}`);
+    if (envelope.policy.rules.length > 0) {
+      sections.push(
+        `[Rules]\n${envelope.policy.rules.map((rule) =>
+          `- ${rule.title} (${rule.source})\n  Why active: ${rule.reason}\n${this.indentBlock(rule.body, 2)}`
+        ).join('\n\n')}`
+      );
     }
 
-    if (resolvedRules.conflicts.length > 0) {
-      sections.push(`[Rule Conflicts]\n${resolvedRules.conflicts.map((conflict) => `- ${conflict.message}`).join('\n')}`);
+    sections.push(`[Environment]\n${this.buildEnvironmentLines(envelope.context).join('\n')}`);
+    sections.push(`[Editor Context]\n${this.buildEditorLines(envelope.context).join('\n')}`);
+    sections.push(`[Task]\n${envelope.task.renderedPrompt.trim()}`);
+
+    if (envelope.metadata.notes.length > 0) {
+      sections.push(`[Policy Notes]\n${envelope.metadata.notes.map((note: string) => `- ${note}`).join('\n')}`);
     }
 
-    sections.push(`[Editor Context]\n${this.buildContextLines(editorContext).join('\n')}`);
+    if (envelope.metadata.conflicts.length > 0) {
+      sections.push(`[Policy Conflicts]\n${envelope.metadata.conflicts.map((conflict) => `- ${conflict}`).join('\n')}`);
+    }
+
     return sections.join('\n\n');
   }
 
   private buildAgentDispatchText(
-    renderedPrompt: string,
-    resolvedRules: ResolvedRuleSet,
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>,
+    envelope: ExecutionEnvelope,
     agentType: AgentType
   ): string {
     switch (agentType) {
       case 'copilot':
-        return this.buildCopilotDispatchText(renderedPrompt, resolvedRules, editorContext);
+        return this.buildCopilotDispatchText(envelope);
       case 'cline':
       case 'roo-code':
       case 'codex':
-        return this.buildTaskOrientedDispatchText(renderedPrompt, resolvedRules, editorContext, agentType);
+        return this.buildTaskOrientedDispatchText(envelope, agentType);
       case 'continue':
       case 'cursor':
       case 'kilo-code':
       case 'gemini':
       case 'tongyi':
-        return this.buildChatDispatchText(renderedPrompt, resolvedRules, editorContext, agentType);
+        return this.buildChatDispatchText(envelope, agentType);
       default:
-        return this.buildGenericDispatchText(
-          renderedPrompt,
-          resolvedRules,
-          editorContext,
-          `Generic agent bundle for ${agentType}`
-        );
+        return this.buildGenericDispatchText(envelope, `Generic agent bundle for ${agentType}`);
     }
   }
 
   private buildTaskOrientedDispatchText(
-    renderedPrompt: string,
-    resolvedRules: ResolvedRuleSet,
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>,
+    envelope: ExecutionEnvelope,
     agentType: AgentType
   ): string {
     const sections: string[] = [
       `[Dispatch Strategy]\nTask-oriented bundle for ${agentType}`,
-      `[Task]\n${renderedPrompt.trim()}`,
+      `[Policy]\n${this.buildPolicyLines(envelope.policy).join('\n')}`,
     ];
 
-    if (resolvedRules.activeEntries.length > 0) {
+    if (envelope.policy.guardrails.length > 0) {
+      sections.push(`[Guardrails]\n${envelope.policy.guardrails.map((guardrail) => `- ${guardrail.text}`).join('\n')}`);
+    }
+
+    if (envelope.policy.rules.length > 0) {
       sections.push(
-        `[Rules]\n${resolvedRules.activeEntries.map((entry) =>
-          `- ${entry.rule.name} (${entry.rule.scope})\n  Why active: ${entry.reason}\n${this.indentBlock(entry.rule.content.trim(), 2)}`
+        `[Rules]\n${envelope.policy.rules.map((rule) =>
+          `- ${rule.title} (${rule.source})\n  Why active: ${rule.reason}\n${this.indentBlock(rule.body, 2)}`
         ).join('\n\n')}`
       );
     }
 
-    sections.push(`[Context]\n${this.buildContextLines(editorContext).join('\n')}`);
+    sections.push(`[Environment]\n${this.buildEnvironmentLines(envelope.context).join('\n')}`);
+    sections.push(`[Editor Context]\n${this.buildEditorLines(envelope.context).join('\n')}`);
+    sections.push(`[Task]\n${envelope.task.renderedPrompt.trim()}`);
 
-    if (resolvedRules.conflicts.length > 0) {
-      sections.push(`[Conflicts]\n${resolvedRules.conflicts.map((conflict) => `- ${conflict.message}`).join('\n')}`);
+    if (envelope.metadata.conflicts.length > 0) {
+      sections.push(`[Conflicts]\n${envelope.metadata.conflicts.map((conflict) => `- ${conflict}`).join('\n')}`);
     }
 
     return sections.join('\n\n');
   }
 
-  private buildCopilotDispatchText(
-    renderedPrompt: string,
-    resolvedRules: ResolvedRuleSet,
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>
-  ): string {
-    const parts: string[] = [`Task:\n${renderedPrompt.trim()}`];
+  private buildCopilotDispatchText(envelope: ExecutionEnvelope): string {
+    const parts: string[] = [
+      `Policy:\n${this.buildPolicyLines(envelope.policy).join('\n')}`,
+    ];
 
-    if (resolvedRules.activeEntries.length > 0) {
+    if (envelope.policy.rules.length > 0) {
       parts.push(
-        `Rules:\n${resolvedRules.activeEntries.map((entry) => `- ${entry.rule.name}: ${entry.reason}`).join('\n')}`
+        `Rules:\n${envelope.policy.rules.map((rule) => `- ${rule.title}: ${rule.reason}`).join('\n')}`
       );
     }
 
-    parts.push(`Context:\n${this.buildContextLines(editorContext).join('\n')}`);
+    parts.push(`Environment:\n${this.buildEnvironmentLines(envelope.context).join('\n')}`);
+    parts.push(`Context:\n${this.buildEditorLines(envelope.context).join('\n')}`);
+    parts.push(`Task:\n${envelope.task.renderedPrompt.trim()}`);
     return parts.join('\n\n');
   }
 
   private buildChatDispatchText(
-    renderedPrompt: string,
-    resolvedRules: ResolvedRuleSet,
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>,
+    envelope: ExecutionEnvelope,
     agentType: AgentType
   ): string {
     const sections: string[] = [
       `[Dispatch Strategy]\nChat bundle for ${agentType}`,
-      `[Task Prompt]\n${renderedPrompt.trim()}`,
+      `[Policy]\n${this.buildPolicyLines(envelope.policy).join('\n')}`,
     ];
 
-    if (resolvedRules.activeEntries.length > 0) {
+    if (envelope.policy.rules.length > 0) {
       sections.push(
-        `[Active Rules]\n${resolvedRules.activeEntries.map((entry) =>
-          `- ${entry.rule.name}\n  Why active: ${entry.reason}`
+        `[Active Rules]\n${envelope.policy.rules.map((rule) =>
+          `- ${rule.title}\n  Why active: ${rule.reason}`
         ).join('\n')}`
       );
     }
 
-    sections.push(`[Editor Context]\n${this.buildContextLines(editorContext).join('\n')}`);
+    sections.push(`[Environment]\n${this.buildEnvironmentLines(envelope.context).join('\n')}`);
+    sections.push(`[Editor Context]\n${this.buildEditorLines(envelope.context).join('\n')}`);
+    sections.push(`[Task]\n${envelope.task.renderedPrompt.trim()}`);
     return sections.join('\n\n');
   }
 
-  private buildContextLines(
-    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>
-  ): string[] {
+  private buildEnvironmentLines(context: ExecutionContextPayload): string[] {
+    return [
+      `- os: ${context.environment.os || '(none)'}`,
+      `- shell: ${context.environment.shell || '(none)'}`,
+      `- locale: ${context.environment.locale || '(none)'}`,
+    ];
+  }
+
+  private buildEditorLines(context: ExecutionContextPayload): string[] {
     const contextLines = [
-      `- project: ${editorContext.project_name || '(none)'}`,
-      `- file: ${editorContext.filepath || '(none)'}`,
-      `- language: ${editorContext.lang || '(none)'}`,
-      `- line: ${editorContext.line_number ?? 0}`,
-      `- column: ${editorContext.column_number ?? 0}`,
+      `- project: ${context.editor.project || '(none)'}`,
+      `- file: ${context.editor.file || '(none)'}`,
+      `- language: ${context.editor.language || '(none)'}`,
+      `- line: ${context.editor.line ?? 0}`,
+      `- column: ${context.editor.column ?? 0}`,
     ];
 
-    if (editorContext.selection.trim()) {
-      contextLines.push(`- selection: ${this.truncate(editorContext.selection.trim(), 200)}`);
+    if (context.editor.selection?.trim()) {
+      contextLines.push(`- selection: ${this.truncate(context.editor.selection.trim(), 200)}`);
     }
 
     return contextLines;
@@ -372,16 +386,79 @@ export class ExecutionService {
     return value.length <= maxLength ? value : `${value.slice(0, maxLength)}...`;
   }
 
-  private getRuleScopeLabel(scope: RuleScope): string {
-    if (scope === 'global') {
-      return 'Global';
+  private buildPolicyLines(policy: EffectivePolicy): string[] {
+    const lines = [
+      `- profile: ${policy.profileId ?? '(none)'}`,
+      `- binding: ${policy.bindingSource ?? 'implicit'}`,
+    ];
+
+    if (policy.packId) {
+      lines.push(`- pack: ${policy.packId}`);
+    }
+    if (policy.resolvedVersion || policy.declaredVersion) {
+      lines.push(`- version: ${policy.resolvedVersion ?? policy.declaredVersion}`);
     }
 
-    if (scope === 'team-pack') {
-      return 'Team';
+    return lines;
+  }
+
+  private buildExecutionEnvelope(
+    prompt: PromptTemplate,
+    renderedPrompt: string,
+    variables: Record<string, string>,
+    policy: EffectivePolicy,
+    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>,
+    resolvedRules: ResolvedRuleSet
+  ): ExecutionEnvelope {
+    return {
+      task: {
+        promptId: prompt.id,
+        promptName: prompt.name,
+        renderedPrompt,
+        variables,
+      },
+      policy,
+      context: this.buildExecutionContext(editorContext),
+      metadata: {
+        injectionMode: resolvedRules.injectionMode === 'structured-context' ? 'native-structured' : 'segmented-text',
+        bindingSource: resolvedRules.binding?.source,
+        notes: resolvedRules.notes,
+        conflicts: resolvedRules.conflicts.map((conflict) => conflict.message),
+      },
+    };
+  }
+
+  private buildExecutionContext(
+    editorContext: Awaited<ReturnType<ContextEngine['extractContext']>>
+  ): ExecutionContextPayload {
+    const shellPath = process.platform === 'win32'
+      ? (process.env.ComSpec || process.env.SHELL || process.env.PSModulePath || '')
+      : (process.env.SHELL || '');
+    const shell = shellPath.split(/[/\\]/).filter(Boolean).pop() || '';
+
+    return {
+      environment: {
+        os: process.platform === 'win32' ? 'Windows' : process.platform,
+        shell,
+        locale: vscode.env.language || '',
+      },
+      editor: {
+        project: editorContext.project_name,
+        file: editorContext.filepath,
+        language: editorContext.lang,
+        line: editorContext.line_number,
+        column: editorContext.column_number,
+        selection: editorContext.selection,
+      },
+    };
+  }
+
+  private buildDispatchText(envelope: ExecutionEnvelope, target: ExecutionTarget): string {
+    if (target.kind === 'agent') {
+      return this.buildAgentDispatchText(envelope, target.agentType);
     }
 
-    return 'Workspace';
+    return this.buildGenericDispatchText(envelope, 'Segmented envelope bundle');
   }
 
   private getInitialBehavior(): ExecutionBehavior {

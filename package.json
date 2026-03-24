@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
-  "version": "1.11.3",
+  "version": "1.13.0",
   "publisher": "aknirex",
   "repository": {
     "type": "git",
@@ -115,6 +115,36 @@
         "command": "pbp.createGlobalRule",
         "title": "%command.pbp.createGlobalRule%",
         "icon": "$(add)"
+      },
+      {
+        "command": "pbp.syncTeamPolicies",
+        "title": "Sync Team Policies",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "pbp.connectTeamPolicySource",
+        "title": "Connect Team Policy Source",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "pbp.retryTeamPolicySourceSync",
+        "title": "Retry Source Sync",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pbp.reconnectTeamPolicySource",
+        "title": "Reconnect Source",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "pbp.rebuildProjectedRuleFile",
+        "title": "Rebuild Project Rule File",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "pbp.openProjectedRuleFile",
+        "title": "Open Projected Rule File",
+        "icon": "$(go-to-file)"
       }
     ],
     "viewsContainers": {
@@ -137,6 +167,11 @@
           "id": "pbp.rulesView",
           "name": "%view.pbp.rulesView%",
           "icon": "media/icon.svg"
+        },
+        {
+          "id": "pbp.teamPoliciesView",
+          "name": "Team Policies",
+          "icon": "media/icon.svg"
         }
       ]
     },
@@ -158,14 +193,39 @@
           "group": "navigation@3"
         },
         {
+          "command": "pbp.connectTeamPolicySource",
+          "when": "view == pbp.teamPoliciesView",
+          "group": "navigation@1"
+        },
+        {
           "command": "pbp.refreshRules",
           "when": "view == pbp.rulesView",
-          "group": "navigation@1"
+          "group": "navigation@2"
+        },
+        {
+          "command": "pbp.syncTeamPolicies",
+          "when": "view == pbp.teamPoliciesView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pbp.openSettings",
+          "when": "view == pbp.teamPoliciesView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "pbp.rebuildProjectedRuleFile",
+          "when": "view == pbp.teamPoliciesView",
+          "group": "navigation@4"
+        },
+        {
+          "command": "pbp.openProjectedRuleFile",
+          "when": "view == pbp.teamPoliciesView",
+          "group": "navigation@5"
         },
         {
           "command": "pbp.selectRuleProfile",
           "when": "view == pbp.rulesView",
-          "group": "navigation@2"
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -221,6 +281,16 @@
           "command": "pbp.deleteRule",
           "when": "view == pbp.rulesView && viewItem =~ /RuleItem/",
           "group": "1_modification"
+        },
+        {
+          "command": "pbp.retryTeamPolicySourceSync",
+          "when": "view == pbp.teamPoliciesView && viewItem == teamPolicySourceItem",
+          "group": "inline"
+        },
+        {
+          "command": "pbp.reconnectTeamPolicySource",
+          "when": "view == pbp.teamPoliciesView && viewItem == teamPolicySourceItem",
+          "group": "2_sync"
         }
       ],
       "editor/context": [
@@ -435,7 +505,7 @@
         "pbp.teamPolicySources": {
           "type": "array",
           "default": [],
-          "description": "Team policy sources. Each source can point to a local folder or a pre-synced git checkout containing pack.json.",
+          "description": "Team policy sources. Git sources are sync-only remote sources cached by the extension; local-folder sources read directly from disk.",
           "items": {
             "type": "object"
           }
@@ -454,6 +524,74 @@
           "type": "boolean",
           "default": true,
           "description": "Whether personal policy overrides are allowed when resolving team policies."
+        },
+        "pbp.autoSyncTeamPolicies": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically sync team policy sources in the background using the extension's simplified sync-only Git flow."
+        },
+        "pbp.teamPolicySyncIntervalMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Background sync interval for team policy sources in minutes."
+        },
+        "pbp.passiveRuleProjection.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate a compatible rule file from the effective policy for agents that automatically read project rule files."
+        },
+        "pbp.passiveRuleProjection.scope": {
+          "type": "string",
+          "enum": [
+            "workspace",
+            "global"
+          ],
+          "default": "workspace",
+          "description": "Whether the projected rule file is written relative to the current workspace or extension global storage."
+        },
+        "pbp.passiveRuleProjection.outputPath": {
+          "type": "string",
+          "default": ".pbp/compiled/AGENTS.md",
+          "description": "Output path for the generated projected rule file. Relative paths are resolved from the workspace root or global storage."
+        },
+        "pbp.passiveRuleProjection.format": {
+          "type": "string",
+          "enum": [
+            "agents-md",
+            "root-agents-md"
+          ],
+          "default": "agents-md",
+          "description": "Output format for the projected rule file."
+        },
+        "pbp.passiveRuleProjection.writeMode": {
+          "type": "string",
+          "enum": [
+            "safe-overwrite",
+            "overwrite"
+          ],
+          "default": "safe-overwrite",
+          "description": "Whether Prompt by Prompt only overwrites files it previously generated, or force-overwrites the target file."
+        },
+        "pbp.passiveRuleProjection.includeEditorContext": {
+          "type": "boolean",
+          "default": false,
+          "description": "Reserved for future compatibility. Editor context is not currently projected into static rule files."
+        },
+        "pbp.passiveRuleProjection.includePreferences": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include resolved execution preferences in the generated projected rule file."
+        },
+        "pbp.passiveRuleProjection.includeTeamMetadata": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include team pack/profile/version metadata in the generated projected rule file."
+        },
+        "pbp.passiveRuleProjection.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically rebuild the projected rule file when team policies or active profiles change."
         }
       }
     }

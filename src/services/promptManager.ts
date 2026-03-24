@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { v4 as uuidv4 } from 'uuid';
 import { PromptTemplate, ExtensionConfig } from '../types/prompt';
+import { TeamPolicyService } from './teamPolicyService';
 
 const GLOBAL_STATE_KEY = 'pbp.globalPrompts';
 const GLOBAL_PROMPTS_DIR = 'prompts';
@@ -16,13 +17,16 @@ const GLOBAL_PROMPTS_DIR = 'prompts';
 export class PromptManager {
   private prompts: Map<string, PromptTemplate> = new Map();
   private onDidChangePrompts: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+  private readonly teamPolicyService: TeamPolicyService;
   
   public readonly onDidChange = this.onDidChangePrompts.event;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly config: ExtensionConfig
-  ) {}
+  ) {
+    this.teamPolicyService = new TeamPolicyService(context);
+  }
 
   /**
    * Initialize the manager
@@ -48,6 +52,9 @@ export class PromptManager {
 
     // Load workspace prompts
     await this.loadWorkspacePrompts();
+
+    // Load team prompts from installed team policy packs
+    await this.loadTeamPrompts();
   }
 
   /**
@@ -163,6 +170,28 @@ export class PromptManager {
         }
       } catch (error) {
         console.error(`Failed to load workspace prompt ${file}:`, error);
+      }
+    }
+  }
+
+  private async loadTeamPrompts(): Promise<void> {
+    const packs = await this.teamPolicyService.refresh();
+    for (const pack of packs) {
+      for (const teamPrompt of pack.prompts) {
+        this.prompts.set(teamPrompt.id, {
+          id: teamPrompt.id,
+          name: teamPrompt.name,
+          description: teamPrompt.description || '',
+          category: teamPrompt.category || 'Team Library',
+          tags: teamPrompt.tags || [],
+          version: teamPrompt.packVersion,
+          variables: teamPrompt.variables,
+          template: teamPrompt.template,
+          source: 'team-pack',
+          readOnly: teamPrompt.readOnly,
+          packId: teamPrompt.packId,
+          packVersion: teamPrompt.packVersion,
+        });
       }
     }
   }
@@ -314,6 +343,10 @@ export class PromptManager {
       return null;
     }
 
+    if (existing.source === 'builtin' || existing.source === 'team-pack') {
+      return null;
+    }
+
     const updated: PromptTemplate = {
       ...existing,
       ...updates,
@@ -339,6 +372,10 @@ export class PromptManager {
   async deletePrompt(id: string): Promise<boolean> {
     const prompt = this.prompts.get(id);
     if (!prompt) {
+      return false;
+    }
+
+    if (prompt.source === 'builtin' || prompt.source === 'team-pack') {
       return false;
     }
 

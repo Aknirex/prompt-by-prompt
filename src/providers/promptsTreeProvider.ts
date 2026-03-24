@@ -13,17 +13,18 @@ import { t } from '../utils/i18n';
 class PromptItem extends vscode.TreeItem {
   constructor(
     public readonly prompt: PromptTemplate,
-    public readonly isCategory: boolean = false,
-    public readonly category?: string
+    public readonly kind: 'source' | 'category' | 'prompt' = 'prompt',
+    public readonly key?: string,
+    public readonly parentKey?: string
   ) {
     super(
-      isCategory ? t(category!) : prompt.name,
-      isCategory
+      kind === 'prompt' ? prompt.name : t(key || ''),
+      kind !== 'prompt'
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None
     );
 
-    if (!isCategory) {
+    if (kind === 'prompt') {
       this.description = prompt.description.substring(0, 50) + 
         (prompt.description.length > 50 ? '...' : '');
       
@@ -35,9 +36,12 @@ class PromptItem extends vscode.TreeItem {
         title: t('Run Prompt'),
         arguments: [prompt]
       };
-    } else {
+    } else if (kind === 'category') {
       this.contextValue = 'category';
       this.iconPath = new vscode.ThemeIcon('folder');
+    } else {
+      this.contextValue = 'source';
+      this.iconPath = new vscode.ThemeIcon('library');
     }
   }
 
@@ -112,35 +116,62 @@ export class PromptsTreeProvider implements vscode.TreeDataProvider<PromptItem> 
    */
   getChildren(element?: PromptItem): Thenable<PromptItem[]> {
     if (!element) {
-      // Root level - return categories
-      return Promise.resolve(this.getCategoryItems());
-    } else if (element.isCategory) {
-      // Category level - return prompts in this category
-      return Promise.resolve(this.getPromptItems(element.category!));
+      return Promise.resolve(this.getSourceItems());
+    } else if (element.kind === 'source') {
+      return Promise.resolve(this.getCategoryItems(element.key!));
+    } else if (element.kind === 'category') {
+      return Promise.resolve(this.getPromptItems(element.parentKey!, element.key!));
     }
     
     return Promise.resolve([]);
   }
 
+  private getSourceItems(): PromptItem[] {
+    const sources = new Set(this.prompts.map((prompt) => this.getSourceLabel(prompt)));
+    return Array.from(sources).sort().map((source) =>
+      new PromptItem({} as PromptTemplate, 'source', source)
+    );
+  }
+
   /**
    * Get category items
    */
-  private getCategoryItems(): PromptItem[] {
-    const categories = new Set(this.prompts.map(p => p.category || 'General'));
-    
-    return Array.from(categories).map(category => 
-      new PromptItem({} as PromptTemplate, true, category)
+  private getCategoryItems(source: string): PromptItem[] {
+    const categories = new Set(
+      this.prompts
+        .filter((prompt) => this.getSourceLabel(prompt) === source)
+        .map((prompt) => prompt.category || 'General')
+    );
+
+    return Array.from(categories).sort().map((category) =>
+      new PromptItem({} as PromptTemplate, 'category', category, source)
     );
   }
 
   /**
    * Get prompt items for a category
    */
-  private getPromptItems(category: string): PromptItem[] {
+  private getPromptItems(source: string, category: string): PromptItem[] {
     const categoryPrompts = this.prompts.filter(p => 
+      this.getSourceLabel(p) === source &&
       (p.category || 'General') === category
     );
     
-    return categoryPrompts.map(prompt => new PromptItem(prompt));
+    return categoryPrompts.map(prompt => new PromptItem(prompt, 'prompt'));
+  }
+
+  private getSourceLabel(prompt: PromptTemplate): string {
+    switch (prompt.source) {
+      case 'team-pack':
+        return 'Team Library';
+      case 'workspace':
+        return 'Workspace';
+      case 'global':
+        return 'Personal';
+      case 'builtin':
+        return 'Built-in';
+      default:
+        return 'Other';
+    }
   }
 }

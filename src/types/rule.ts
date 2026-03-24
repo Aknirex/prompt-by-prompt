@@ -4,6 +4,8 @@ import { ResolvedPolicyBinding } from './teamPolicy';
 export type RuleScope = 'workspace' | 'global' | 'team-pack';
 export type RuleFormat = 'markdown' | 'plain';
 export type RuleInjectionMode = 'text-fallback' | 'structured-context' | 'inactive';
+export type RuleCategory = 'style' | 'safety' | 'workflow' | 'tooling' | 'output';
+export type RuleKind = 'instruction' | 'preference' | 'guardrail';
 
 export interface RuleFile {
   id: string;
@@ -20,6 +22,11 @@ export interface RuleFile {
   required?: boolean;
   packId?: string;
   packVersion?: string;
+  title?: string;
+  category?: RuleCategory;
+  kind?: RuleKind;
+  preferenceKey?: string;
+  preferenceValue?: string | boolean | number;
 }
 
 export interface RuleProfile {
@@ -55,6 +62,46 @@ export interface ResolvedRuleEntry {
   status?: 'active' | 'shadowed' | 'inactive';
   shadowedByRuleId?: string;
   required?: boolean;
+}
+
+export interface ExecutionPreference {
+  key: string;
+  value: string | boolean | number;
+  sourceRuleId?: string;
+}
+
+export interface Guardrail {
+  id: string;
+  text: string;
+  severity: 'hard' | 'soft';
+  sourceRuleId?: string;
+}
+
+export interface EffectiveRule {
+  id: string;
+  canonicalKey: string;
+  title: string;
+  body: string;
+  source: 'workspace' | 'global' | 'team-pack' | 'builtin' | 'user-local';
+  priority: number;
+  required: boolean;
+  category?: RuleCategory;
+  kind?: RuleKind;
+  appliesTo?: AgentType[];
+  reason: string;
+}
+
+export interface EffectivePolicy {
+  packId?: string;
+  profileId?: string;
+  declaredVersion?: string;
+  resolvedVersion?: string;
+  bindingSource?: 'runtime' | 'workspace' | 'settings' | 'implicit';
+  rules: EffectiveRule[];
+  preferences: ExecutionPreference[];
+  guardrails: Guardrail[];
+  notes: string[];
+  conflicts: ResolvedRuleConflict[];
 }
 
 export interface ResolvedRuleSet {

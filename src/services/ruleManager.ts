@@ -6,9 +6,10 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AgentType } from '../types/agent';
-import { RuleFile, RuleFormat, RuleProfile, ResolvedRuleConflict, ResolvedRuleEntry, ResolvedRuleSet } from '../types/rule';
+import { EffectivePolicy, EffectiveRule, ExecutionPreference, Guardrail, RuleFile, RuleFormat, RuleProfile, ResolvedRuleConflict, ResolvedRuleEntry, ResolvedRuleSet } from '../types/rule';
 import { ResolvedPolicyBinding, TeamPolicyPack } from '../types/teamPolicy';
 import { t } from '../utils/i18n';
+import { parseRuleDocument } from '../utils/ruleFrontmatter';
 import { TeamPolicyService } from './teamPolicyService';
 import { PolicyBindingService } from './policyBindingService';
 
@@ -136,6 +137,10 @@ export class RuleManager {
     return this.installedPacks;
   }
 
+  public getTeamPolicySourceStates() {
+    return this.teamPolicyService.readPersistedSourceStates();
+  }
+
   public getRuleProfiles(): RuleProfile[] {
     return this.ruleProfiles;
   }
@@ -231,6 +236,72 @@ export class RuleManager {
     };
   }
 
+  public resolvePolicy(options?: {
+    agentType?: AgentType;
+    supportsStructuredContext?: boolean;
+  }): EffectivePolicy {
+    const resolved = this.resolveRuleSet(options);
+    const rules: EffectiveRule[] = resolved.activeEntries.map((entry) => ({
+      id: entry.rule.id,
+      canonicalKey: entry.rule.canonicalKey ?? entry.rule.id,
+      title: entry.rule.title ?? entry.rule.name,
+      body: entry.rule.content.trim(),
+      source: entry.rule.origin ?? (entry.rule.scope === 'team-pack' ? 'team-pack' : entry.rule.scope),
+      priority: entry.rule.priority ?? 0,
+      required: entry.required === true || entry.rule.required === true,
+      category: entry.rule.category,
+      appliesTo: entry.rule.appliesTo,
+      kind: entry.rule.kind ?? (entry.required === true || entry.rule.required === true ? 'guardrail' : 'instruction'),
+      reason: entry.reason,
+    }));
+
+    const guardrails: Guardrail[] = rules
+      .filter((rule) => rule.kind === 'guardrail' || rule.required)
+      .map((rule) => ({
+        id: rule.id,
+        text: rule.body || rule.title,
+        severity: 'hard',
+        sourceRuleId: rule.id,
+      }));
+
+    const preferences: ExecutionPreference[] = [];
+    for (const [index, rule] of rules.entries()) {
+      const sourceRule = resolved.activeEntries[index]?.rule;
+      if (rule.kind === 'preference' && sourceRule?.preferenceKey && sourceRule.preferenceValue !== undefined) {
+        preferences.push({
+          key: sourceRule.preferenceKey,
+          value: sourceRule.preferenceValue,
+          sourceRuleId: rule.id,
+        });
+        continue;
+      }
+
+      const normalizedBody = rule.body.toLowerCase();
+      if (normalizedBody.includes('prefer pnpm instead of npm')) {
+        preferences.push({ key: 'packageManager', value: 'pnpm', sourceRuleId: rule.id });
+      }
+      if (normalizedBody.includes('respond in the language of locale') || normalizedBody.includes('respond in zh-cn')) {
+        preferences.push({ key: 'responseLanguage', value: 'locale', sourceRuleId: rule.id });
+      }
+      if (normalizedBody.includes('provide concise and direct solutions') || normalizedBody.includes('keep responses concise')) {
+        preferences.push({ key: 'responseStyle', value: 'concise', sourceRuleId: rule.id });
+      }
+    }
+
+    return {
+      packId: resolved.policyVersion?.packId,
+      profileId: resolved.profile.id,
+      declaredVersion: resolved.policyVersion?.declaredVersion,
+      resolvedVersion: resolved.policyVersion?.resolvedVersion,
+      bindingSource: resolved.binding?.source,
+      rules,
+      preferences,
+      guardrails,
+      notes: resolved.notes,
+      conflicts: resolved.conflicts,
+    };
+  }
+
   public async setActiveRuleProfile(profileId: string): Promise<void> {
     await this.context.globalState.update(RuleManager.ACTIVE_PROFILE_KEY, profileId);
     await this.refreshProfiles();
@@ -315,6 +386,7 @@ export class RuleManager {
   private createRuleFileRecord(name: string, filePath: string, content: string, scope: 'workspace' | 'global'): RuleFile {
     const format: RuleFormat = name.endsWith('.md') ? 'markdown' : 'plain';
     const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : undefined;
+    const parsed = parseRuleDocument(content);
     return {
       id: `${scope}:${filePath.toLowerCase()}`,
       name,
@@ -322,10 +394,17 @@ export class RuleManager {
       scope,
       origin: scope,
       format,
-      content,
+      content: parsed.body,
       updatedAt: stats?.mtime.toISOString(),
-      canonicalKey: `${scope}:${name.toLowerCase()}`,
-      priority: scope === 'workspace' ? 300 : 100,
+      canonicalKey: parsed.metadata.canonicalKey ?? `${scope}:${name.toLowerCase()}`,
+      priority: parsed.metadata.priority ?? (scope === 'workspace' ? 300 : 100),
+      appliesTo: parsed.metadata.appliesTo,
+      required: parsed.metadata.required,
+      title: parsed.metadata.title,
+      category: parsed.metadata.category,
+      kind: parsed.metadata.kind,
+      preferenceKey: parsed.metadata.preferenceKey,
+      preferenceValue: parsed.metadata.preferenceValue,
     };
   }
 
@@ -465,7 +544,9 @@ export class RuleManager {
       const filePath = path.join(rulesDir, fileName);
       try {
         const content = await fs.promises.readFile(filePath, 'utf8');
-        const ruleId = path.basename(fileName, path.extname(fileName));
+        const fallbackRuleId = path.basename(fileName, path.extname(fileName));
+        const parsed = parseRuleDocument(content);
+        const ruleId = parsed.metadata.ruleId ?? fallbackRuleId;
         const identity = pack.rules.find(rule => rule.ruleId === ruleId);
         const stats = await fs.promises.stat(filePath);
         rules.push({
@@ -475,12 +556,19 @@ export class RuleManager {
           scope: 'team-pack',
           origin: 'team-pack',
           format: 'markdown',
-          content,
+          content: parsed.body,
           updatedAt: stats.mtime.toISOString(),
-          canonicalKey: identity?.canonicalKey ?? `team-pack:${pack.id}:${ruleId}`,
+          canonicalKey: parsed.metadata.canonicalKey ?? identity?.canonicalKey ?? `team-pack:${pack.id}:${ruleId}`,
           packId: pack.id,
           packVersion: pack.version,
-          priority: 400,
+          priority: parsed.metadata.priority ?? 400,
+          appliesTo: parsed.metadata.appliesTo,
+          required: parsed.metadata.required,
+          title: parsed.metadata.title,
+          category: parsed.metadata.category,
+          kind: parsed.metadata.kind,
+          preferenceKey: parsed.metadata.preferenceKey,
+          preferenceValue: parsed.metadata.preferenceValue,
         });
       } catch (error) {
         console.error(`Error reading team policy rule ${fileName}`, error);

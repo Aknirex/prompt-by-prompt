@@ -9,6 +9,7 @@ const mockState = vi.hoisted(() => {
   return {
     workspaceFolders: [] as Array<{ uri: { fsPath: string } }>,
     globalStateStore,
+    configValues: {} as Record<string, unknown>,
   };
 });
 
@@ -34,6 +35,10 @@ vi.mock('vscode', async () => {
       get workspaceFolders() {
         return mockState.workspaceFolders;
       },
+      getConfiguration: vi.fn(() => ({
+        get: (key: string, fallback?: unknown) =>
+          mockState.configValues[key.replace('pbp.', '')] ?? fallback,
+      })),
     },
     EventEmitter,
   };
@@ -54,6 +59,7 @@ describe('PromptManager', () => {
     globalDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pbp-prompt-global-'));
     mockState.workspaceFolders = [{ uri: { fsPath: workspaceDir } }];
     mockState.globalStateStore.clear();
+    mockState.configValues = {};
   });
 
   afterEach(async () => {
@@ -212,5 +218,39 @@ describe('PromptManager', () => {
     expect(reloaded?.source).toBe('global');
     expect(reloaded?.template).toBe('body from file');
     expect(reloaded?.filePath).toContain(path.join(globalDir, 'prompts'));
+  });
+
+  it('loads team prompts from configured team policy packs as read-only prompts', async () => {
+    const packDir = path.join(globalDir, 'team-pack');
+    await fs.promises.mkdir(path.join(packDir, 'prompts'), { recursive: true });
+    await fs.promises.writeFile(path.join(packDir, 'pack.json'), JSON.stringify({
+      id: 'acme-engineering',
+      name: 'Acme Engineering Policy Pack',
+      version: '1.4.2',
+    }), 'utf8');
+    await fs.promises.writeFile(path.join(packDir, 'prompts', 'code-review.yaml'), [
+      'id: team-review',
+      'name: Team Code Review',
+      'description: Review code with the team checklist',
+      'category: Review',
+      'template: |',
+      '  Review this change carefully.',
+    ].join('\n'), 'utf8');
+
+    mockState.configValues = {
+      teamPolicySources: [{ id: 'local-pack', type: 'local-folder', path: packDir }],
+    };
+
+    const { PromptManager } = await import('../src/services/promptManager');
+    const manager = new PromptManager(createContext() as never, config as never);
+
+    await manager.initialize();
+
+    const prompt = manager.getPrompt('team-review');
+    expect(prompt).toBeDefined();
+    expect(prompt?.source).toBe('team-pack');
+    expect(prompt?.readOnly).toBe(true);
+    expect(prompt?.packId).toBe('acme-engineering');
+    expect(prompt?.template).toContain('Review this change carefully.');
   });
 });

@@ -49,8 +49,11 @@ export interface PromptTemplate {
   template: string;
   
   // Metadata (not stored in YAML)
-  source?: 'workspace' | 'global' | 'builtin';
+  source?: 'workspace' | 'global' | 'builtin' | 'team-pack';
   filePath?: string;
+  readOnly?: boolean;
+  packId?: string;
+  packVersion?: string;
 }
 
 // ============================================================================

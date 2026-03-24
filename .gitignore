@@ -25,6 +25,9 @@ coverage/
 .env
 .env.local
 
+# Local reference packs
+.local/
+
 # Legacy docs drafts
 docs/
 

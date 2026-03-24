@@ -224,4 +224,63 @@ describe('RuleManager', () => {
     });
     expect(resolved.binding?.source).toBe('workspace');
   });
+
+  it('parses rule frontmatter into effective policy preferences and guardrails', async () => {
+    await fs.promises.writeFile(path.join(workspaceDir, 'AGENTS.md'), `---
+title: Workspace Guardrail
+kind: guardrail
+category: tooling
+required: true
+canonicalKey: workspace:shell-compatibility
+---
+Ensure terminal commands are compatible with the current shell.
+`, 'utf8');
+
+    await fs.promises.mkdir(path.join(globalDir, 'global-rules'), { recursive: true });
+    const globalRulePath = path.join(globalDir, 'global-rules', 'response-style.md');
+    await fs.promises.writeFile(globalRulePath, `---
+title: Concise Responses
+kind: preference
+preferenceKey: responseStyle
+preferenceValue: concise
+priority: 150
+---
+Provide concise and direct solutions.
+`, 'utf8');
+    mockState.globalStateStore.set('pbp.activeGlobalRule', globalRulePath);
+
+    const { RuleManager } = await import('../src/services/ruleManager');
+    const manager = new RuleManager({
+      globalStorageUri: { fsPath: globalDir },
+      globalState: {
+        get: (key: string, defaultValue?: unknown) =>
+          mockState.globalStateStore.has(key) ? mockState.globalStateStore.get(key) : defaultValue,
+        update: async (key: string, value: unknown) => {
+          mockState.globalStateStore.set(key, value);
+        },
+      },
+    } as never);
+
+    await waitForRuleScan(() => manager.getRuleFiles().length > 0);
+
+    const policy = manager.resolvePolicy({ agentType: 'codex', supportsStructuredContext: false });
+    expect(policy.guardrails.map((guardrail) => guardrail.text)).toContain('Ensure terminal commands are compatible with the current shell.');
+    expect(policy.preferences).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: 'responseStyle',
+        value: 'concise',
+      }),
+    ]));
+    expect(policy.rules).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: 'Workspace Guardrail',
+        kind: 'guardrail',
+        category: 'tooling',
+      }),
+      expect.objectContaining({
+        title: 'Concise Responses',
+        kind: 'preference',
+      }),
+    ]));
+  });
 });
