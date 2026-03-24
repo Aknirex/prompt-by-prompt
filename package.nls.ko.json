@@ -37,9 +37,15 @@
   "config.pbp.azureEndpoint.description": "Azure OpenAI 엔드포인트 URL",
   "config.pbp.azureModel.description": "기본 Azure OpenAI 배포 이름",
   "config.pbp.promptsDir.description": "워크스페이스 프롬프트 디렉토리",
-  "config.pbp.defaultAgent.description": "프롬프트를 전송할 기본 에이전트",
-  "config.pbp.rememberLastAgent.description": "마지막으로 사용한 에이전트 기억",
+  "config.pbp.defaultAgent.description": "프롬프트를 보낼 기본 에이전트",
+  "config.pbp.sendBehavior.description": "에이전트에 프롬프트를 보낼 때의 동작",
   "config.pbp.defaultTarget.description": "새 프롬프트 기본 저장 위치",
   "config.pbp.outputDirectory.description": "생성된 마크다운 파일 디렉토리",
-  "config.pbp.defaultRuleFile.description": "생성할 기본 규칙 파일"
+  "config.pbp.defaultRuleFile.description": "생성할 기본 규칙 파일",
+  "ui.settings.promptGeneratorConfig": "프롬프트 생성기 구성",
+  "ui.settings.aiProviderDescription": "프롬프트 생성을 위한 AI 공급자를 설정합니다. Ollama(로컬)를 제외한 각 공급자에는 API 키가 필요합니다.",
+  "ui.settings.sendBehavior": "전송 동작",
+  "ui.settings.send": "전송",
+  "ui.settings.append": "입력 상자에 추가",
+  "ui.settings.insert": "입력 상자 맨 위에 삽입"
 }

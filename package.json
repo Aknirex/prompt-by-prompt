@@ -443,6 +443,7 @@
     "watch": "npm run esbuild-base -- --sourcemap --watch",
     "build": "npm run esbuild-base -- --minify",
     "lint": "eslint src",
+    "check:i18n": "node scripts/check-i18n.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "package": "vsce package",

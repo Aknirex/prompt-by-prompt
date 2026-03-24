@@ -37,9 +37,15 @@
   "config.pbp.azureEndpoint.description": "Azure OpenAI エンドポイント URL",
   "config.pbp.azureModel.description": "デフォルト Azure OpenAI デプロイメント名",
   "config.pbp.promptsDir.description": "ワークスペースプロンプトのディレクトリ名",
-  "config.pbp.defaultAgent.description": "プロンプトのデフォルト送信先エージェント。'ask' は毎回確認します。",
-  "config.pbp.rememberLastAgent.description": "最後に使用したエージェントを記憶する",
+  "config.pbp.defaultAgent.description": "プロンプト送信先の既定エージェント。",
+  "config.pbp.sendBehavior.description": "エージェントへプロンプトを送る際の動作",
   "config.pbp.defaultTarget.description": "新しいプロンプトのデフォルト保存先",
   "config.pbp.outputDirectory.description": "生成された Markdown ファイルのディレクトリ (ワークスペースからの相対パスまたは絶対パス)",
-  "config.pbp.defaultRuleFile.description": "作成するデフォルトのルールファイル。'ask' は毎回確認します。"
+  "config.pbp.defaultRuleFile.description": "作成するデフォルトのルールファイル。'ask' は毎回確認します。",
+  "ui.settings.promptGeneratorConfig": "プロンプトジェネレーター設定",
+  "ui.settings.aiProviderDescription": "プロンプト生成用の AI プロバイダーを設定します。Ollama (ローカル) を除き、各プロバイダーには API キーが必要です。",
+  "ui.settings.sendBehavior": "送信動作",
+  "ui.settings.send": "送信",
+  "ui.settings.append": "入力欄に追加",
+  "ui.settings.insert": "入力欄の先頭に挿入"
 }

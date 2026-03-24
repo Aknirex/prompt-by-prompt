@@ -7,13 +7,96 @@ const en_dict: Record<string, string> = {
     'Spanish': 'Spanish',
     'Korean': 'Korean',
     'Chinese': 'Chinese',
+    'Run Mode': 'Run Mode',
+    'Run Defaults': 'Run Defaults',
+    'Storage & UI': 'Storage & UI',
+    'Execution Defaults': 'Execution Defaults',
+    'Execution Selection Mode': 'Execution Selection Mode',
+    'Reuse last execution per prompt': 'Reuse last execution per prompt',
+    'Ask every run': 'Ask every run',
     'Preset': 'Preset',
     'Preset Agent': 'Preset Agent',
     'Preset Behavior': 'Preset Behavior',
     'Recommended Agent': 'Recommended Agent',
+    'Prompt Storage': 'Prompt Storage',
+    'Generator Provider': 'Generator Provider',
+    'Generator System Prompt': 'Generator System Prompt',
+    'Default Save Location': 'Default Save Location',
+    'Provider': 'Provider',
+    'Model': 'Model',
+    'Type': 'Type',
+    'Required': 'Required',
+    'Optional': 'Optional',
+    'Multiline': 'Multiline',
+    'Placeholder': 'Placeholder',
+    'Default Value': 'Default Value',
+    'Enum Values': 'Enum Values',
+    'Variable Name': 'Variable Name',
+    'Variable Schema': 'Variable Schema',
+    'Add Variable': 'Add Variable',
+    'Remove': 'Remove',
+    'Prompt Metadata': 'Prompt Metadata',
+    'Prompt Editor': 'Prompt Editor',
+    'Prompt Definition': 'Prompt Definition',
+    'Prompt Template': 'Prompt Template',
+    'Prompt YAML': 'Prompt YAML',
+    'Rendered Preview': 'Rendered Preview',
+    'Built-in Context Variables': 'Built-in Context Variables',
+    'Refresh Preview': 'Refresh Preview',
+    'Refreshing preview...': 'Refreshing preview...',
+    'Form View': 'Form View',
+    'YAML View': 'YAML View',
+    'Form + YAML': 'Form + YAML',
+    'Schema + Preview': 'Schema + Preview',
+    'New Template': 'New Template',
+    'Editing Existing Template': 'Editing Existing Template',
+    'Apply YAML to Form': 'Apply YAML to Form',
+    'Sync Form to YAML': 'Sync Form to YAML',
+    'Prompts refreshed': 'Prompts refreshed',
+    'Rules refreshed': 'Rules refreshed',
+    'Clipboard target': 'Clipboard target',
+    'File target': 'File target',
+    'Invalid rule item': 'Invalid rule item',
+    'needs setup': 'needs setup',
+    'Save to File': 'Save to File',
     'Priority is: explicit choice in the current run > per-prompt last execution > preset.': 'Priority is: explicit choice in the current run > per-prompt last execution > preset.',
     'This preset is only used when execution selection mode is set to preset.': 'This preset is only used when execution selection mode is set to preset.',
     'Settings saved with partial issues: {0}': 'Settings saved with partial issues: {0}',
+    'Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.': 'Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.',
+    'These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.': 'These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.',
+    'Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.': 'Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.',
+    'This setting only affects prompt creation. It does not change where prompts are sent when you run them.': 'This setting only affects prompt creation. It does not change where prompts are sent when you run them.',
+    'Lower-frequency preferences live here so they do not compete with daily run decisions.': 'Lower-frequency preferences live here so they do not compete with daily run decisions.',
+    'These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.': 'These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.',
+    'The selected generator provider looks configured.': 'The selected generator provider looks configured.',
+    'The selected generator provider still needs setup before it can draft prompts.': 'The selected generator provider still needs setup before it can draft prompts.',
+    'Configure the instruction used when the built-in prompt generator drafts a new template.': 'Configure the instruction used when the built-in prompt generator drafts a new template.',
+    'Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.': 'Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.',
+    'Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.': 'Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.',
+    'What should this prompt help with?': 'What should this prompt help with?',
+    'e.g. Review a pull request for security issues, explain the risks, and propose concrete fixes.': 'e.g. Review a pull request for security issues, explain the risks, and propose concrete fixes.',
+    'What should teammates know before using this template?': 'What should teammates know before using this template?',
+    'This only controls where the prompt is saved. Execution target and behavior stay in the run flow, not in the editor.': 'This only controls where the prompt is saved. Execution target and behavior stay in the run flow, not in the editor.',
+    'Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.': 'Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.',
+    'Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.': 'Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.',
+    'Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.': 'Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.',
+    'Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.': 'Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.',
+    'YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.': 'YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.',
+    'This shows what the prompt looks like after context variables and schema defaults are applied.': 'This shows what the prompt looks like after context variables and schema defaults are applied.',
+    'Preview will update as you edit.': 'Preview will update as you edit.',
+    'Define the variables that are user-provided at run time. Schema fields drive future input UI and make the template self-explanatory.': 'Define the variables that are user-provided at run time. Schema fields drive future input UI and make the template self-explanatory.',
+    'Prompt editor only manages the template. Choose agent, behavior, and dispatch target when you run it.': 'Prompt editor only manages the template. Choose agent, behavior, and dispatch target when you run it.',
+    'Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.': 'Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.',
+    'Preview unavailable right now.': 'Preview unavailable right now.',
+    'Preview still reflects the form state. Apply YAML to form to preview YAML edits.': 'Preview still reflects the form state. Apply YAML to form to preview YAML edits.',
+    'Preview uses current editor context plus schema defaults.': 'Preview uses current editor context plus schema defaults.',
+    'YAML refreshed from the current form state.': 'YAML refreshed from the current form state.',
+    'YAML applied to the shared form state.': 'YAML applied to the shared form state.',
+    'Failed to save YAML prompt definition.': 'Failed to save YAML prompt definition.',
+    'What should the user provide?': 'What should the user provide?',
+    'Shown during input collection': 'Shown during input collection',
+    'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': 'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.',
+    'YAML must describe a prompt object.': 'YAML must describe a prompt object.',
     'Development': 'Development',
     'Code Analysis': 'Code Analysis',
     'Code Generation': 'Code Generation',
@@ -157,6 +240,89 @@ const ja_dict: Record<string, string> = {
     'ui.settings.insert': '入力欄の先頭に挿入',
     'ui.settings.aiProviderDescription': 'プロンプト生成用のAIプロバイダーを設定します。Ollama（ローカル）を除き、各プロバイダーにはAPIキーが必要です。',
     'Prompt Generator Configuration': 'プロンプトジェネレーター設定',
+    'Save to File': 'ファイルに保存',
+    'Run Mode': '実行モード',
+    'Run Defaults': '実行時の既定値',
+    'Storage & UI': '保存先と UI',
+    'Execution Defaults': '実行の既定値',
+    'Execution Selection Mode': '実行選択モード',
+    'Reuse last execution per prompt': 'プロンプトごとに前回の実行先を再利用',
+    'Ask every run': '毎回実行時に確認',
+    'Prompt Storage': 'プロンプト保存先',
+    'Generator Provider': '生成プロバイダー',
+    'Generator System Prompt': '生成システムプロンプト',
+    'Default Save Location': '既定の保存先',
+    'Provider': 'プロバイダー',
+    'Model': 'モデル',
+    'Type': 'タイプ',
+    'Required': '必須',
+    'Optional': '任意',
+    'Multiline': '複数行',
+    'Placeholder': 'プレースホルダー',
+    'Default Value': 'デフォルト値',
+    'Enum Values': '列挙値',
+    'Variable Name': '変数名',
+    'Variable Schema': '変数スキーマ',
+    'Add Variable': '変数を追加',
+    'Remove': '削除',
+    'Prompt Metadata': 'プロンプトメタデータ',
+    'Prompt Editor': 'プロンプトエディター',
+    'Prompt Definition': 'プロンプト定義',
+    'Prompt Template': 'プロンプトテンプレート',
+    'Prompt YAML': 'プロンプト YAML',
+    'Rendered Preview': 'レンダリングプレビュー',
+    'Built-in Context Variables': '組み込みコンテキスト変数',
+    'Refresh Preview': 'プレビューを更新',
+    'Refreshing preview...': 'プレビューを更新中...',
+    'Form View': 'フォーム表示',
+    'YAML View': 'YAML 表示',
+    'Form + YAML': 'フォーム + YAML',
+    'Schema + Preview': 'スキーマ + プレビュー',
+    'New Template': '新規テンプレート',
+    'Editing Existing Template': '既存テンプレートを編集中',
+    'Apply YAML to Form': 'YAML をフォームに適用',
+    'Sync Form to YAML': 'フォームを YAML に同期',
+    'Prompts refreshed': 'プロンプトを更新しました',
+    'Rules refreshed': 'ルールを更新しました',
+    'Clipboard target': 'クリップボード',
+    'File target': 'ファイル出力',
+    'Invalid rule item': '無効なルール項目です',
+    'needs setup': '未設定',
+    'Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.': 'ここでは日常的によく使う実行フローをすっきり保ちます。プロンプトの実行先の選び方、新しいプロンプトの保存先、テンプレート作成を補助するプロバイダーを設定します。',
+    'These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.': 'これらは実行フロー向けの推奨値とフォールバックルールです。実行時に明示的に選んだ内容が常に優先されます。',
+    'Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.': '実行時の選択は実行フロー側で行います。下の保存先設定は、新しく作成したプロンプトの既定保存先だけを決めます。',
+    'This setting only affects prompt creation. It does not change where prompts are sent when you run them.': 'この設定はプロンプト作成時にのみ影響します。実行時の送信先は変わりません。',
+    'Lower-frequency preferences live here so they do not compete with daily run decisions.': '利用頻度の低い設定はここにまとめ、日常の実行判断と競合しないようにしています。',
+    'These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.': 'これらの設定は、内蔵のプロンプトジェネレーターがテンプレート草案を作るときだけ使われます。実行時にどのエージェントへ送るかは制御しません。',
+    'The selected generator provider looks configured.': '選択中の生成プロバイダーは設定済みのようです。',
+    'The selected generator provider still needs setup before it can draft prompts.': '選択中の生成プロバイダーは、プロンプト草案を作る前に設定が必要です。',
+    'Configure the instruction used when the built-in prompt generator drafts a new template.': '内蔵のプロンプトジェネレーターが新しいテンプレート草案を作る際に使う指示文を設定します。',
+    'Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.': 'ここではタスクテンプレート自体に集中します。保存前に、プロンプト本文、変数スキーマ、メタデータ、レンダリング済みプレビューを確認できます。',
+    'Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.': '自然言語でタスクを説明してください。生成されたプロンプトは出発点にすぎないので、下のテンプレートとスキーマを引き続き調整してください。',
+    'What should this prompt help with?': 'このプロンプトで何を支援したいですか？',
+    'e.g. Review a pull request for security issues, explain the risks, and propose concrete fixes.': '例: プルリクエストのセキュリティ問題をレビューし、リスクを説明して、具体的な修正案を提示する。',
+    'What should teammates know before using this template?': 'このテンプレートを使う前にチームメンバーが知っておくべきことは？',
+    'This only controls where the prompt is saved. Execution target and behavior stay in the run flow, not in the editor.': 'ここで決まるのはプロンプトの保存先だけです。実行先と挙動はエディターではなく実行フロー側で決まります。',
+    'Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.': 'ガイド付き編集にはフォームを使い、1 ファイルで高度に編集したい場合は YAML に切り替えてください。どちらも同じ保存対象のプロンプト定義を編集します。',
+    'Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.': 'テンプレート内では {{variable_name}} プレースホルダーを使います。組み込みのエディターコンテキスト変数は再定義なしで利用できます。',
+    'Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.': 'プレビューでは、可能な範囲で組み込み変数には現在のエディター状態を、カスタム変数にはスキーマの既定値を使います。',
+    'Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.': 'プロンプト定義を YAML として編集する上級モードです。同期アクションを使って、構造化フォームとソース表示を行き来できます。',
+    'YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.': 'YAML 表示は現在の保存済み状態またはフォーム状態から開始します。フォームモードでプレビューまたは保存する前に、YAML をフォームへ反映してください。',
+    'This shows what the prompt looks like after context variables and schema defaults are applied.': 'コンテキスト変数とスキーマ既定値を適用した後、プロンプトがどう見えるかを表示します。',
+    'Preview will update as you edit.': '編集中にプレビューが更新されます。',
+    'Define the variables that are user-provided at run time. Schema fields drive future input UI and make the template self-explanatory.': '実行時にユーザーが入力する変数を定義します。スキーマ項目は今後の入力 UI を形作り、テンプレートを自己説明的にします。',
+    'Prompt editor only manages the template. Choose agent, behavior, and dispatch target when you run it.': 'プロンプトエディターはテンプレートのみを管理します。エージェント、挙動、送信先は実行時に選択してください。',
+    'Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.': 'プレビューは最後のフォーム状態に基づいています。YAML での変更をプレビューに反映するには、YAML をフォームへ適用してください。',
+    'Preview unavailable right now.': '現在プレビューを表示できません。',
+    'Preview still reflects the form state. Apply YAML to form to preview YAML edits.': 'プレビューはまだフォーム状態を反映しています。YAML の編集内容を確認するには、YAML をフォームへ適用してください。',
+    'Preview uses current editor context plus schema defaults.': 'プレビューは現在のエディターコンテキストとスキーマ既定値を使います。',
+    'YAML refreshed from the current form state.': '現在のフォーム状態から YAML を更新しました。',
+    'YAML applied to the shared form state.': 'YAML を共有フォーム状態へ適用しました。',
+    'Failed to save YAML prompt definition.': 'YAML プロンプト定義の保存に失敗しました。',
+    'What should the user provide?': 'ユーザーは何を入力すべきですか？',
+    'Shown during input collection': '入力収集中に表示',
+    'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': 'まだスキーマ変数は定義されていません。組み込みエディターコンテキスト以外にユーザー入力が必要な場合は、ここで変数を追加してください。',
+    'YAML must describe a prompt object.': 'YAML はプロンプトオブジェクトを記述している必要があります。',
 };
 
 const es_dict: Record<string, string> = {
@@ -284,6 +450,89 @@ const es_dict: Record<string, string> = {
     'ui.settings.insert': 'Insertar al principio del cuadro de entrada',
     'ui.settings.aiProviderDescription': 'Configura tus proveedores de IA para la generación de prompts. Cada proveedor requiere una clave API excepto Ollama (local).',
     'Prompt Generator Configuration': 'Configuración del generador de prompts',
+    'Save to File': 'Guardar en archivo',
+    'Run Mode': 'Modo de ejecución',
+    'Run Defaults': 'Valores predeterminados de ejecución',
+    'Storage & UI': 'Almacenamiento e interfaz',
+    'Execution Defaults': 'Valores predeterminados de ejecución',
+    'Execution Selection Mode': 'Modo de selección de ejecución',
+    'Reuse last execution per prompt': 'Reutilizar la última ejecución por prompt',
+    'Ask every run': 'Preguntar en cada ejecución',
+    'Prompt Storage': 'Almacenamiento de prompts',
+    'Generator Provider': 'Proveedor del generador',
+    'Generator System Prompt': 'Prompt del sistema del generador',
+    'Default Save Location': 'Ubicación de guardado predeterminada',
+    'Provider': 'Proveedor',
+    'Model': 'Modelo',
+    'Type': 'Tipo',
+    'Required': 'Obligatorio',
+    'Optional': 'Opcional',
+    'Multiline': 'Multilínea',
+    'Placeholder': 'Marcador de posición',
+    'Default Value': 'Valor predeterminado',
+    'Enum Values': 'Valores enumerados',
+    'Variable Name': 'Nombre de la variable',
+    'Variable Schema': 'Esquema de variables',
+    'Add Variable': 'Agregar variable',
+    'Remove': 'Eliminar',
+    'Prompt Metadata': 'Metadatos del prompt',
+    'Prompt Editor': 'Editor de prompts',
+    'Prompt Definition': 'Definición del prompt',
+    'Prompt Template': 'Plantilla del prompt',
+    'Prompt YAML': 'YAML del prompt',
+    'Rendered Preview': 'Vista previa renderizada',
+    'Built-in Context Variables': 'Variables de contexto integradas',
+    'Refresh Preview': 'Actualizar vista previa',
+    'Refreshing preview...': 'Actualizando vista previa...',
+    'Form View': 'Vista de formulario',
+    'YAML View': 'Vista YAML',
+    'Form + YAML': 'Formulario + YAML',
+    'Schema + Preview': 'Esquema + vista previa',
+    'New Template': 'Nueva plantilla',
+    'Editing Existing Template': 'Editando plantilla existente',
+    'Apply YAML to Form': 'Aplicar YAML al formulario',
+    'Sync Form to YAML': 'Sincronizar formulario a YAML',
+    'Prompts refreshed': 'Prompts actualizados',
+    'Rules refreshed': 'Reglas actualizadas',
+    'Clipboard target': 'Destino: portapapeles',
+    'File target': 'Destino: archivo',
+    'Invalid rule item': 'Elemento de regla no válido',
+    'needs setup': 'requiere configuración',
+    'Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.': 'Mantén aquí ágil el flujo de ejecución más frecuente: elige cómo los prompts seleccionan destinos de ejecución, dónde se guardan los nuevos prompts y qué proveedor ayuda a redactar plantillas.',
+    'These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.': 'Estas son solo recomendaciones y reglas de respaldo para el flujo de ejecución. Las elecciones explícitas durante una ejecución siguen teniendo prioridad.',
+    'Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.': 'Mantén las decisiones de ejecución dentro del flujo de ejecución. La opción de almacenamiento de abajo solo decide dónde se guardan por defecto los prompts nuevos.',
+    'This setting only affects prompt creation. It does not change where prompts are sent when you run them.': 'Esta opción solo afecta a la creación de prompts. No cambia a dónde se envían cuando los ejecutas.',
+    'Lower-frequency preferences live here so they do not compete with daily run decisions.': 'Las preferencias de menor frecuencia viven aquí para no competir con las decisiones diarias de ejecución.',
+    'These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.': 'Estas opciones solo se usan cuando el generador integrado redacta una plantilla para ti. No controlan qué agente recibe un prompt durante la ejecución.',
+    'The selected generator provider looks configured.': 'El proveedor del generador seleccionado parece estar configurado.',
+    'The selected generator provider still needs setup before it can draft prompts.': 'El proveedor del generador seleccionado todavía necesita configuración antes de poder redactar prompts.',
+    'Configure the instruction used when the built-in prompt generator drafts a new template.': 'Configura la instrucción que usa el generador integrado cuando redacta una nueva plantilla.',
+    'Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.': 'Concéntrate aquí en la plantilla de la tarea: texto del prompt, esquema de variables, metadatos y una vista previa renderizada antes de guardar.',
+    'Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.': 'Describe la tarea en lenguaje natural. El prompt generado es solo un punto de partida; sigue refinando la plantilla y el esquema de abajo.',
+    'What should this prompt help with?': '¿Con qué debería ayudar este prompt?',
+    'e.g. Review a pull request for security issues, explain the risks, and propose concrete fixes.': 'p. ej., revisar un pull request en busca de problemas de seguridad, explicar los riesgos y proponer correcciones concretas.',
+    'What should teammates know before using this template?': '¿Qué deberían saber tus compañeros antes de usar esta plantilla?',
+    'This only controls where the prompt is saved. Execution target and behavior stay in the run flow, not in the editor.': 'Esto solo controla dónde se guarda el prompt. El destino y el comportamiento de ejecución permanecen en el flujo de ejecución, no en el editor.',
+    'Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.': 'Usa el formulario para una edición guiada o cambia a YAML para una edición avanzada en un solo archivo. Ambos editan la misma definición de prompt guardada.',
+    'Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.': 'Usa marcadores {{variable_name}} dentro de la plantilla. Las variables de contexto integradas del editor están disponibles sin volver a definirlas.',
+    'Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.': 'La vista previa usa el estado actual del editor para las variables integradas y los valores predeterminados del esquema para las variables personalizadas siempre que sea posible.',
+    'Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.': 'Modo avanzado para editar la definición del prompt como YAML. Usa las acciones de sincronización para moverte entre el formulario estructurado y la vista de origen.',
+    'YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.': 'La vista YAML parte del estado actual guardado o del formulario. Aplica el YAML al formulario antes de previsualizar o guardar desde el modo formulario.',
+    'This shows what the prompt looks like after context variables and schema defaults are applied.': 'Esto muestra cómo queda el prompt después de aplicar las variables de contexto y los valores predeterminados del esquema.',
+    'Preview will update as you edit.': 'La vista previa se actualizará mientras editas.',
+    'Define the variables that are user-provided at run time. Schema fields drive future input UI and make the template self-explanatory.': 'Define las variables que el usuario proporcionará en tiempo de ejecución. Los campos del esquema darán forma a la futura interfaz de entrada y harán que la plantilla sea autoexplicativa.',
+    'Prompt editor only manages the template. Choose agent, behavior, and dispatch target when you run it.': 'El editor de prompts solo gestiona la plantilla. Elige el agente, el comportamiento y el destino al ejecutarlo.',
+    'Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.': 'La vista previa se basa en el último estado del formulario. Aplica el YAML al formulario para actualizar la vista previa renderizada con los cambios hechos en YAML.',
+    'Preview unavailable right now.': 'La vista previa no está disponible ahora mismo.',
+    'Preview still reflects the form state. Apply YAML to form to preview YAML edits.': 'La vista previa todavía refleja el estado del formulario. Aplica el YAML al formulario para ver los cambios hechos en YAML.',
+    'Preview uses current editor context plus schema defaults.': 'La vista previa usa el contexto actual del editor junto con los valores predeterminados del esquema.',
+    'YAML refreshed from the current form state.': 'YAML actualizado desde el estado actual del formulario.',
+    'YAML applied to the shared form state.': 'YAML aplicado al estado compartido del formulario.',
+    'Failed to save YAML prompt definition.': 'No se pudo guardar la definición YAML del prompt.',
+    'What should the user provide?': '¿Qué debería proporcionar el usuario?',
+    'Shown during input collection': 'Se muestra durante la recopilación de entrada',
+    'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': 'Todavía no hay variables de esquema definidas. Agrega variables aquí cuando el prompt necesite entrada del usuario además del contexto integrado del editor.',
+    'YAML must describe a prompt object.': 'El YAML debe describir un objeto de prompt.',
 };
 
 const ko_dict: Record<string, string> = {
@@ -411,6 +660,89 @@ const ko_dict: Record<string, string> = {
     'ui.settings.insert': '입력 상자 맨 위에 삽입',
     'ui.settings.aiProviderDescription': '프롬프트 생성을 위한 AI 공급자를 설정합니다. Ollama(로컬)를 제외한 각 공급자는 API 키가 필요합니다.',
     'Prompt Generator Configuration': '프롬프트 생성기 구성',
+    'Save to File': '파일로 저장',
+    'Run Mode': '실행 모드',
+    'Run Defaults': '실행 기본값',
+    'Storage & UI': '저장소 및 UI',
+    'Execution Defaults': '실행 기본값',
+    'Execution Selection Mode': '실행 선택 모드',
+    'Reuse last execution per prompt': '프롬프트별 마지막 실행 재사용',
+    'Ask every run': '실행할 때마다 묻기',
+    'Prompt Storage': '프롬프트 저장 위치',
+    'Generator Provider': '생성 공급자',
+    'Generator System Prompt': '생성 시스템 프롬프트',
+    'Default Save Location': '기본 저장 위치',
+    'Provider': '공급자',
+    'Model': '모델',
+    'Type': '유형',
+    'Required': '필수',
+    'Optional': '선택 사항',
+    'Multiline': '여러 줄',
+    'Placeholder': '플레이스홀더',
+    'Default Value': '기본값',
+    'Enum Values': '열거형 값',
+    'Variable Name': '변수 이름',
+    'Variable Schema': '변수 스키마',
+    'Add Variable': '변수 추가',
+    'Remove': '제거',
+    'Prompt Metadata': '프롬프트 메타데이터',
+    'Prompt Editor': '프롬프트 편집기',
+    'Prompt Definition': '프롬프트 정의',
+    'Prompt Template': '프롬프트 템플릿',
+    'Prompt YAML': '프롬프트 YAML',
+    'Rendered Preview': '렌더링된 미리보기',
+    'Built-in Context Variables': '내장 컨텍스트 변수',
+    'Refresh Preview': '미리보기 새로고침',
+    'Refreshing preview...': '미리보기 새로고침 중...',
+    'Form View': '폼 보기',
+    'YAML View': 'YAML 보기',
+    'Form + YAML': '폼 + YAML',
+    'Schema + Preview': '스키마 + 미리보기',
+    'New Template': '새 템플릿',
+    'Editing Existing Template': '기존 템플릿 편집 중',
+    'Apply YAML to Form': 'YAML을 폼에 적용',
+    'Sync Form to YAML': '폼을 YAML로 동기화',
+    'Prompts refreshed': '프롬프트를 새로고침했습니다',
+    'Rules refreshed': '규칙을 새로고침했습니다',
+    'Clipboard target': '클립보드 대상',
+    'File target': '파일 대상',
+    'Invalid rule item': '잘못된 규칙 항목입니다',
+    'needs setup': '설정 필요',
+    'Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.': '자주 사용하는 실행 흐름을 여기서 간결하게 유지하세요. 프롬프트가 실행 대상을 고르는 방식, 새 프롬프트 저장 위치, 템플릿 초안 작성을 도와줄 공급자를 선택할 수 있습니다.',
+    'These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.': '이 값들은 실행 흐름을 위한 권장값과 대체 규칙일 뿐입니다. 실행 중 명시적으로 선택한 항목이 항상 우선합니다.',
+    'Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.': '실행 관련 결정은 실행 흐름 안에서 유지하세요. 아래 저장 설정은 새로 만든 프롬프트의 기본 저장 위치만 결정합니다.',
+    'This setting only affects prompt creation. It does not change where prompts are sent when you run them.': '이 설정은 프롬프트 생성에만 영향을 줍니다. 실행 시 어디로 전송되는지는 바꾸지 않습니다.',
+    'Lower-frequency preferences live here so they do not compete with daily run decisions.': '사용 빈도가 낮은 기본 설정은 여기에 모아, 일상적인 실행 결정과 섞이지 않게 했습니다.',
+    'These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.': '이 설정은 내장 프롬프트 생성기가 템플릿 초안을 만들 때만 사용됩니다. 실행 중 어떤 에이전트가 프롬프트를 받을지는 제어하지 않습니다.',
+    'The selected generator provider looks configured.': '선택한 생성 공급자는 설정이 완료된 것 같습니다.',
+    'The selected generator provider still needs setup before it can draft prompts.': '선택한 생성 공급자는 프롬프트 초안을 만들기 전에 추가 설정이 필요합니다.',
+    'Configure the instruction used when the built-in prompt generator drafts a new template.': '내장 프롬프트 생성기가 새 템플릿 초안을 만들 때 사용할 지시문을 설정합니다.',
+    'Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.': '여기서는 작업 템플릿 자체에 집중하세요. 저장 전에 프롬프트 본문, 변수 스키마, 메타데이터, 렌더링된 미리보기를 다룰 수 있습니다.',
+    'Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.': '작업을 자연어로 설명하세요. 생성된 프롬프트는 시작점일 뿐이므로, 아래 템플릿과 스키마를 계속 다듬어야 합니다.',
+    'What should this prompt help with?': '이 프롬프트는 무엇을 도와야 하나요?',
+    'e.g. Review a pull request for security issues, explain the risks, and propose concrete fixes.': '예: 풀 리퀘스트의 보안 문제를 검토하고, 위험을 설명하며, 구체적인 수정안을 제안합니다.',
+    'What should teammates know before using this template?': '팀원이 이 템플릿을 쓰기 전에 무엇을 알아야 하나요?',
+    'This only controls where the prompt is saved. Execution target and behavior stay in the run flow, not in the editor.': '이 설정은 프롬프트가 어디에 저장되는지만 제어합니다. 실행 대상과 동작은 편집기가 아니라 실행 흐름에서 결정됩니다.',
+    'Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.': '안내형 편집에는 폼을 사용하고, 한 파일에서 고급 편집이 필요하면 YAML로 전환하세요. 두 방식 모두 같은 저장 프롬프트 정의를 편집합니다.',
+    'Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.': '템플릿 안에서는 {{variable_name}} 플레이스홀더를 사용하세요. 내장 편집기 컨텍스트 변수는 다시 정의하지 않아도 사용할 수 있습니다.',
+    'Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.': '미리보기는 가능할 때 내장 변수에는 현재 편집기 상태를, 사용자 정의 변수에는 스키마 기본값을 사용합니다.',
+    'Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.': '프롬프트 정의를 YAML로 편집하는 고급 모드입니다. 동기화 동작을 사용해 구조화된 폼과 소스 보기 사이를 오갈 수 있습니다.',
+    'YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.': 'YAML 보기는 현재 저장된 상태 또는 폼 상태에서 시작합니다. 폼 모드에서 미리보기나 저장을 하기 전에 YAML을 다시 폼에 적용하세요.',
+    'This shows what the prompt looks like after context variables and schema defaults are applied.': '컨텍스트 변수와 스키마 기본값을 적용한 뒤 프롬프트가 어떻게 보이는지 보여줍니다.',
+    'Preview will update as you edit.': '편집하는 동안 미리보기가 업데이트됩니다.',
+    'Define the variables that are user-provided at run time. Schema fields drive future input UI and make the template self-explanatory.': '실행 시 사용자가 입력할 변수를 정의하세요. 스키마 필드는 향후 입력 UI를 이끌고, 템플릿이 스스로 설명되도록 도와줍니다.',
+    'Prompt editor only manages the template. Choose agent, behavior, and dispatch target when you run it.': '프롬프트 편집기는 템플릿만 관리합니다. 에이전트, 동작, 전송 대상은 실행할 때 선택하세요.',
+    'Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.': '미리보기는 마지막 폼 상태를 기준으로 합니다. YAML 편집 내용을 렌더링된 미리보기에 반영하려면 YAML을 폼에 적용하세요.',
+    'Preview unavailable right now.': '지금은 미리보기를 사용할 수 없습니다.',
+    'Preview still reflects the form state. Apply YAML to form to preview YAML edits.': '미리보기는 아직 폼 상태를 반영하고 있습니다. YAML 편집 내용을 보려면 YAML을 폼에 적용하세요.',
+    'Preview uses current editor context plus schema defaults.': '미리보기는 현재 편집기 컨텍스트와 스키마 기본값을 함께 사용합니다.',
+    'YAML refreshed from the current form state.': '현재 폼 상태에서 YAML을 새로고침했습니다.',
+    'YAML applied to the shared form state.': 'YAML을 공유 폼 상태에 적용했습니다.',
+    'Failed to save YAML prompt definition.': 'YAML 프롬프트 정의를 저장하지 못했습니다.',
+    'What should the user provide?': '사용자는 무엇을 입력해야 하나요?',
+    'Shown during input collection': '입력 수집 중 표시',
+    'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': '아직 정의된 스키마 변수가 없습니다. 프롬프트에 내장 편집기 컨텍스트 외의 사용자 입력이 필요하면 여기에 변수를 추가하세요.',
+    'YAML must describe a prompt object.': 'YAML은 프롬프트 객체를 설명해야 합니다.',
 };
 
 const zh_cn_dict: Record<string, string> = {
@@ -539,6 +871,88 @@ const zh_cn_dict: Record<string, string> = {
     'ui.settings.insert': '插入到输入框顶部',
     'ui.settings.aiProviderDescription': '配置用于提示词生成的 AI 供应商。除 Ollama (本地) 外，每个供应商都需要 API Key。',
     'Prompt Generator Configuration': '提示词生成器配置'
+    ,'Run Mode': '运行模式'
+    ,'Run Defaults': '运行默认值'
+    ,'Storage & UI': '存储与界面'
+    ,'Execution Defaults': '执行默认值'
+    ,'Execution Selection Mode': '执行选择模式'
+    ,'Reuse last execution per prompt': '按提示词复用上次执行'
+    ,'Ask every run': '每次运行时询问'
+    ,'Prompt Storage': '提示词存储'
+    ,'Generator Provider': '生成器供应商'
+    ,'Generator System Prompt': '生成器系统提示词'
+    ,'Default Save Location': '默认保存位置'
+    ,'Provider': '供应商'
+    ,'Model': '模型'
+    ,'Type': '类型'
+    ,'Required': '必填'
+    ,'Optional': '可选'
+    ,'Multiline': '多行'
+    ,'Placeholder': '占位提示'
+    ,'Default Value': '默认值'
+    ,'Enum Values': '枚举值'
+    ,'Variable Name': '变量名'
+    ,'Variable Schema': '变量模式'
+    ,'Add Variable': '添加变量'
+    ,'Remove': '移除'
+    ,'Prompt Metadata': '提示词元数据'
+    ,'Prompt Editor': '提示词编辑器'
+    ,'Prompt Definition': '提示词定义'
+    ,'Prompt Template': '提示词模板'
+    ,'Prompt YAML': '提示词 YAML'
+    ,'Rendered Preview': '渲染预览'
+    ,'Built-in Context Variables': '内置上下文变量'
+    ,'Refresh Preview': '刷新预览'
+    ,'Refreshing preview...': '正在刷新预览...'
+    ,'Form View': '表单视图'
+    ,'YAML View': 'YAML 视图'
+    ,'Form + YAML': '表单 + YAML'
+    ,'Schema + Preview': '模式 + 预览'
+    ,'New Template': '新模板'
+    ,'Editing Existing Template': '正在编辑现有模板'
+    ,'Apply YAML to Form': '将 YAML 应用到表单'
+    ,'Sync Form to YAML': '将表单同步到 YAML'
+    ,'Prompts refreshed': '提示词已刷新'
+    ,'Rules refreshed': '规则已刷新'
+    ,'Clipboard target': '剪贴板目标'
+    ,'File target': '文件目标'
+    ,'Invalid rule item': '无效的规则项'
+    ,'needs setup': '需要设置'
+    ,'Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.': '这里聚焦高频运行流程：选择提示词如何决定执行目标、新提示词默认保存到哪里，以及由哪个供应商帮助起草模板。'
+    ,'These are only recommendations and fallback rules for the run flow. Explicit choices in a run still win.': '这些只是运行流程中的推荐值和回退规则。运行时的显式选择仍然优先。'
+    ,'Keep execution decisions in the run flow. The storage setting below only decides where newly created prompts are saved by default.': '执行相关决定放在运行流程中处理。下面的存储设置只决定新建提示词默认保存到哪里。'
+    ,'This setting only affects prompt creation. It does not change where prompts are sent when you run them.': '该设置只影响提示词创建，不会改变运行时发送到哪里。'
+    ,'Lower-frequency preferences live here so they do not compete with daily run decisions.': '低频偏好设置放在这里，避免与日常运行决策混在一起。'
+    ,'These settings are only used when the built-in prompt generator drafts a template for you. They do not control which agent receives a prompt during execution.': '这些设置仅在内置提示词生成器为你起草模板时使用，不控制运行时把提示词发送给哪个 Agent。'
+    ,'The selected generator provider looks configured.': '所选生成器供应商看起来已配置完成。'
+    ,'The selected generator provider still needs setup before it can draft prompts.': '所选生成器供应商仍需先完成配置，才能起草提示词。'
+    ,'Configure the instruction used when the built-in prompt generator drafts a new template.': '配置内置提示词生成器在起草新模板时使用的指令。'
+    ,'Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.': '这里聚焦任务模板本身：提示词正文、变量模式、元数据，以及保存前的渲染预览。'
+    ,'Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.': '请用自然语言描述任务。生成出的提示词只是起点，后续还需要继续完善下方的模板和模式。'
+    ,'What should this prompt help with?': '这个提示词应该帮助处理什么？'
+    ,'e.g. Review a pull request for security issues, explain the risks, and propose concrete fixes.': '例如：审查一个拉取请求中的安全问题，解释风险，并提出具体修复方案。'
+    ,'What should teammates know before using this template?': '团队成员在使用这个模板前应该了解什么？'
+    ,'This only controls where the prompt is saved. Execution target and behavior stay in the run flow, not in the editor.': '这里仅控制提示词保存到哪里。执行目标和行为仍在运行流程中决定，而不是在编辑器里。'
+    ,'Use the form for guided editing, or switch to YAML for one-file advanced editing. Both feed the same saved prompt definition.': '可以使用表单进行引导式编辑，或切换到 YAML 进行单文件高级编辑。两者操作的都是同一个已保存的提示词定义。'
+    ,'Use {{variable_name}} placeholders inside the template. Built-in editor context variables are available without redefining them.': '请在模板中使用 {{variable_name}} 占位符。内置的编辑器上下文变量无需重新定义即可使用。'
+    ,'Preview uses the current editor state for built-in variables and schema defaults for custom variables whenever possible.': '预览会尽可能对内置变量使用当前编辑器状态，对自定义变量使用模式默认值。'
+    ,'Advanced mode for editing the prompt definition as YAML. Use sync actions to move between the structured form and the source view.': '这是以 YAML 形式编辑提示词定义的高级模式。可通过同步操作在结构化表单和源码视图之间来回切换。'
+    ,'YAML view starts from the current saved/form state. Apply YAML back to the form before previewing or saving from form mode.': 'YAML 视图从当前保存状态或表单状态开始。如果要在表单模式下预览或保存，请先把 YAML 应用回表单。'
+    ,'This shows what the prompt looks like after context variables and schema defaults are applied.': '这里展示应用上下文变量和模式默认值后，提示词最终会是什么样子。'
+    ,'Preview will update as you edit.': '编辑过程中预览会自动更新。'
+    ,'Define the variables that are user-provided at run time. Schema fields drive future input UI and make the template self-explanatory.': '定义运行时由用户提供的变量。模式字段将驱动后续输入界面，并让模板本身更易理解。'
+    ,'Prompt editor only manages the template. Choose agent, behavior, and dispatch target when you run it.': '提示词编辑器只负责模板本身。Agent、行为和发送目标请在运行时选择。'
+    ,'Preview is based on the last form state. Apply YAML to the form to refresh the rendered preview from YAML edits.': '当前预览基于上一次的表单状态。若要让 YAML 中的修改反映到渲染预览，请先把 YAML 应用到表单。'
+    ,'Preview unavailable right now.': '当前暂时无法预览。'
+    ,'Preview still reflects the form state. Apply YAML to form to preview YAML edits.': '当前预览仍反映表单状态。要预览 YAML 中的修改，请先把 YAML 应用到表单。'
+    ,'Preview uses current editor context plus schema defaults.': '预览会使用当前编辑器上下文以及模式默认值。'
+    ,'YAML refreshed from the current form state.': '已根据当前表单状态刷新 YAML。'
+    ,'YAML applied to the shared form state.': '已将 YAML 应用到共享表单状态。'
+    ,'Failed to save YAML prompt definition.': '保存 YAML 提示词定义失败。'
+    ,'What should the user provide?': '用户应该提供什么？'
+    ,'Shown during input collection': '在收集输入时显示'
+    ,'No schema variables defined yet. Add variables here when the prompt needs user input beyond built-in editor context.': '当前还没有定义模式变量。如果提示词除了内置编辑器上下文外还需要用户输入，请在这里添加变量。'
+    ,'YAML must describe a prompt object.': 'YAML 必须描述一个提示词对象。'
 };
 
 const dictionaries: Record<string, Record<string, string>> = {
@@ -557,7 +971,8 @@ export function t(key: string, ...args: Array<string | number>): string {
     }
     
     const dict = dictionaries[currentLanguage] || dictionaries['en'] || dictionaries['zh-cn'];
-    let text = dict[key] || key;
+    const englishDict = dictionaries['en'] || {};
+    let text = dict[key] || englishDict[key] || key;
 
     if (args.length > 0) {
         text = text.replace(/{(\d+)}/g, (match, number) => {
