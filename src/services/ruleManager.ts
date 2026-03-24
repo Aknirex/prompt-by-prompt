@@ -7,7 +7,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AgentType } from '../types/agent';
 import { RuleFile, RuleFormat, RuleProfile, ResolvedRuleConflict, ResolvedRuleEntry, ResolvedRuleSet } from '../types/rule';
+import { ResolvedPolicyBinding, TeamPolicyPack } from '../types/teamPolicy';
 import { t } from '../utils/i18n';
+import { TeamPolicyService } from './teamPolicyService';
+import { PolicyBindingService } from './policyBindingService';
 
 export const KNOWN_RULE_FILES = [
   'AGENTS.md',
@@ -25,9 +28,14 @@ export class RuleManager {
   public readonly onDidChange = this.onDidChangeRules.event;
   private ruleFiles: RuleFile[] = [];
   private ruleProfiles: RuleProfile[] = [];
+  private installedPacks: TeamPolicyPack[] = [];
   private isScanning = false;
+  private readonly teamPolicyService: TeamPolicyService;
+  private readonly policyBindingService: PolicyBindingService;
 
   constructor(private readonly context: vscode.ExtensionContext) {
+    this.teamPolicyService = new TeamPolicyService(context);
+    this.policyBindingService = new PolicyBindingService(context);
     this.initialize();
   }
 
@@ -94,6 +102,11 @@ export class RuleManager {
         }
       }
 
+      this.installedPacks = await this.teamPolicyService.refresh();
+      for (const pack of this.installedPacks) {
+        newRuleFiles.push(...await this.loadTeamPackRules(pack));
+      }
+
       this.ruleFiles = newRuleFiles;
       await this.refreshProfiles(activeRulePath);
       this.onDidChangeRules.fire();
@@ -113,6 +126,14 @@ export class RuleManager {
 
   public getGlobalRules(): RuleFile[] {
     return this.ruleFiles.filter(rule => rule.scope === 'global');
+  }
+
+  public getTeamPackRules(): RuleFile[] {
+    return this.ruleFiles.filter(rule => rule.scope === 'team-pack');
+  }
+
+  public getInstalledTeamPacks(): TeamPolicyPack[] {
+    return this.installedPacks;
   }
 
   public getRuleProfiles(): RuleProfile[] {
@@ -136,20 +157,31 @@ export class RuleManager {
     agentType?: AgentType;
     supportsStructuredContext?: boolean;
   }): ResolvedRuleSet {
-    const profile = this.getActiveProfile() ?? {
+    const binding = this.policyBindingService.resolveBinding(this.installedPacks);
+    const profile = this.resolveProfile(binding) ?? {
       id: 'workspace-only',
       name: 'Workspace Only',
       enabledRuleIds: [],
       priority: 0,
       isActive: true,
+      origin: 'built-in',
     };
     const workspaceRules = this.getWorkspaceRules();
-    const globalRules = this.getGlobalRules().filter(rule => profile.enabledRuleIds.includes(rule.id));
-    const activeEntries = [...workspaceRules, ...globalRules]
-      .filter(rule => this.appliesToAgent(rule, options?.agentType))
-      .map(rule => this.createResolvedRuleEntry(rule, profile, options?.agentType));
+    const globalRules = profile.origin === 'global'
+      ? this.getGlobalRules().filter(rule => profile.enabledRuleIds.includes(rule.id))
+      : [];
+    const teamRules = profile.origin === 'team-pack'
+      ? this.resolveTeamRules(profile)
+      : [];
+    const candidateRules = [
+      ...teamRules.filter(rule => rule.required),
+      ...teamRules.filter(rule => !rule.required),
+      ...workspaceRules,
+      ...globalRules,
+    ];
+    const applicableRules = candidateRules.filter(rule => this.appliesToAgent(rule, options?.agentType));
+    const { activeEntries, inactiveEntries, conflicts } = this.resolveEntries(applicableRules, profile, options?.agentType);
     const activeRules = activeEntries.map(entry => entry.rule);
-    const conflicts = this.detectConflicts(activeRules);
     const notes: string[] = [];
 
     notes.push(`Active profile: ${profile.name}`);
@@ -165,19 +197,37 @@ export class RuleManager {
     if (globalRules.length > 0) {
       notes.push(`Global rules: ${globalRules.length}`);
     }
+    if (teamRules.length > 0) {
+      notes.push(`Team rules: ${teamRules.length}`);
+    }
+    if (binding.packId) {
+      notes.push(`Policy binding: ${binding.source}`);
+    }
     if (conflicts.length > 0) {
       notes.push('Potential rule conflicts detected. Review the conflict section below.');
     }
+
+    const boundPack = binding.packId ? this.installedPacks.find(pack => pack.id === binding.packId) : undefined;
 
     return {
       profile,
       workspaceRules,
       globalRules,
+      teamRules,
       activeRules,
       activeEntries,
+      inactiveEntries,
       injectionMode: options?.supportsStructuredContext ? 'structured-context' : 'text-fallback',
       notes,
       conflicts,
+      binding,
+      policyVersion: boundPack
+        ? {
+            packId: boundPack.id,
+            declaredVersion: boundPack.version,
+            resolvedVersion: boundPack.resolvedVersion,
+          }
+        : undefined,
     };
   }
 
@@ -270,31 +320,49 @@ export class RuleManager {
       name,
       path: filePath,
       scope,
+      origin: scope,
       format,
       content,
       updatedAt: stats?.mtime.toISOString(),
+      canonicalKey: `${scope}:${name.toLowerCase()}`,
+      priority: scope === 'workspace' ? 300 : 100,
     };
   }
 
   private async refreshProfiles(activeRulePath?: string): Promise<void> {
     const globalRules = this.getGlobalRules();
     const activeProfileId = this.context.globalState.get<string>(RuleManager.ACTIVE_PROFILE_KEY);
+    const teamProfiles = this.installedPacks.flatMap(pack =>
+      pack.profiles.map(profile => ({
+        ...profile,
+        id: `team-profile:${pack.id}:${profile.id}`,
+        packId: pack.id,
+        origin: 'team-pack' as const,
+        priority: 200 + profile.priority,
+      }))
+    );
+    const binding = this.policyBindingService.resolveBinding(this.installedPacks);
     const profiles: RuleProfile[] = [
       {
         id: 'workspace-only',
         name: 'Workspace Only',
         enabledRuleIds: [],
         priority: 0,
+        origin: 'built-in',
       },
+      ...teamProfiles,
       ...globalRules.map((rule, index) => ({
         id: `global-profile:${rule.id}`,
         name: `Global: ${rule.name}`,
         enabledRuleIds: [rule.id],
         priority: 100 + index,
+        origin: 'global' as const,
       })),
     ];
 
     const fallbackProfileId =
+      this.resolveBoundProfileId(binding, profiles)
+      ?? (
       profiles.find(profile =>
         activeRulePath
         && profile.enabledRuleIds.some(ruleId =>
@@ -302,7 +370,7 @@ export class RuleManager {
         )
       )?.id
       ?? activeProfileId
-      ?? 'workspace-only';
+      ?? 'workspace-only');
 
     this.ruleProfiles = profiles.map(profile => ({
       ...profile,
@@ -336,6 +404,8 @@ export class RuleManager {
 
     if (rule.scope === 'workspace') {
       reasons.push('Workspace rule discovered in the current project');
+    } else if (rule.scope === 'team-pack') {
+      reasons.push(`Enabled by team policy profile "${profile.name}"`);
     } else {
       reasons.push(`Enabled by active profile "${profile.name}"`);
     }
@@ -353,6 +423,8 @@ export class RuleManager {
     return {
       rule,
       reason: reasons.join(' | '),
+      status: 'active',
+      required: rule.required === true,
     };
   }
 
@@ -379,5 +451,142 @@ export class RuleManager {
     }
 
     return conflicts;
+  }
+
+  private async loadTeamPackRules(pack: TeamPolicyPack): Promise<RuleFile[]> {
+    const rulesDir = path.join(pack.sourcePath, 'rules');
+    if (!fs.existsSync(rulesDir)) {
+      return [];
+    }
+
+    const files = (await fs.promises.readdir(rulesDir)).filter(file => file.endsWith('.md'));
+    const rules: RuleFile[] = [];
+    for (const fileName of files) {
+      const filePath = path.join(rulesDir, fileName);
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        const ruleId = path.basename(fileName, path.extname(fileName));
+        const identity = pack.rules.find(rule => rule.ruleId === ruleId);
+        const stats = await fs.promises.stat(filePath);
+        rules.push({
+          id: `team-pack:${pack.id}:${ruleId}`,
+          name: fileName,
+          path: filePath,
+          scope: 'team-pack',
+          origin: 'team-pack',
+          format: 'markdown',
+          content,
+          updatedAt: stats.mtime.toISOString(),
+          canonicalKey: identity?.canonicalKey ?? `team-pack:${pack.id}:${ruleId}`,
+          packId: pack.id,
+          packVersion: pack.version,
+          priority: 400,
+        });
+      } catch (error) {
+        console.error(`Error reading team policy rule ${fileName}`, error);
+      }
+    }
+
+    return rules;
+  }
+
+  private resolveProfile(binding: ResolvedPolicyBinding): RuleProfile | undefined {
+    const boundProfileId = this.resolveBoundProfileId(binding, this.ruleProfiles);
+    if (boundProfileId) {
+      return this.ruleProfiles.find(profile => profile.id === boundProfileId);
+    }
+
+    return this.getActiveProfile();
+  }
+
+  private resolveBoundProfileId(binding: ResolvedPolicyBinding, profiles: RuleProfile[]): string | undefined {
+    if (!binding.profileId) {
+      return undefined;
+    }
+
+    return profiles.find(profile =>
+      profile.origin === 'team-pack'
+      && profile.packId === binding.packId
+      && (profile.id === binding.profileId || profile.id === `team-profile:${binding.packId}:${binding.profileId}`)
+    )?.id;
+  }
+
+  private resolveTeamRules(profile: RuleProfile): RuleFile[] {
+    if (!profile.packId) {
+      return [];
+    }
+
+    const requiredRuleIds = new Set(profile.requiredRuleIds ?? []);
+    const enabledRuleIds = new Set(profile.enabledRuleIds);
+    return this.getTeamPackRules()
+      .filter(rule => rule.packId === profile.packId && (enabledRuleIds.has(this.extractTeamRuleId(rule.id)) || requiredRuleIds.has(this.extractTeamRuleId(rule.id))))
+      .map(rule => ({
+        ...rule,
+        required: requiredRuleIds.has(this.extractTeamRuleId(rule.id)),
+        priority: requiredRuleIds.has(this.extractTeamRuleId(rule.id)) ? 500 : 400,
+      }));
+  }
+
+  private extractTeamRuleId(ruleId: string): string {
+    return ruleId.split(':').slice(2).join(':');
+  }
+
+  private resolveEntries(rules: RuleFile[], profile: RuleProfile, agentType?: AgentType): {
+    activeEntries: ResolvedRuleEntry[];
+    inactiveEntries: ResolvedRuleEntry[];
+    conflicts: ResolvedRuleConflict[];
+  } {
+    const activeEntries: ResolvedRuleEntry[] = [];
+    const inactiveEntries: ResolvedRuleEntry[] = [];
+    const conflicts: ResolvedRuleConflict[] = [];
+    const winners = new Map<string, RuleFile>();
+
+    for (const rule of rules) {
+      const key = rule.canonicalKey ?? rule.id;
+      const winner = winners.get(key);
+      if (!winner) {
+        winners.set(key, rule);
+        continue;
+      }
+
+      const winnerPriority = winner.priority ?? 0;
+      const challengerPriority = rule.priority ?? 0;
+      if (challengerPriority > winnerPriority) {
+        winners.set(key, rule);
+        inactiveEntries.push({
+          ...this.createResolvedRuleEntry(winner, profile, agentType),
+          status: 'shadowed',
+          shadowedByRuleId: rule.id,
+          reason: `${this.createResolvedRuleEntry(winner, profile, agentType).reason} | Shadowed by ${rule.name}`,
+        });
+        conflicts.push({
+          type: 'priority-shadowed',
+          message: `${winner.name} was shadowed by ${rule.name}`,
+          ruleIds: [winner.id, rule.id],
+        });
+      } else {
+        inactiveEntries.push({
+          ...this.createResolvedRuleEntry(rule, profile, agentType),
+          status: 'shadowed',
+          shadowedByRuleId: winner.id,
+          reason: `${this.createResolvedRuleEntry(rule, profile, agentType).reason} | Shadowed by ${winner.name}`,
+        });
+        conflicts.push({
+          type: 'priority-shadowed',
+          message: `${rule.name} was shadowed by ${winner.name}`,
+          ruleIds: [rule.id, winner.id],
+        });
+      }
+    }
+
+    for (const rule of winners.values()) {
+      activeEntries.push(this.createResolvedRuleEntry(rule, profile, agentType));
+    }
+
+    return {
+      activeEntries,
+      inactiveEntries,
+      conflicts: [...this.detectConflicts(rules), ...conflicts],
+    };
   }
 }

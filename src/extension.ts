@@ -182,6 +182,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (event.affectsConfiguration('pbp.promptsDir')) {
         await promptManager.refresh();
       }
+
+      if (
+        event.affectsConfiguration('pbp.teamPolicySources')
+        || event.affectsConfiguration('pbp.defaultTeamPackId')
+        || event.affectsConfiguration('pbp.defaultTeamProfileId')
+        || event.affectsConfiguration('pbp.allowPersonalPolicyOverrides')
+      ) {
+        await ruleManager.scanRuleFiles();
+        rulesTreeProvider.refresh();
+      }
     })
   );
 

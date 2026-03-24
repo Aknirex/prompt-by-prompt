@@ -9,6 +9,7 @@ const mockState = vi.hoisted(() => {
   return {
     workspaceFolders: [] as Array<{ uri: { fsPath: string } }>,
     globalStateStore,
+    configValues: {} as Record<string, unknown>,
     informationMessages: [] as string[],
     warningMessages: [] as string[],
     errorMessages: [] as string[],
@@ -40,7 +41,8 @@ vi.mock('vscode', async () => {
         }),
       },
       getConfiguration: vi.fn(() => ({
-        get: vi.fn(),
+        get: vi.fn((key: string, fallback?: unknown) =>
+          mockState.configValues[key.replace('pbp.', '')] ?? fallback),
         update: vi.fn(),
       })),
     },
@@ -92,6 +94,7 @@ describe('RuleManager', () => {
     globalDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pbp-global-'));
     mockState.workspaceFolders = [{ uri: { fsPath: workspaceDir } }];
     mockState.globalStateStore.clear();
+    mockState.configValues = {};
     mockState.informationMessages.length = 0;
     mockState.warningMessages.length = 0;
     mockState.errorMessages.length = 0;
@@ -164,5 +167,61 @@ describe('RuleManager', () => {
     const resolved = manager.resolveRuleSet();
     expect(resolved.conflicts).toHaveLength(1);
     expect(resolved.conflicts[0]?.message).toContain('Multiple active rules share the same file name: AGENTS.md');
+  });
+
+  it('resolves team policy pack rules from workspace binding and exposes policy version metadata', async () => {
+    const packDir = path.join(globalDir, 'team-pack');
+    await fs.promises.mkdir(path.join(packDir, 'rules'), { recursive: true });
+    await fs.promises.mkdir(path.join(packDir, 'profiles'), { recursive: true });
+    await fs.promises.mkdir(path.join(workspaceDir, '.pbp'), { recursive: true });
+
+    await fs.promises.writeFile(path.join(packDir, 'pack.json'), JSON.stringify({
+      id: 'acme-engineering',
+      name: 'Acme Engineering Policy Pack',
+      version: '1.4.2',
+    }), 'utf8');
+    await fs.promises.writeFile(path.join(packDir, 'rules', 'secure-defaults.md'), '# secure defaults', 'utf8');
+    await fs.promises.writeFile(path.join(packDir, 'profiles', 'frontend-standard.json'), JSON.stringify({
+      id: 'frontend-standard',
+      name: 'Frontend Standard',
+      enabledRuleIds: [],
+      requiredRuleIds: ['secure-defaults'],
+    }), 'utf8');
+    await fs.promises.writeFile(path.join(workspaceDir, '.pbp', 'policy.json'), JSON.stringify({
+      packId: 'acme-engineering',
+      packVersion: '1.4.2',
+      profileId: 'frontend-standard',
+      allowPersonalOverrides: true,
+      pinned: true,
+    }), 'utf8');
+
+    mockState.configValues = {
+      teamPolicySources: [{ id: 'local-pack', type: 'local-folder', path: packDir }],
+    };
+
+    const { RuleManager } = await import('../src/services/ruleManager');
+    const manager = new RuleManager({
+      globalStorageUri: { fsPath: globalDir },
+      globalState: {
+        get: (key: string, defaultValue?: unknown) =>
+          mockState.globalStateStore.has(key) ? mockState.globalStateStore.get(key) : defaultValue,
+        update: async (key: string, value: unknown) => {
+          mockState.globalStateStore.set(key, value);
+        },
+      },
+    } as never);
+
+    await waitForRuleScan(() => manager.getRuleFiles().some(rule => rule.scope === 'team-pack'));
+
+    const resolved = manager.resolveRuleSet({ agentType: 'codex', supportsStructuredContext: false });
+    expect(resolved.profile.name).toBe('Frontend Standard');
+    expect(resolved.teamRules?.map(rule => rule.name)).toContain('secure-defaults.md');
+    expect(resolved.activeRules.map(rule => rule.name)).toContain('secure-defaults.md');
+    expect(resolved.policyVersion).toEqual({
+      packId: 'acme-engineering',
+      declaredVersion: '1.4.2',
+      resolvedVersion: '1.4.2',
+    });
+    expect(resolved.binding?.source).toBe('workspace');
   });
 });

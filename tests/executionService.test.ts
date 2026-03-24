@@ -91,11 +91,27 @@ describe('ExecutionService', () => {
           profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
           workspaceRules: [],
           globalRules: [],
+          teamRules: [],
           activeRules: [],
           activeEntries: [],
+          inactiveEntries: [],
           injectionMode: 'text-fallback',
           notes: [],
           conflicts: [],
+          binding: {
+            source: 'workspace',
+            packId: 'acme-engineering',
+            packVersion: '1.4.2',
+            profileId: 'frontend-standard',
+            allowPersonalOverrides: true,
+            pinned: true,
+            reasons: ['Workspace policy binding declared in .pbp/policy.json'],
+          },
+          policyVersion: {
+            packId: 'acme-engineering',
+            declaredVersion: '1.4.2',
+            resolvedVersion: 'commit-sha',
+          },
         })),
       } as never,
       vi.fn()
@@ -287,11 +303,27 @@ describe('ExecutionService', () => {
           profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
           workspaceRules: [],
           globalRules: [],
+          teamRules: [],
           activeRules: [],
           activeEntries: [],
+          inactiveEntries: [],
           injectionMode: 'text-fallback',
           notes: [],
           conflicts: [],
+          binding: {
+            source: 'workspace',
+            packId: 'acme-engineering',
+            packVersion: '1.4.2',
+            profileId: 'frontend-standard',
+            allowPersonalOverrides: true,
+            pinned: true,
+            reasons: ['Workspace policy binding declared in .pbp/policy.json'],
+          },
+          policyVersion: {
+            packId: 'acme-engineering',
+            declaredVersion: '1.4.2',
+            resolvedVersion: 'commit-sha',
+          },
         })),
       } as never,
       vi.fn()
@@ -362,11 +394,27 @@ describe('ExecutionService', () => {
           profile: { id: 'profile', name: 'Workspace Only', enabledRuleIds: [], priority: 0, isActive: true },
           workspaceRules: [],
           globalRules: [],
+          teamRules: [],
           activeRules: [],
           activeEntries: [],
+          inactiveEntries: [],
           injectionMode: 'text-fallback',
           notes: [],
           conflicts: [],
+          binding: {
+            source: 'workspace',
+            packId: 'acme-engineering',
+            packVersion: '1.4.2',
+            profileId: 'frontend-standard',
+            allowPersonalOverrides: true,
+            pinned: true,
+            reasons: ['Workspace policy binding declared in .pbp/policy.json'],
+          },
+          policyVersion: {
+            packId: 'acme-engineering',
+            declaredVersion: '1.4.2',
+            resolvedVersion: 'commit-sha',
+          },
         })),
       } as never,
       vi.fn()
@@ -388,6 +436,8 @@ describe('ExecutionService', () => {
 
     expect(preview?.target).toEqual({ kind: 'clipboard' });
     expect(preview?.previewText).toContain('[Dispatch Target]');
+    expect(preview?.previewText).toContain('[Effective Policy]');
+    expect(preview?.previewText).toContain('- pack: acme-engineering');
     expect(preview?.previewText).toContain('[Actual Payload]');
     expect(sendToAgent).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();

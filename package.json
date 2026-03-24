@@ -431,6 +431,29 @@
           "type": "string",
           "default": "",
           "description": "Custom Provider URL"
+        },
+        "pbp.teamPolicySources": {
+          "type": "array",
+          "default": [],
+          "description": "Team policy sources. Each source can point to a local folder or a pre-synced git checkout containing pack.json.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "pbp.defaultTeamPackId": {
+          "type": "string",
+          "default": "",
+          "description": "Default team policy pack ID used when no workspace policy binding is present."
+        },
+        "pbp.defaultTeamProfileId": {
+          "type": "string",
+          "default": "",
+          "description": "Default team policy profile ID used when no workspace policy binding is present."
+        },
+        "pbp.allowPersonalPolicyOverrides": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether personal policy overrides are allowed when resolving team policies."
         }
       }
     }

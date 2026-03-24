@@ -24,6 +24,10 @@ class RuleItem extends vscode.TreeItem {
         this.contextValue = 'globalRuleItem';
         this.iconPath = new vscode.ThemeIcon('circle-outline');
       }
+    } else if (rule.scope === 'team-pack') {
+      this.description = options?.description || `${rule.packId ?? 'team-pack'}${rule.required ? ' (required)' : ''}`;
+      this.contextValue = 'teamRuleItem';
+      this.iconPath = new vscode.ThemeIcon(options?.active ? 'shield' : 'library');
     } else {
       this.description = options?.description || (options?.active ? `(${t('Active')})` : rule.path);
       this.contextValue = 'workspaceRuleItem';
@@ -56,24 +60,37 @@ class RuleProfileItem extends vscode.TreeItem {
   }
 }
 
+class PolicyInfoItem extends vscode.TreeItem {
+  constructor(label: string, description?: string) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.description = description;
+    this.contextValue = 'policyInfoItem';
+    this.iconPath = new vscode.ThemeIcon('pass');
+  }
+}
+
 class RuleGroupItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
-    public readonly kind: 'profiles' | 'active' | 'workspace' | 'global'
+    public readonly kind: 'policy' | 'profiles' | 'active' | 'workspace' | 'global' | 'team'
   ) {
     super(t(label), vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue =
-      kind === 'profiles'
+      kind === 'policy'
+        ? 'activePolicyGroup'
+        : kind === 'profiles'
         ? 'ruleProfileGroup'
         : kind === 'active'
           ? 'activeRuleGroup'
+          : kind === 'team'
+            ? 'teamRuleGroup'
           : kind === 'global'
             ? 'globalRuleGroup'
             : 'workspaceRuleGroup';
   }
 }
 
-type TreeElement = RuleGroupItem | RuleItem | RuleProfileItem;
+type TreeElement = RuleGroupItem | RuleItem | RuleProfileItem | PolicyInfoItem;
 
 export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
   private _onDidChangeTreeData: vscode.EventEmitter<TreeElement | undefined | null | void> =
@@ -84,6 +101,7 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
 
   private workspaceRules: RuleFile[] = [];
   private globalRules: RuleFile[] = [];
+  private teamRules: RuleFile[] = [];
   private ruleProfiles: RuleProfile[] = [];
   private resolvedRuleSet?: ResolvedRuleSet;
 
@@ -94,6 +112,7 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
   refresh(): void {
     this.workspaceRules = this.ruleManager.getWorkspaceRules();
     this.globalRules = this.ruleManager.getGlobalRules();
+    this.teamRules = this.ruleManager.getTeamPackRules();
     this.ruleProfiles = this.ruleManager.getRuleProfiles();
     this.resolvedRuleSet = this.ruleManager.resolveRuleSet();
     this._onDidChangeTreeData.fire();
@@ -106,12 +125,28 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
   getChildren(element?: TreeElement): Thenable<TreeElement[]> {
     if (element instanceof RuleGroupItem) {
       switch (element.kind) {
+        case 'policy': {
+          const items: TreeElement[] = [];
+          if (this.resolvedRuleSet?.binding) {
+            items.push(new PolicyInfoItem('Binding Source', this.resolvedRuleSet.binding.source));
+          }
+          if (this.resolvedRuleSet?.policyVersion) {
+            items.push(new PolicyInfoItem('Effective Pack', this.resolvedRuleSet.policyVersion.packId));
+            items.push(new PolicyInfoItem('Policy Version', this.resolvedRuleSet.policyVersion.resolvedVersion ?? this.resolvedRuleSet.policyVersion.declaredVersion));
+          }
+          if (items.length === 0) {
+            items.push(new PolicyInfoItem('Active Policy', 'Legacy workspace/global rules'));
+          }
+          return Promise.resolve(items);
+        }
         case 'profiles':
           return Promise.resolve(this.ruleProfiles.map(profile => new RuleProfileItem(profile)));
         case 'active':
           return Promise.resolve((this.resolvedRuleSet?.activeEntries ?? []).map((entry: ResolvedRuleEntry) =>
             new RuleItem(entry.rule, { active: true, description: entry.reason })
           ));
+        case 'team':
+          return Promise.resolve(this.teamRules.map(rule => new RuleItem(rule)));
         case 'workspace':
           return Promise.resolve(this.workspaceRules.map(rule => new RuleItem(rule)));
         case 'global': {
@@ -126,8 +161,10 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
     }
 
     return Promise.resolve([
+      new RuleGroupItem('Active Policy', 'policy'),
       new RuleGroupItem('Active Profile', 'profiles'),
       new RuleGroupItem('Active Rules', 'active'),
+      new RuleGroupItem('Team Rules', 'team'),
       new RuleGroupItem('Workspace Rules', 'workspace'),
       new RuleGroupItem('Global Rules', 'global')
     ]);

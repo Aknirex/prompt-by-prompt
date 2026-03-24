@@ -11,7 +11,7 @@ import {
   ResolvedExecution,
 } from '../types/execution';
 import { AgentType } from '../types/agent';
-import { ResolvedRuleSet } from '../types/rule';
+import { ResolvedRuleSet, RuleScope } from '../types/rule';
 import { RuleManager } from './ruleManager';
 import { t } from '../utils/i18n';
 
@@ -191,15 +191,24 @@ export class ExecutionService {
   }
 
   private buildPreviewText(resolvedExecution: ResolvedExecution): string {
-    return [
+    const sections = [
       '[Dispatch Target]',
       `- target: ${this.formatTargetLabel(resolvedExecution.target)}`,
       `- behavior: ${resolvedExecution.behavior ?? 'default'}`,
       `- injection: ${resolvedExecution.resolvedRules.injectionMode}`,
-      '',
-      '[Actual Payload]',
-      resolvedExecution.dispatchText,
-    ].join('\n');
+    ];
+
+    if (resolvedExecution.resolvedRules.policyVersion) {
+      sections.push('');
+      sections.push('[Effective Policy]');
+      sections.push(`- pack: ${resolvedExecution.resolvedRules.policyVersion.packId}`);
+      sections.push(`- declaredVersion: ${resolvedExecution.resolvedRules.policyVersion.declaredVersion}`);
+      sections.push(`- resolvedVersion: ${resolvedExecution.resolvedRules.policyVersion.resolvedVersion ?? resolvedExecution.resolvedRules.policyVersion.declaredVersion}`);
+      sections.push(`- binding: ${resolvedExecution.resolvedRules.binding?.source ?? 'implicit'}`);
+    }
+
+    sections.push('', '[Actual Payload]', resolvedExecution.dispatchText);
+    return sections.join('\n');
   }
 
   private buildGenericDispatchText(
@@ -217,7 +226,7 @@ export class ExecutionService {
     for (const entry of resolvedRules.activeEntries) {
       if (entry.rule.content.trim()) {
         ruleSections.push(
-          `- ${entry.rule.scope === 'global' ? 'Global' : 'Workspace'} Rule: ${entry.rule.name}\n`
+          `- ${this.getRuleScopeLabel(entry.rule.scope)} Rule: ${entry.rule.name}\n`
           + `  Reason: ${entry.reason}\n${entry.rule.content.trim()}`
         );
       }
@@ -361,6 +370,18 @@ export class ExecutionService {
 
   private truncate(value: string, maxLength: number): string {
     return value.length <= maxLength ? value : `${value.slice(0, maxLength)}...`;
+  }
+
+  private getRuleScopeLabel(scope: RuleScope): string {
+    if (scope === 'global') {
+      return 'Global';
+    }
+
+    if (scope === 'team-pack') {
+      return 'Team';
+    }
+
+    return 'Workspace';
   }
 
   private getInitialBehavior(): ExecutionBehavior {
