@@ -348,6 +348,23 @@ export class SettingsPanel {
     });
   }
 
+  private _getExecutionSelectionModeLabel(mode: SettingsConfig['executionSelectionMode']): string {
+    switch (mode) {
+      case 'last-execution':
+        return t('Reuse last execution per prompt');
+      case 'initial-recommendation':
+        return t('Preset');
+      case 'ask-every-time':
+        return t('Ask every run');
+      default:
+        return mode;
+    }
+  }
+
+  private _getDefaultTargetLabel(target: SettingsConfig['defaultTarget']): string {
+    return target === 'workspace' ? t('Workspace') : t('Global');
+  }
+
   private _isProviderConfigured(settings: SettingsConfig, providerId: string): boolean {
     switch (providerId) {
       case 'ollama':
@@ -446,6 +463,22 @@ export class SettingsPanel {
         background-color: var(--vscode-editor-background);
         border: 1px solid var(--vscode-panel-border);
         padding: 12px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+        text-align: left;
+        width: 100%;
+        color: inherit;
+        font: inherit;
+      }
+
+      .overview-card:hover {
+        border-color: var(--vscode-textLink-foreground);
+        transform: translateY(-1px);
+      }
+
+      .overview-card:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
       }
 
       .overview-card strong {
@@ -639,22 +672,22 @@ export class SettingsPanel {
           <p>${t('Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.')}</p>
         </div>
         <div class="overview-grid">
-          <div class="overview-card">
+          <button type="button" class="overview-card" onclick="jumpToSection('run')">
             <strong>${t('Run Mode')}</strong>
-            <span>${this._escapeHtml(settings.executionSelectionMode)}</span>
-          </div>
-          <div class="overview-card">
+            <span>${this._escapeHtml(this._getExecutionSelectionModeLabel(settings.executionSelectionMode))}</span>
+          </button>
+          <button type="button" class="overview-card" onclick="jumpToSection('run')">
             <strong>${t('Preset Agent')}</strong>
             <span>${this._escapeHtml(selectedAgent?.label ?? settings.defaultAgent)}</span>
-          </div>
-          <div class="overview-card">
+          </button>
+          <button type="button" class="overview-card" onclick="jumpToSection('storage')">
             <strong>${t('Prompt Storage')}</strong>
-            <span>${this._escapeHtml(settings.defaultTarget)}</span>
-          </div>
-          <div class="overview-card">
+            <span>${this._escapeHtml(this._getDefaultTargetLabel(settings.defaultTarget))}</span>
+          </button>
+          <button type="button" class="overview-card" onclick="jumpToSection('generator')">
             <strong>${t('Generator')}</strong>
             <span>${this._escapeHtml(settings.defaultModel)}${selectedProviderConfigured ? '' : ` (${t('needs setup')})`}</span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -814,6 +847,17 @@ export class SettingsPanel {
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.getElementById('tab-' + tabName).classList.add('active');
       event.target.classList.add('active');
+    }
+
+    function jumpToSection(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.getElementById('tab-' + tabName).classList.add('active');
+      const tabButton = document.querySelector('.tab[onclick="showTab(event, \'' + tabName + '\')"]');
+      if (tabButton) {
+        tabButton.classList.add('active');
+      }
+      document.getElementById('tab-' + tabName).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     
     function showProviderConfig(providerId) {
