@@ -171,14 +171,21 @@ export class PromptEditorPanel {
       model: data.model,
     });
 
-    if (result.success && result.prompt) {
+    if (result.success && (result.draft || result.prompt)) {
+      const draft = this._normalizeDraft(result.draft ?? {
+        name: '',
+        description: data.description,
+        category: 'General',
+        tags: [],
+        template: result.prompt ?? '',
+      });
       this._panel.webview.postMessage({
         command: 'generateResult',
-        prompt: result.prompt,
+        draft,
       });
       await this._handlePreview({
-        template: result.prompt,
-        variables: this._existingPrompt?.variables,
+        template: draft.template,
+        variables: draft.variables,
       });
     } else {
       this._panel.webview.postMessage({
@@ -818,9 +825,9 @@ export class PromptEditorPanel {
         <p>${t('Focus here on the task template itself: prompt text, variable schema, metadata, and a rendered preview before you save.')}</p>
       </div>
       <div>
-        <span class="pill">${isNew ? t('New Template') : t('Editing Existing Template')}</span>
-        <span class="pill">${t('Schema + Preview')}</span>
-        <span class="pill">${t('Form + YAML')}</span>
+        <span class="pill">${isNew ? t('AI Draft + Metadata') : t('Editing Existing Template')}</span>
+        <span class="pill">${t('Live Preview')}</span>
+        <span class="pill">${t('Form and YAML Editing')}</span>
       </div>
     </div>
 
@@ -828,7 +835,7 @@ export class PromptEditorPanel {
     <div class="section generator-section">
       <h2>${t('Prompt Generator')}</h2>
       <div class="hint" style="margin-bottom: 12px;">
-        ${t('Describe the task in natural language. The generated prompt is only a starting point; keep refining the template and schema below.')}
+        ${t('Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.')}
       </div>
       <div class="provider-row">
         <div class="form-group">
@@ -1078,8 +1085,9 @@ export class PromptEditorPanel {
         case 'generateResult':
           document.getElementById('loadingIndicator')?.classList.remove('active');
           document.getElementById('generateBtn').disabled = false;
-          if (message.prompt) {
-            document.getElementById('template').value = message.prompt;
+          if (message.draft) {
+            applyFormState(message.draft);
+            document.getElementById('yamlEditor').value = serializeDraftForYaml(collectFormState());
             document.getElementById('errorMessage')?.classList.remove('active');
             requestPreview();
           } else if (message.error) {
@@ -1317,6 +1325,62 @@ export class PromptEditorPanel {
         template: document.getElementById('template').value,
         variables: getVariables()
       };
+    }
+
+    function serializeDraftForYaml(state) {
+      const lines = [];
+      lines.push('name: ' + yamlScalar(state.name || ''));
+      lines.push('description: ' + yamlScalar(state.description || ''));
+      lines.push('category: ' + yamlScalar(state.category || ''));
+      lines.push('tags:');
+      const tags = Array.isArray(state.tags) ? state.tags : [];
+      if (tags.length === 0) {
+        lines.push('  - generated');
+      } else {
+        tags.forEach((tag) => lines.push('  - ' + yamlScalar(tag)));
+      }
+      lines.push('template: |');
+      const templateLines = String(state.template || '').split('\\n');
+      templateLines.forEach((line) => lines.push('  ' + line));
+
+      const variables = Array.isArray(state.variables) ? state.variables : [];
+      if (variables.length > 0) {
+        lines.push('variables:');
+        variables.forEach((variable) => {
+          lines.push('  - name: ' + yamlScalar(variable.name || ''));
+          lines.push('    description: ' + yamlScalar(variable.description || variable.name || ''));
+          lines.push('    type: ' + yamlScalar(variable.type || 'string'));
+          if (variable.required) {
+            lines.push('    required: true');
+          }
+          if (variable.placeholder) {
+            lines.push('    placeholder: ' + yamlScalar(variable.placeholder));
+          }
+          if (variable.multiline) {
+            lines.push('    multiline: true');
+          }
+          if (variable.default !== undefined && variable.default !== '') {
+            lines.push('    default: ' + yamlScalar(String(variable.default)));
+          }
+          if (Array.isArray(variable.values) && variable.values.length > 0) {
+            lines.push('    values:');
+            variable.values.forEach((value) => lines.push('      - ' + yamlScalar(value)));
+          }
+        });
+      }
+
+      return lines.join('\\n');
+    }
+
+    function yamlScalar(value) {
+      const text = String(value ?? '');
+      if (text === '') {
+        return '""';
+      }
+      if (/^[A-Za-z0-9_./-]+$/.test(text)) {
+        return text;
+      }
+      return '"' + text.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
     }
 
     function applyFormState(state) {

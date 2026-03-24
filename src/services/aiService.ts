@@ -4,6 +4,8 @@
  */
 
 import * as vscode from 'vscode';
+import * as yaml from 'js-yaml';
+import { PromptVariable } from '../types/prompt';
 
 export type AIProvider = 
   | 'anthropic'
@@ -33,9 +35,19 @@ export interface GeneratePromptOptions {
   model?: string;
 }
 
+export interface GeneratedPromptDraft {
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  template: string;
+  variables?: PromptVariable[];
+}
+
 export interface GeneratePromptResult {
   success: boolean;
   prompt?: string;
+  draft?: GeneratedPromptDraft;
   error?: string;
 }
 
@@ -60,6 +72,31 @@ Available context variables:
 - {{column_number}}: Current column number
 
 Respond with ONLY the generated prompt, no explanations or markdown formatting.`;
+
+const STRUCTURED_DRAFT_FORMAT_INSTRUCTIONS = `
+You must return ONLY valid YAML with this exact top-level structure:
+name: short descriptive title
+description: one sentence describing when to use the prompt
+category: one short category such as Development, Code Analysis, Documentation, Testing, Data, or General
+tags:
+  - short-tag
+template: |
+  full prompt template text here
+variables:
+  - name: optional_variable_name
+    description: what the user should provide
+    type: string
+    required: false
+    placeholder: optional example
+
+Rules:
+- Return raw YAML only. Do not wrap it in markdown fences.
+- Always include name, description, category, tags, and template.
+- tags must be a YAML list, even if there is only one tag.
+- variables is optional. Omit it if no extra variables are needed.
+- template should be production-ready, not just an outline.
+- Fill the metadata thoughtfully from the user request instead of leaving generic placeholders.
+`;
 
 /**
   * Available AI providers with their default models (sorted alphabetically)
@@ -254,7 +291,8 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
   async generatePrompt(options: GeneratePromptOptions): Promise<GeneratePromptResult> {
     const provider = options.provider || this.getDefaultProvider();
     const model = options.model || this.getDefaultModel(provider);
-    const systemPrompt = options.systemPrompt || this.getSystemPrompt();
+    const systemPrompt = this.buildStructuredSystemPrompt(options.systemPrompt || this.getSystemPrompt());
+    const userDescription = this.buildStructuredUserDescription(options.userDescription);
 
     // Check if provider is configured
     if (!this.isProviderConfigured(provider)) {
@@ -268,31 +306,153 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
     try {
       switch (provider) {
         case 'anthropic':
-          return await this.callAnthropic(model, systemPrompt, options.userDescription);
+          return await this.callAnthropic(model, systemPrompt, userDescription);
         case 'azure':
-          return await this.callAzure(model, systemPrompt, options.userDescription);
+          return await this.callAzure(model, systemPrompt, userDescription);
         case 'deepseek':
-          return await this.callDeepSeek(model, systemPrompt, options.userDescription);
+          return await this.callDeepSeek(model, systemPrompt, userDescription);
         case 'google':
-          return await this.callGoogle(model, systemPrompt, options.userDescription);
+          return await this.callGoogle(model, systemPrompt, userDescription);
         case 'groq':
-          return await this.callGroq(model, systemPrompt, options.userDescription);
+          return await this.callGroq(model, systemPrompt, userDescription);
         case 'mistral':
-          return await this.callMistral(model, systemPrompt, options.userDescription);
+          return await this.callMistral(model, systemPrompt, userDescription);
         case 'ollama':
-          return await this.callOllama(model, systemPrompt, options.userDescription);
+          return await this.callOllama(model, systemPrompt, userDescription);
         case 'openai':
-          return await this.callOpenAI(model, systemPrompt, options.userDescription);
+          return await this.callOpenAI(model, systemPrompt, userDescription);
         case 'openrouter':
-          return await this.callOpenRouter(model, systemPrompt, options.userDescription);
+          return await this.callOpenRouter(model, systemPrompt, userDescription);
         case 'xai':
-          return await this.callXAI(model, systemPrompt, options.userDescription);
+          return await this.callXAI(model, systemPrompt, userDescription);
         default:
           return { success: false, error: `Unknown provider: ${provider}` };
       }
     } catch (error) {
       return { success: false, error: String(error) };
     }
+  }
+
+  private buildStructuredSystemPrompt(systemPrompt: string): string {
+    return `${systemPrompt.trim()}\n\n${STRUCTURED_DRAFT_FORMAT_INSTRUCTIONS.trim()}`;
+  }
+
+  private buildStructuredUserDescription(userDescription: string): string {
+    return `Create a complete prompt draft for this request:\n\n${userDescription.trim()}`;
+  }
+
+  private toStructuredResult(rawResponse: string | undefined, userDescription: string): GeneratePromptResult {
+    const raw = rawResponse?.trim();
+    if (!raw) {
+      return { success: false, error: 'Empty generator response.' };
+    }
+
+    const draft = this.parseGeneratedDraft(raw, userDescription);
+    return {
+      success: true,
+      prompt: draft.template,
+      draft,
+    };
+  }
+
+  private parseGeneratedDraft(rawResponse: string, userDescription: string): GeneratedPromptDraft {
+    const cleaned = rawResponse
+      .replace(/^```ya?ml\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
+    const parsed = yaml.load(cleaned);
+    if (!parsed || typeof parsed !== 'object') {
+      return this.buildFallbackDraft(rawResponse, userDescription);
+    }
+
+    const record = parsed as Record<string, unknown>;
+    const template = typeof record.template === 'string' ? record.template.trim() : '';
+    if (!template) {
+      return this.buildFallbackDraft(rawResponse, userDescription);
+    }
+
+    const tags = Array.isArray(record.tags)
+      ? record.tags.map((tag) => String(tag).trim()).filter(Boolean)
+      : [];
+
+    const variables = this.normalizeDraftVariables(record.variables);
+
+    return {
+      name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : this.deriveDraftName(userDescription),
+      description: typeof record.description === 'string' && record.description.trim() ? record.description.trim() : userDescription.trim(),
+      category: typeof record.category === 'string' && record.category.trim() ? record.category.trim() : 'General',
+      tags: tags.length > 0 ? tags : ['generated'],
+      template,
+      variables,
+    };
+  }
+
+  private normalizeDraftVariables(value: unknown): PromptVariable[] | undefined {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    const variables = value.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return [];
+      }
+
+      const record = entry as Record<string, unknown>;
+      const name = typeof record.name === 'string' ? record.name.trim() : '';
+      if (!name) {
+        return [];
+      }
+
+      const type = record.type;
+      const normalizedType: PromptVariable['type'] =
+        type === 'number' || type === 'boolean' || type === 'enum' ? type : 'string';
+      const values = Array.isArray(record.values)
+        ? record.values.map((item) => String(item).trim()).filter(Boolean)
+        : undefined;
+
+      return [{
+        name,
+        description: typeof record.description === 'string' && record.description.trim() ? record.description.trim() : name,
+        type: normalizedType,
+        required: Boolean(record.required),
+        placeholder: typeof record.placeholder === 'string' && record.placeholder.trim() ? record.placeholder.trim() : undefined,
+        multiline: Boolean(record.multiline),
+        values: normalizedType === 'enum' && values && values.length > 0 ? values : undefined,
+        default:
+          typeof record.default === 'string' ||
+          typeof record.default === 'number' ||
+          typeof record.default === 'boolean'
+            ? record.default
+            : undefined,
+      }];
+    });
+
+    return variables.length > 0 ? variables : undefined;
+  }
+
+  private buildFallbackDraft(rawResponse: string, userDescription: string): GeneratedPromptDraft {
+    return {
+      name: this.deriveDraftName(userDescription),
+      description: userDescription.trim(),
+      category: 'General',
+      tags: ['generated'],
+      template: rawResponse.trim(),
+    };
+  }
+
+  private deriveDraftName(userDescription: string): string {
+    const normalized = userDescription
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/[.?!]+$/, '');
+
+    if (!normalized) {
+      return 'Generated Prompt';
+    }
+
+    return normalized.length <= 60 ? normalized : `${normalized.slice(0, 57).trim()}...`;
   }
 
   /**
@@ -323,7 +483,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { content?: Array<{ text?: string }> };
-      return { success: true, prompt: data.content?.[0]?.text?.trim() };
+      return this.toStructuredResult(data.content?.[0]?.text?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `Anthropic connection failed: ${error}` };
     }
@@ -362,7 +522,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `Azure OpenAI connection failed: ${error}` };
     }
@@ -397,7 +557,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `DeepSeek connection failed: ${error}` };
     }
@@ -425,7 +585,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-      return { success: true, prompt: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() };
+      return this.toStructuredResult(data.candidates?.[0]?.content?.parts?.[0]?.text?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `Google AI connection failed: ${error}` };
     }
@@ -460,7 +620,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `Groq connection failed: ${error}` };
     }
@@ -495,7 +655,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `Mistral connection failed: ${error}` };
     }
@@ -525,7 +685,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { response?: string };
-      return { success: true, prompt: data.response?.trim() };
+      return this.toStructuredResult(data.response?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `Ollama connection failed: ${error}` };
     }
@@ -560,7 +720,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `OpenAI connection failed: ${error}` };
     }
@@ -597,7 +757,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `OpenRouter connection failed: ${error}` };
     }
@@ -632,7 +792,7 @@ Respond with ONLY the generated prompt, no explanations or markdown formatting.`
       }
 
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return { success: true, prompt: data.choices?.[0]?.message?.content?.trim() };
+      return this.toStructuredResult(data.choices?.[0]?.message?.content?.trim(), userDescription);
     } catch (error) {
       return { success: false, error: `xAI connection failed: ${error}` };
     }

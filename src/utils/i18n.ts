@@ -109,6 +109,10 @@ const en_dict: Record<string, string> = {
     'New Prompt': 'New Prompt',
     'Failed to generate prompt': 'Failed to generate prompt',
     'Default': 'Default',
+    'AI Draft + Metadata': 'AI Draft + Metadata',
+    'Live Preview': 'Live Preview',
+    'Form and YAML Editing': 'Form and YAML Editing',
+    'Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.': 'Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.',
     'Priority is: explicit choice in the current run > per-prompt last execution > preset.': 'Priority is: explicit choice in the current run > per-prompt last execution > preset.',
     'This preset is only used when execution selection mode is set to preset.': 'This preset is only used when execution selection mode is set to preset.',
     'Settings saved with partial issues: {0}': 'Settings saved with partial issues: {0}',
@@ -423,6 +427,10 @@ const ja_dict: Record<string, string> = {
     'New Prompt': '新しいプロンプト',
     'Failed to generate prompt': 'プロンプトの生成に失敗しました',
     'Default': '既定値',
+    'AI Draft + Metadata': 'AI 下書き + メタデータ',
+    'Live Preview': 'ライブプレビュー',
+    'Form and YAML Editing': 'フォームと YAML 編集',
+    'Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.': '自然言語でタスクを説明してください。AI が名前、カテゴリ、タグ、説明、テンプレート、変数の下書きをまとめて作成し、その後で下の内容を自由に磨き込めます。',
 };
 
 const es_dict: Record<string, string> = {
@@ -683,6 +691,10 @@ const es_dict: Record<string, string> = {
     'New Prompt': 'Nuevo prompt',
     'Failed to generate prompt': 'No se pudo generar el prompt',
     'Default': 'Predeterminado',
+    'AI Draft + Metadata': 'Borrador IA + metadatos',
+    'Live Preview': 'Vista previa en vivo',
+    'Form and YAML Editing': 'Edicion en formulario y YAML',
+    'Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.': 'Describe la tarea en lenguaje natural. La IA redactara el nombre, la categoria, las etiquetas, la descripcion, la plantilla y las variables, y luego podras refinarlo todo abajo.',
 };
 
 const ko_dict: Record<string, string> = {
@@ -943,6 +955,10 @@ const ko_dict: Record<string, string> = {
     'New Prompt': '새 프롬프트',
     'Failed to generate prompt': '프롬프트 생성 실패',
     'Default': '기본값',
+    'AI Draft + Metadata': 'AI 초안 + 메타데이터',
+    'Live Preview': '실시간 미리보기',
+    'Form and YAML Editing': '폼 및 YAML 편집',
+    'Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.': '작업을 자연어로 설명하면 AI가 이름, 카테고리, 태그, 설명, 템플릿, 변수 초안을 함께 작성해 주고, 아래에서 전체를 계속 다듬을 수 있습니다.',
 };
 
 const zh_cn_dict: Record<string, string> = {
@@ -1203,6 +1219,10 @@ const zh_cn_dict: Record<string, string> = {
     ,'New Prompt': '新提示词'
     ,'Failed to generate prompt': '生成提示词失败'
     ,'Default': '默认'
+    ,'AI Draft + Metadata': 'AI 草稿 + 元数据'
+    ,'Live Preview': '实时预览'
+    ,'Form and YAML Editing': '表单与 YAML 编辑'
+    ,'Describe the task in natural language. The AI will draft the name, category, tags, description, template, and variables for you, and you can refine everything below.': '请用自然语言描述任务。AI 会先为你起草名称、分类、标签、描述、模板和变量，你可以在下方继续完善全部内容。'
 };
 
 const dictionaries: Record<string, Record<string, string>> = {

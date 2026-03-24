@@ -412,10 +412,14 @@ export class SettingsPanel {
       
       body {
         font-family: var(--vscode-font-family);
-        background-color: var(--vscode-editor-background);
+        background:
+          radial-gradient(circle at top right, color-mix(in srgb, var(--vscode-textLink-foreground) 18%, transparent), transparent 28%),
+          linear-gradient(180deg, var(--vscode-editor-background), color-mix(in srgb, var(--vscode-editor-background) 85%, black));
         color: var(--vscode-editor-foreground);
         padding: 20px;
         margin: 0;
+        min-height: 100vh;
+        background-attachment: fixed;
       }
       
       .container { max-width: 900px; margin: 0 auto; }
@@ -424,6 +428,9 @@ export class SettingsPanel {
         display: grid;
         gap: 16px;
         margin-bottom: 20px;
+        padding: 18px;
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 80%, transparent);
+        background: color-mix(in srgb, var(--vscode-sideBar-background) 68%, transparent);
       }
 
       .hero p {
@@ -447,7 +454,8 @@ export class SettingsPanel {
       }
       
       .section {
-        background-color: var(--vscode-editor-inactiveSelectionBackground);
+        background: color-mix(in srgb, var(--vscode-sideBar-background) 72%, transparent);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 82%, transparent);
         padding: 16px;
         border-radius: 0;
         margin-bottom: 20px;
@@ -460,8 +468,8 @@ export class SettingsPanel {
       }
 
       .overview-card {
-        background-color: var(--vscode-editor-background);
-        border: 1px solid var(--vscode-panel-border);
+        background: color-mix(in srgb, var(--vscode-editor-background) 78%, transparent);
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 82%, transparent);
         padding: 12px;
         cursor: pointer;
         transition: border-color 0.15s ease, transform 0.15s ease;
@@ -672,19 +680,19 @@ export class SettingsPanel {
           <p>${t('Keep the high-frequency run flow lean here: choose how prompts pick execution targets, where new prompts are stored, and which provider helps draft templates.')}</p>
         </div>
         <div class="overview-grid">
-          <button type="button" class="overview-card" onclick="jumpToSection('run')">
+          <button type="button" class="overview-card" data-tab-target="run" onclick="jumpToSection('run')">
             <strong>${t('Run Mode')}</strong>
             <span>${this._escapeHtml(this._getExecutionSelectionModeLabel(settings.executionSelectionMode))}</span>
           </button>
-          <button type="button" class="overview-card" onclick="jumpToSection('run')">
+          <button type="button" class="overview-card" data-tab-target="run" onclick="jumpToSection('run')">
             <strong>${t('Preset Agent')}</strong>
             <span>${this._escapeHtml(selectedAgent?.label ?? settings.defaultAgent)}</span>
           </button>
-          <button type="button" class="overview-card" onclick="jumpToSection('storage')">
+          <button type="button" class="overview-card" data-tab-target="storage" onclick="jumpToSection('storage')">
             <strong>${t('Prompt Storage')}</strong>
             <span>${this._escapeHtml(this._getDefaultTargetLabel(settings.defaultTarget))}</span>
           </button>
-          <button type="button" class="overview-card" onclick="jumpToSection('generator')">
+          <button type="button" class="overview-card" data-tab-target="generator" onclick="jumpToSection('generator')">
             <strong>${t('Generator')}</strong>
             <span>${this._escapeHtml(settings.defaultModel)}${selectedProviderConfigured ? '' : ` (${t('needs setup')})`}</span>
           </button>
@@ -692,9 +700,9 @@ export class SettingsPanel {
       </div>
 
       <div class="tabs">
-        <button class="tab active" onclick="showTab(event, 'run')">${t('Run Defaults')}</button>
-        <button class="tab" onclick="showTab(event, 'storage')">${t('Storage & UI')}</button>
-        <button class="tab" onclick="showTab(event, 'generator')">${t('Prompt Generator')}</button>
+        <button class="tab active" data-tab="run" onclick="showTab(event, 'run')">${t('Run Defaults')}</button>
+        <button class="tab" data-tab="storage" onclick="showTab(event, 'storage')">${t('Storage & UI')}</button>
+        <button class="tab" data-tab="generator" onclick="showTab(event, 'generator')">${t('Prompt Generator')}</button>
       </div>
 
       <div id="tab-run" class="tab-content active">
@@ -842,21 +850,22 @@ export class SettingsPanel {
       xai: this._isProviderConfigured(settings, 'xai')
     })};
 
-    function showTab(event, tabName) {
+    function activateTab(tabName) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.getElementById('tab-' + tabName).classList.add('active');
-      event.target.classList.add('active');
-    }
-
-    function jumpToSection(tabName) {
-      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-      document.getElementById('tab-' + tabName).classList.add('active');
-      const tabButton = document.querySelector('.tab[onclick="showTab(event, \'' + tabName + '\')"]');
+      const tabButton = document.querySelector('.tab[data-tab="' + tabName + '"]');
       if (tabButton) {
         tabButton.classList.add('active');
       }
+    }
+
+    function showTab(event, tabName) {
+      activateTab(tabName);
+    }
+
+    function jumpToSection(tabName) {
+      activateTab(tabName);
       document.getElementById('tab-' + tabName).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     
