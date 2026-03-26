@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "aknirex",
   "repository": {
     "type": "git",
