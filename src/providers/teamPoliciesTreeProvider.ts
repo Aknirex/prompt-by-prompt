@@ -1,20 +1,15 @@
 import * as vscode from 'vscode';
-import { RuleManager } from '../services/ruleManager';
-import { ResolvedRuleSet } from '../types/rule';
 import { TeamPolicyPack, TeamPolicySourceState } from '../types/teamPolicy';
+import { ResolvedRuleSet } from '../types/rule';
+
+type TeamPoliciesElement = TeamPoliciesGroupItem | TeamPolicySourceItem | TeamPolicyPackItem | TeamPolicyInfoItem;
 
 class TeamPoliciesGroupItem extends vscode.TreeItem {
-  constructor(
-    public readonly label: string,
-    public readonly kind: 'sources' | 'binding' | 'packs'
-  ) {
+  constructor(label: string, public readonly kind: 'sources' | 'binding' | 'packs') {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
-    this.contextValue =
-      kind === 'sources'
-        ? 'teamPolicySourceGroup'
-        : kind === 'binding'
-          ? 'teamPolicyBindingGroup'
-          : 'teamPolicyPackGroup';
+    this.contextValue = kind === 'sources' ? 'teamPolicySourceGroup'
+      : kind === 'binding' ? 'teamPolicyBindingGroup'
+      : 'teamPolicyPackGroup';
   }
 }
 
@@ -33,7 +28,7 @@ class TeamPolicySourceItem extends vscode.TreeItem {
     this.description = sourceState.status === 'synced'
       ? (sourceState.lastSyncedAt ? `synced ${sourceState.lastSyncedAt}` : 'synced')
       : 'sync issue';
-    this.tooltip = sourceState.lastSyncError || sourceState.lastSyncedAt || sourceState.type;
+    this.tooltip = sourceState.lastSyncError ?? sourceState.lastSyncedAt ?? sourceState.type;
     this.contextValue = 'teamPolicySourceItem';
     this.iconPath = new vscode.ThemeIcon(
       sourceState.status === 'synced' ? 'pass-filled' : 'warning',
@@ -41,11 +36,7 @@ class TeamPolicySourceItem extends vscode.TreeItem {
         ? new vscode.ThemeColor('testing.iconPassed')
         : new vscode.ThemeColor('problemsWarningIcon.foreground')
     );
-    this.command = {
-      command: 'pbp.retryTeamPolicySourceSync',
-      title: 'Retry Team Policy Source Sync',
-      arguments: [this],
-    };
+    this.command = { command: 'pbp.retryTeamPolicySourceSync', title: 'Retry Sync', arguments: [{ sourceState }] };
   }
 }
 
@@ -53,122 +44,77 @@ class TeamPolicyPackItem extends vscode.TreeItem {
   constructor(public readonly pack: TeamPolicyPack) {
     super(pack.name, vscode.TreeItemCollapsibleState.None);
     this.description = `${pack.rules.length} rules, ${pack.prompts.length} prompts`;
-    this.tooltip = this.buildTooltip(pack);
     this.contextValue = 'teamPolicyPackItem';
-    this.iconPath = new vscode.ThemeIcon(
-      pack.status === 'active' ? 'package' : 'warning',
-      pack.status === 'active'
-        ? undefined
-        : new vscode.ThemeColor('problemsWarningIcon.foreground')
-    );
-  }
-
-  private buildTooltip(pack: TeamPolicyPack): string {
-    const version = pack.resolvedVersion ?? pack.version;
-    const lines = [
-      pack.name,
-      `Pack ID: ${pack.id}`,
-      `Version: ${version}`,
-      `Rules: ${pack.rules.length}`,
-      `Prompts: ${pack.prompts.length}`,
-      `Profiles: ${pack.profiles.length}`,
-    ];
-
-    if (pack.description) {
-      lines.push('', pack.description);
-    }
-
-    return lines.join('\n');
+    this.iconPath = new vscode.ThemeIcon('package');
+    this.tooltip = `Version: ${pack.version ?? 'unknown'}`;
   }
 }
 
-type TeamPoliciesElement =
-  | TeamPoliciesGroupItem
-  | TeamPolicyInfoItem
-  | TeamPolicySourceItem
-  | TeamPolicyPackItem;
-
 export class TeamPoliciesTreeProvider implements vscode.TreeDataProvider<TeamPoliciesElement> {
-  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TeamPoliciesElement | undefined | null | void>();
-  readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+  private _onDidChangeTreeData = new vscode.EventEmitter<TeamPoliciesElement | undefined | void>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private sourceStates: TeamPolicySourceState[] = [];
+  private resolvedRuleSet: ResolvedRuleSet | undefined;
   private installedPacks: TeamPolicyPack[] = [];
-  private resolvedRuleSet?: ResolvedRuleSet;
 
-  constructor(private readonly ruleManager: RuleManager) {
-    this.ruleManager.onDidChange(() => this.refresh());
+  update(sourceStates: TeamPolicySourceState[], resolvedRuleSet: ResolvedRuleSet | undefined, installedPacks: TeamPolicyPack[]): void {
+    this.sourceStates = sourceStates;
+    this.resolvedRuleSet = resolvedRuleSet;
+    this.installedPacks = installedPacks;
+    this._onDidChangeTreeData.fire();
   }
 
   refresh(): void {
-    this.sourceStates = this.ruleManager.getTeamPolicySourceStates();
-    this.installedPacks = this.ruleManager.getInstalledTeamPacks();
-    this.resolvedRuleSet = this.ruleManager.resolveRuleSet();
-    this.onDidChangeTreeDataEmitter.fire();
+    this._onDidChangeTreeData.fire();
   }
 
   getTreeItem(element: TeamPoliciesElement): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: TeamPoliciesElement): Thenable<TeamPoliciesElement[]> {
-    if (!element) {
-      return Promise.resolve([
-        new TeamPoliciesGroupItem('Sync Sources', 'sources'),
-        new TeamPoliciesGroupItem('Workspace Binding', 'binding'),
-        new TeamPoliciesGroupItem('Installed Packs', 'packs'),
-      ]);
-    }
-
+  getChildren(element?: TeamPoliciesElement): TeamPoliciesElement[] {
     if (element instanceof TeamPoliciesGroupItem) {
       switch (element.kind) {
-        case 'sources':
-          return Promise.resolve(this.getSourceItems());
-        case 'binding':
-          return Promise.resolve(this.getBindingItems());
-        case 'packs':
-          return Promise.resolve(this.getPackItems());
+        case 'sources': return this.getSourceItems();
+        case 'binding': return this.getBindingItems();
+        case 'packs': return this.getPackItems();
       }
     }
-
-    return Promise.resolve([]);
+    if (!element) {
+      return [
+        new TeamPoliciesGroupItem('Sources', 'sources'),
+        new TeamPoliciesGroupItem('Active Binding', 'binding'),
+        new TeamPoliciesGroupItem('Installed Packs', 'packs'),
+      ];
+    }
+    return [];
   }
 
   private getSourceItems(): TeamPoliciesElement[] {
     if (this.sourceStates.length === 0) {
       return [new TeamPolicyInfoItem('No team policy sources', 'Use Connect Team Policy Source to add one', 'plug')];
     }
-
-    return this.sourceStates.map((state) => new TeamPolicySourceItem(state));
+    return this.sourceStates.map(s => new TeamPolicySourceItem(s));
   }
 
   private getBindingItems(): TeamPoliciesElement[] {
     const binding = this.resolvedRuleSet?.binding;
-    const version = this.resolvedRuleSet?.policyVersion;
-    const items: TeamPoliciesElement[] = [];
-
     if (!binding?.packId) {
-      items.push(new TeamPolicyInfoItem('No active team binding', 'Using workspace/global rules only', 'circle-slash'));
-      return items;
+      return [new TeamPolicyInfoItem('No active team binding', 'Using workspace/global rules only', 'circle-slash')];
     }
-
-    items.push(new TeamPolicyInfoItem('Pack', binding.packId, 'package'));
-    items.push(new TeamPolicyInfoItem('Profile', binding.profileId ?? 'none', 'layers'));
-    items.push(new TeamPolicyInfoItem('Binding Source', binding.source, 'link'));
-    items.push(new TeamPolicyInfoItem('Personal Overrides', binding.allowPersonalOverrides ? 'allowed' : 'blocked', 'person'));
-
-    if (version) {
-      items.push(new TeamPolicyInfoItem('Resolved Version', version.resolvedVersion ?? version.declaredVersion, 'git-commit'));
-    }
-
-    return items;
+    return [
+      new TeamPolicyInfoItem('Pack', binding.packId, 'package'),
+      new TeamPolicyInfoItem('Profile', binding.profileId ?? 'none', 'layers'),
+      new TeamPolicyInfoItem('Source', binding.source, 'link'),
+      new TeamPolicyInfoItem('Personal Overrides', binding.allowPersonalOverrides ? 'allowed' : 'blocked', 'person'),
+    ];
   }
 
   private getPackItems(): TeamPoliciesElement[] {
     if (this.installedPacks.length === 0) {
       return [new TeamPolicyInfoItem('No installed packs', 'Sync a team policy source to load shared prompts and rules', 'package')];
     }
-
-    return this.installedPacks.map((pack) => new TeamPolicyPackItem(pack));
+    return this.installedPacks.map(p => new TeamPolicyPackItem(p));
   }
 }

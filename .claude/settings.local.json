@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/Code/software/prompt-by-prompt -name *.test.ts)",
+      "Bash(xargs -I{} cat /d/Code/software/prompt-by-prompt/src/providers/{})",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Read(//d/Code/software/prompt-by-prompt/src/services/**)",
+      "Bash(done)",
+      "Bash(find /d/Code/software/prompt-by-prompt -name *.test.ts -exec cat {})",
+      "Bash(2)",
+      "Bash(find /d/Code/software/prompt-by-prompt -name pack.json -o -name *.prompts)",
+      "Bash(__NEW_LINE_79109e39b73977de__ cat:*)",
+      "Bash(grep -v '//')",
+      "Bash(pnpm run:*)"
+    ]
+  }
+}

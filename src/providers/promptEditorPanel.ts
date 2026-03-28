@@ -999,7 +999,17 @@ export class PromptEditorPanel {
   </div>
 
   <script>
-    const vscode = acquireVsCodeApi();
+    let vscode;
+    try {
+      vscode = acquireVsCodeApi();
+    } catch (error) {
+      console.error('Failed to acquire vscode API:', error);
+      vscode = {
+        postMessage: (msg) => console.log('postMessage fallback:', msg)
+      };
+    }
+    console.log('prompt editor script loaded');
+    alert('脚本已加载');
     const providers = ${JSON.stringify(providers)};
     let variableCount = ${prompt?.variables?.length || 0};
     let previewTimer = undefined;
@@ -1136,6 +1146,7 @@ export class PromptEditorPanel {
     });
 
     function generatePrompt() {
+      console.log('generatePrompt clicked');
       const description = document.getElementById('generateInput')?.value.trim() || '';
       const provider = document.getElementById('genProvider')?.value || '';
       const model = document.getElementById('genModel')?.value || '';
@@ -1403,6 +1414,8 @@ export class PromptEditorPanel {
     }
 
     function savePrompt() {
+      console.log('savePrompt clicked');
+      alert('保存提示词点击');
       const target = document.querySelector('input[name="target"]:checked')?.value || 'global';
 
       if (currentEditorMode === 'yaml') {
@@ -1443,6 +1456,8 @@ export class PromptEditorPanel {
     }
 
     function cancel() {
+      console.log('cancel clicked');
+      alert('取消点击');
       vscode.postMessage({ command: 'cancel' });
     }
 
