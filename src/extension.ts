@@ -22,11 +22,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const rulesTree = new RulesTreeProvider();
   const teamTree = new TeamPoliciesTreeProvider();
 
-  context.subscriptions.push(
-    vscode.window.createTreeView('pbp.promptsView', { treeDataProvider: promptsTree, showCollapseAll: true }),
-    vscode.window.createTreeView('pbp.rulesView', { treeDataProvider: rulesTree, showCollapseAll: true }),
-    vscode.window.createTreeView('pbp.teamPoliciesView', { treeDataProvider: teamTree, showCollapseAll: true }),
-  );
+  // Register views with error handling for view container initialization issues
+  const registerViews = () => {
+    try {
+      context.subscriptions.push(
+        vscode.window.createTreeView('pbp.promptsView', { treeDataProvider: promptsTree, showCollapseAll: true }),
+        vscode.window.createTreeView('pbp.rulesView', { treeDataProvider: rulesTree, showCollapseAll: true }),
+        vscode.window.createTreeView('pbp.teamPoliciesView', { treeDataProvider: teamTree, showCollapseAll: true }),
+      );
+    } catch (error) {
+      // If view container is not ready, retry after a short delay
+      svc.logger.log('View container not ready, retrying...');
+      setTimeout(registerViews, 100);
+    }
+  };
+
+  // Initial registration attempt
+  registerViews();
 
   await promptsTree.reload();
 
