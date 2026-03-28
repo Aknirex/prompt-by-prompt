@@ -1340,7 +1340,7 @@ export class PromptEditorPanel {
         tags.forEach((tag) => lines.push('  - ' + yamlScalar(tag)));
       }
       lines.push('template: |');
-      const templateLines = String(state.template || '').split('\\n');
+      const templateLines = String(state.template || '').split('\n');
       templateLines.forEach((line) => lines.push('  ' + line));
 
       const variables = Array.isArray(state.variables) ? state.variables : [];
@@ -1369,7 +1369,7 @@ export class PromptEditorPanel {
         });
       }
 
-      return lines.join('\\n');
+      return lines.join('\n');
     }
 
     function yamlScalar(value) {
@@ -1380,6 +1380,7 @@ export class PromptEditorPanel {
       if (/^[A-Za-z0-9_./-]+$/.test(text)) {
         return text;
       }
+      // Escape backslashes first, then escape double quotes
       return '"' + text.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
     }
 

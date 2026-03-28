@@ -597,12 +597,12 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run clean && npm run esbuild-base -- --minify",
+    "vscode:prepublish": "pnpm run clean && pnpm run esbuild-base -- --minify",
     "clean": "rimraf dist",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "compile": "tsc --noEmit",
-    "watch": "npm run esbuild-base -- --sourcemap --watch",
-    "build": "npm run esbuild-base -- --minify",
+    "watch": "pnpm run esbuild-base -- --sourcemap --watch",
+    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
     "lint": "eslint src",
     "check:i18n": "node scripts/check-i18n.js",
     "test": "vitest run",

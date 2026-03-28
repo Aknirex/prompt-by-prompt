@@ -2,8 +2,34 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "watch",
+      "label": "build",
+      "type": "shell",
+      "command": "pnpm run build",
+      "problemMatcher": {
+        "owner": "esbuild",
+        "pattern": {
+          "regexp": "^([^\\\\s].*):(\\\\d+):(\\\\d+):\\\\s+(warning|error):\\\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "esbuild",
+          "endsPattern": "build finished"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "watch",
+      "type": "shell",
+      "command": "pnpm run watch",
       "problemMatcher": {
         "owner": "esbuild",
         "pattern": {
@@ -23,15 +49,18 @@
       "isBackground": true,
       "presentation": {
         "reveal": "never"
-      },
-      "group": {
-        "kind": "build",
-        "isDefault": true
       }
     },
     {
-      "type": "npm",
-      "script": "compile",
+      "label": "clean",
+      "type": "shell",
+      "command": "pnpm run clean",
+      "problemMatcher": []
+    },
+    {
+      "label": "compile",
+      "type": "shell",
+      "command": "pnpm run compile",
       "problemMatcher": "$tsc",
       "group": "build"
     }

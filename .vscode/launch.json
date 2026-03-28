@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Extension",
+      "name": "Debug Extension",
       "type": "extensionHost",
       "request": "launch",
       "args": [
@@ -11,43 +11,33 @@
         "--extensions-dir=${workspaceFolder}/.vscode-test/extensions",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
-      "preLaunchTask": "${defaultBuildTask}"
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "build"
     },
     {
-      "name": "Run Extension + Copilot Chat",
+      "name": "Debug Extension + Copilot",
       "type": "extensionHost",
       "request": "launch",
       "args": [
         "--user-data-dir=${workspaceFolder}/.vscode-test/user-data-copilot",
-        "--extensions-dir=C:/Users/admin/.vscode/extensions",
-        "--disable-extension=openai.chatgpt",
-        "--disable-extension=RooVeterinaryInc.roo-cline",
-        "--disable-extension=kilocode.kilo-code",
+        "--extensions-dir=${env:EXTENSIONS_DIR}",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
-      "preLaunchTask": "${defaultBuildTask}"
+      "env": {
+        "EXTENSIONS_DIR": "${env:USERPROFILE}/.vscode/extensions"
+      },
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "build"
     },
     {
-      "name": "Run Extension + Copilot Chat (Current Profile)",
+      "name": "Debug Extension (Current Profile)",
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensions-dir=C:/Users/admin/.vscode/extensions",
-        "--disable-extension=openai.chatgpt",
-        "--disable-extension=RooVeterinaryInc.roo-cline",
-        "--disable-extension=kilocode.kilo-code",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
-      "preLaunchTask": "${defaultBuildTask}"
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "build"
     },
     {
       "name": "Extension Tests",
@@ -60,10 +50,8 @@
         "--user-data-dir=${workspaceFolder}/.vscode-test/user-data",
         "--extensions-dir=${workspaceFolder}/.vscode-test/extensions"
       ],
-      "outFiles": [
-        "${workspaceFolder}/dist/test/**/*.js"
-      ],
-      "preLaunchTask": "${defaultBuildTask}"
+      "outFiles": ["${workspaceFolder}/dist/test/**/*.js"],
+      "preLaunchTask": "build"
     }
   ]
 }
