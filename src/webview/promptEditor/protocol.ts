@@ -1,5 +1,6 @@
 import { PromptTemplate, PromptVariable } from '../../types/prompt';
 import { GeneratedPromptDraft } from '../../core/ai/AIGeneratorService';
+import { AgentType } from '../../types/agent';
 
 export type HostToWebview =
   | { type: 'load'; prompt: PromptTemplate; builtinVariables: string[]; target: 'workspace' | 'global' }

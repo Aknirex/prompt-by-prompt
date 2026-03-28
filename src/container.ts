@@ -76,12 +76,10 @@ export function createServices(context: vscode.ExtensionContext): Services {
       getSupportedBehaviors: (t) => agentRegistry.getSupportedBehaviors(t),
       isAvailable: (t) => agentRegistry.isAvailable(t),
       getAvailableAgentTypes: () => agentRegistry.getAvailableAgentTypes(),
+      getAllAdapterNames: () => agentRegistry.getAllAdapterNames(),
     },
-    {
-      selectionMode: config.executionSelectionMode as 'last-execution' | 'initial-recommendation' | 'ask-every-time',
-      defaultAgent: config.defaultAgent,
-      defaultBehavior: config.defaultBehavior,
-    }
+    { defaultAgent: config.defaultAgent },
+    stateStore
   );
 
   const dispatchRouter = new DispatchRouter(agentRegistry);

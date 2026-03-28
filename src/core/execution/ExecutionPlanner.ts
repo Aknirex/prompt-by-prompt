@@ -2,99 +2,101 @@ import * as vscode from 'vscode';
 import {
   ExecutionBehavior,
   ExecutionPreset,
-  ExecutionTarget,
 } from '../../types/execution';
 import { AgentType } from '../../types/agent';
 import { ExecutionHistory } from './ExecutionHistory';
 import { t } from '../../utils/i18n';
 
-export type ExecutionSelectionMode = 'last-execution' | 'initial-recommendation' | 'ask-every-time';
-
-export interface PlannerConfig {
-  selectionMode: ExecutionSelectionMode;
-  defaultAgent: string;
-  defaultBehavior: string;
-}
-
 export interface AgentAvailabilityChecker {
   getSupportedBehaviors(agentType: AgentType): ExecutionBehavior[];
   isAvailable(agentType: AgentType): Promise<boolean>;
   getAvailableAgentTypes(): Promise<AgentType[]>;
+  getAllAdapterNames(): { type: AgentType; name: string }[];
 }
+
+export interface PlannerStateStore {
+  getGlobal<T>(key: string): T | undefined;
+  setGlobal(key: string, value: unknown): Promise<void>;
+}
+
+const AGENT_CONFIGURED_KEY = 'pbp.agentConfigured';
 
 export class ExecutionPlanner {
   constructor(
     private readonly history: ExecutionHistory,
     private readonly agents: AgentAvailabilityChecker,
-    private readonly config: PlannerConfig
+    private readonly config: { defaultAgent: string },
+    private readonly stateStore: PlannerStateStore
   ) {}
 
-  async resolvePreset(
-    promptId: string,
-    forcePicker: boolean,
-    explicitPreset?: ExecutionPreset
-  ): Promise<ExecutionPreset | undefined> {
-    if (explicitPreset) return explicitPreset;
+  /**
+   * Resolve which agent to use.
+   * - If user has already configured an agent (agentConfigured flag), use defaultAgent.
+   * - Otherwise show a one-time picker and save the choice.
+   */
+  async resolveAgent(): Promise<AgentType> {
+    const configured = this.stateStore.getGlobal<boolean>(AGENT_CONFIGURED_KEY);
 
-    const mode = this.config.selectionMode;
-
-    if (!forcePicker && mode === 'last-execution') {
-      const last = this.history.getRecord(promptId);
-      if (last) return { target: last.target, behavior: last.behavior };
+    if (configured) {
+      return this.config.defaultAgent as AgentType;
     }
 
-    if (!forcePicker && mode === 'initial-recommendation') {
-      const recommended = await this.buildRecommendedPreset();
-      if (recommended) return recommended;
+    // First run: show picker
+    const chosen = await this.showAgentPicker();
+    const agentType = chosen ?? 'clipboard';
+
+    await vscode.workspace.getConfiguration('pbp').update(
+      'defaultAgent', agentType, vscode.ConfigurationTarget.Global
+    );
+    await this.stateStore.setGlobal(AGENT_CONFIGURED_KEY, true);
+
+    if (chosen) {
+      vscode.window.showInformationMessage(
+        t('Default agent set to "{0}". Change anytime with Select Agent.', agentType)
+      );
     }
 
-    return this.showPicker();
+    return agentType;
   }
 
-  private async buildRecommendedPreset(): Promise<ExecutionPreset | undefined> {
-    const defaultAgent = this.config.defaultAgent;
-
-    if (defaultAgent === 'clipboard') return { target: { kind: 'clipboard' } };
-    if (defaultAgent === 'file') return { target: { kind: 'file' } };
-
-    const agentType = defaultAgent as AgentType;
-    if (await this.agents.isAvailable(agentType)) {
-      const behaviors = this.agents.getSupportedBehaviors(agentType);
-      const behavior = behaviors.includes('send') ? 'send' : behaviors[0];
-      return { target: { kind: 'agent', agentType }, behavior };
-    }
-
-    return undefined;
+  async recordExecution(promptId: string, agentType: AgentType, behavior: ExecutionBehavior): Promise<void> {
+    const target = agentType === 'clipboard'
+      ? { kind: 'clipboard' as const }
+      : agentType === 'file'
+        ? { kind: 'file' as const }
+        : { kind: 'agent' as const, agentType };
+    const preset: ExecutionPreset = { target, behavior };
+    await this.history.saveRecord(promptId, preset);
   }
 
-  private async showPicker(): Promise<ExecutionPreset | undefined> {
+  private async showAgentPicker(): Promise<AgentType | undefined> {
     const available = await this.agents.getAvailableAgentTypes();
-    const items: vscode.QuickPickItem[] = [
-      { label: t('Clipboard'), description: 'clipboard' },
-      { label: t('File'), description: 'file' },
-      ...available.map(a => ({ label: a, description: `agent:${a}` })),
+    const all = this.agents.getAllAdapterNames();
+
+    const items: (vscode.QuickPickItem & { value: AgentType })[] = [
+      // Available agents first
+      ...all
+        .filter(a => available.includes(a.type))
+        .map(a => ({
+          label: a.name,
+          description: a.type,
+          value: a.type,
+        })),
+      // Unavailable agents (grayed out)
+      ...all
+        .filter(a => !available.includes(a.type))
+        .map(a => ({
+          label: a.name,
+          description: `${a.type} — not installed`,
+          value: a.type,
+        })),
     ];
 
     const picked = await vscode.window.showQuickPick(items, {
-      placeHolder: t('Select target agent'),
+      placeHolder: t('Select default agent for running prompts'),
+      title: t('Choose Agent'),
     });
-    if (!picked) return undefined;
 
-    if (picked.description === 'clipboard') return { target: { kind: 'clipboard' } };
-    if (picked.description === 'file') return { target: { kind: 'file' } };
-
-    const agentType = picked.label as AgentType;
-    const behaviors = this.agents.getSupportedBehaviors(agentType);
-    if (behaviors.length <= 1) {
-      return { target: { kind: 'agent', agentType }, behavior: behaviors[0] };
-    }
-
-    const behaviorPick = await vscode.window.showQuickPick(
-      behaviors.map(b => ({ label: b })),
-      { placeHolder: t('Select behavior') }
-    );
-    if (!behaviorPick) return undefined;
-
-    return { target: { kind: 'agent', agentType }, behavior: behaviorPick.label as ExecutionBehavior };
+    return picked?.value;
   }
 }

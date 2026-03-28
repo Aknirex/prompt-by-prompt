@@ -11,7 +11,6 @@ export class VscodeConfigReader {
 
   // Execution
   get defaultAgent(): string { return this.get('defaultAgent', 'clipboard'); }
-  get defaultBehavior(): string { return this.get('defaultBehavior', 'send'); }
   get executionSelectionMode(): string { return this.get('executionSelectionMode', 'last-execution'); }
   get rememberLastExecution(): boolean { return this.get('rememberLastExecution', true); }
 
@@ -39,6 +38,6 @@ export class VscodeConfigReader {
   get passiveProjectionIncludeTeamMetadata(): boolean { return this.get('passiveRuleProjection.includeTeamMetadata', true); }
 
   // AI generator
-  get generatorProvider(): string { return this.get('generatorProvider', 'claude'); }
+  get generatorProvider(): string { return this.get('generatorProvider', 'ollama'); }
   get generatorModel(): string { return this.get('generatorModel', ''); }
 }

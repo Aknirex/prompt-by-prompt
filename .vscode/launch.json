@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Extension",
+      "name": "Debug Extension",
       "type": "extensionHost",
       "request": "launch",
       "args": [
@@ -11,13 +11,11 @@
         "--extensions-dir=${workspaceFolder}/.vscode-test/extensions",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"
     },
     {
-      "name": "Run Extension + Copilot Chat",
+      "name": "Debug Extension + Copilot",
       "type": "extensionHost",
       "request": "launch",
       "args": [
@@ -26,43 +24,10 @@
         "--disable-extension=openai.chatgpt",
         "--disable-extension=RooVeterinaryInc.roo-cline",
         "--disable-extension=kilocode.kilo-code",
+        "--disable-extension=continue.continue",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
-      "preLaunchTask": "${defaultBuildTask}"
-    },
-    {
-      "name": "Run Extension + Copilot Chat (Current Profile)",
-      "type": "extensionHost",
-      "request": "launch",
-      "args": [
-        "--extensions-dir=C:/Users/admin/.vscode/extensions",
-        "--disable-extension=openai.chatgpt",
-        "--disable-extension=RooVeterinaryInc.roo-cline",
-        "--disable-extension=kilocode.kilo-code",
-        "--extensionDevelopmentPath=${workspaceFolder}"
-      ],
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
-      "preLaunchTask": "${defaultBuildTask}"
-    },
-    {
-      "name": "Extension Tests",
-      "type": "extensionHost",
-      "request": "launch",
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}",
-        "--extensionTestsPath=${workspaceFolder}/dist/test/suite/index",
-        "--disable-extensions",
-        "--user-data-dir=${workspaceFolder}/.vscode-test/user-data",
-        "--extensions-dir=${workspaceFolder}/.vscode-test/extensions"
-      ],
-      "outFiles": [
-        "${workspaceFolder}/dist/test/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"
     }
   ]

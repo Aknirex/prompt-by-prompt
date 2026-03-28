@@ -6,6 +6,8 @@ export const GlobalStateKeys = {
   TEAM_SOURCE_COMMIT: (id: string) => `pbp.teamSource.${id}.commit`,
   TEAM_SOURCE_ERROR: (id: string) => `pbp.teamSource.${id}.lastError`,
   GENERATOR_SYSTEM_PROMPT: 'pbp.generatorSystemPrompt',
+  BUILTINS_SEEDED: 'pbp.builtinsSeeded',
+  AGENT_CONFIGURED: 'pbp.agentConfigured',
 } as const;
 
 export const WorkspaceStateKeys = {

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { Services } from '../container';
 import { PromptTemplate } from '../types/prompt';
-import { ExecutionTarget } from '../types/execution';
 import { ResolvedPolicyBinding } from '../types/teamPolicy';
 import { PromptEditorPanel } from '../webview/promptEditor/PromptEditorPanel';
 import { t } from '../utils/i18n';
@@ -89,12 +88,15 @@ async function runPrompt(svc: Services, prompt: PromptTemplate): Promise<void> {
   const renderedPrompt = svc.contextExtractor.renderPrompt(prompt, editorCtx, variables);
   const resolvedRuleSet = buildResolvedRuleSet(allRules, activeEntries, profile, conflicts);
   const envelope = svc.envelopeBuilder.build(prompt, renderedPrompt, variables, effectivePolicy, editorCtx, resolvedRuleSet);
+  const dispatchText = svc.dispatchRouter.buildDispatchText(envelope, { kind: 'clipboard' });
 
-  const target: ExecutionTarget = { kind: 'clipboard' };
-  const dispatchText = svc.dispatchRouter.buildDispatchText(envelope, target);
-  const result = await svc.dispatchRouter.dispatch(dispatchText, target);
+  const agentType = await svc.executionPlanner.resolveAgent();
+  const { result, behavior } = await svc.dispatchRouter.dispatchWithFallback(dispatchText, agentType);
+
   if (!result.success) {
     vscode.window.showErrorMessage(t('Dispatch failed: {0}', result.message));
+  } else {
+    await svc.executionPlanner.recordExecution(prompt.id, agentType, behavior);
   }
 }
 
@@ -106,8 +108,7 @@ async function previewPrompt(svc: Services, prompt: PromptTemplate): Promise<voi
   const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(activeEntries, conflicts, IMPLICIT_BINDING);
   const resolvedRuleSet = buildResolvedRuleSet([], activeEntries, svc.ruleResolver.buildDefaultProfile([]), conflicts);
   const envelope = svc.envelopeBuilder.build(prompt, renderedPrompt, variables, effectivePolicy, editorCtx, resolvedRuleSet);
-  const target: ExecutionTarget = { kind: 'clipboard' };
-  const previewText = svc.dispatchRouter.buildPreviewText(envelope, target);
+  const previewText = svc.dispatchRouter.buildPreviewText(envelope, { kind: 'clipboard' });
   const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: previewText });
   await vscode.window.showTextDocument(doc, { preview: true });
 }

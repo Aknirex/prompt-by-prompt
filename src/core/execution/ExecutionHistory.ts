@@ -2,7 +2,7 @@ import { ExecutionHistoryMap, ExecutionHistoryRecord, ExecutionPreset } from '..
 
 export interface HistoryStore {
   getGlobal<T>(key: string): T | undefined;
-  setGlobal<T>(key: string, value: T): Promise<void>;
+  setGlobal(key: string, value: unknown): Promise<void>;
 }
 
 export class ExecutionHistory {

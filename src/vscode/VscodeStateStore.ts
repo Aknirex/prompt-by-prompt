@@ -7,7 +7,7 @@ export class VscodeStateStore {
     return this.context.globalState.get<T>(key);
   }
 
-  async setGlobal<T>(key: string, value: T): Promise<void> {
+  async setGlobal(key: string, value: unknown): Promise<void> {
     await this.context.globalState.update(key, value);
   }
 
@@ -15,7 +15,7 @@ export class VscodeStateStore {
     return this.context.workspaceState.get<T>(key);
   }
 
-  async setWorkspace<T>(key: string, value: T): Promise<void> {
+  async setWorkspace(key: string, value: unknown): Promise<void> {
     await this.context.workspaceState.update(key, value);
   }
 

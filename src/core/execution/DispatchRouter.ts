@@ -6,6 +6,49 @@ import { SendResult } from '../../types/agent';
 export class DispatchRouter {
   constructor(private readonly agents: AgentRegistry) {}
 
+  /**
+   * Dispatch with automatic behavior fallback.
+   * Tries in order: append → overwrite/fill → send/submit → clipboard.
+   */
+  async dispatchWithFallback(
+    text: string,
+    agentType: AgentType
+  ): Promise<{ result: SendResult; behavior: ExecutionBehavior }> {
+    if (agentType === 'clipboard' || agentType === 'file') {
+      const result = await this.agents.sendToAgent(text, agentType);
+      return { result, behavior: 'clipboard' };
+    }
+
+    const capabilities = this.agents.getCapabilities(agentType);
+    if (!capabilities) {
+      const result = await this.agents.sendToAgent(text, 'clipboard');
+      return { result, behavior: 'clipboard' };
+    }
+
+    // Try append
+    if (capabilities.canAppendInput) {
+      const result = await this.agents.sendToAgent(text, agentType, { behavior: 'append' });
+      if (result.success) return { result, behavior: 'append' };
+    }
+
+    // Try fill/overwrite
+    if (capabilities.canFillInput) {
+      const result = await this.agents.sendToAgent(text, agentType, { behavior: 'overwrite' });
+      if (result.success) return { result, behavior: 'overwrite' };
+    }
+
+    // Try send/submit
+    if (capabilities.canAutoSubmit) {
+      const result = await this.agents.sendToAgent(text, agentType, { behavior: 'send' });
+      if (result.success) return { result, behavior: 'send' };
+    }
+
+    // Final fallback: clipboard
+    const result = await this.agents.sendToAgent(text, 'clipboard');
+    return { result, behavior: 'clipboard' };
+  }
+
+  /** Legacy direct dispatch (used by projection/preview commands) */
   async dispatch(
     dispatchText: string,
     target: ExecutionTarget,
@@ -20,7 +63,7 @@ export class DispatchRouter {
     return this.agents.sendToAgent(dispatchText, target.agentType, { behavior });
   }
 
-  buildDispatchText(envelope: ExecutionEnvelope, target: ExecutionTarget): string {
+  buildDispatchText(envelope: ExecutionEnvelope, _target: ExecutionTarget): string {
     const { task, policy } = envelope;
 
     const parts: string[] = [task.renderedPrompt];
@@ -46,7 +89,7 @@ export class DispatchRouter {
       '# Execution Preview',
       '',
       `**Target**: ${this.describeTarget(target)}`,
-      `**Behavior**: ${behavior ?? 'default'}`,
+      `**Behavior**: ${behavior ?? 'auto'}`,
       `**Binding**: ${envelope.policy.bindingSource ?? 'implicit'}`,
       '',
       '## Rendered Prompt',

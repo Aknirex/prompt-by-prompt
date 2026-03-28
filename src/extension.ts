@@ -15,7 +15,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const svc = createServices(context);
 
   // Run legacy migration on first activation after upgrade
-  await migrateIfNeeded(svc.stateStore, svc.promptRepo);
+  await migrateIfNeeded(svc.stateStore, svc.promptRepo, context.extensionPath);
 
   // Tree providers
   const promptsTree = new PromptsTreeProvider(svc.promptRepo);
@@ -23,9 +23,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const teamTree = new TeamPoliciesTreeProvider();
 
   context.subscriptions.push(
-    vscode.window.createTreeView('pbp.prompts', { treeDataProvider: promptsTree, showCollapseAll: true }),
-    vscode.window.createTreeView('pbp.rules', { treeDataProvider: rulesTree, showCollapseAll: true }),
-    vscode.window.createTreeView('pbp.teamPolicies', { treeDataProvider: teamTree, showCollapseAll: true }),
+    vscode.window.createTreeView('pbp.promptsView', { treeDataProvider: promptsTree, showCollapseAll: true }),
+    vscode.window.createTreeView('pbp.rulesView', { treeDataProvider: rulesTree, showCollapseAll: true }),
+    vscode.window.createTreeView('pbp.teamPoliciesView', { treeDataProvider: teamTree, showCollapseAll: true }),
   );
 
   await promptsTree.reload();

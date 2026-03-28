@@ -60,24 +60,8 @@
         "icon": "$(play)"
       },
       {
-        "command": "pbp.runPromptWithPicker",
-        "title": "Run Prompt (Choose Target/Behavior)"
-      },
-      {
         "command": "pbp.previewPrompt",
         "title": "Preview Prompt"
-      },
-      {
-        "command": "pbp.selectExecutionTarget",
-        "title": "Select Execution Target"
-      },
-      {
-        "command": "pbp.rerunLastTarget",
-        "title": "Rerun Prompt"
-      },
-      {
-        "command": "pbp.showDiagnostics",
-        "title": "Show Diagnostics"
       },
       {
         "command": "pbp.openSettings",
@@ -235,17 +219,7 @@
           "group": "inline"
         },
         {
-          "command": "pbp.runPromptWithPicker",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "2_execution"
-        },
-        {
           "command": "pbp.previewPrompt",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "2_execution"
-        },
-        {
-          "command": "pbp.selectExecutionTarget",
           "when": "view == pbp.promptsView && viewItem == prompt",
           "group": "2_execution"
         },

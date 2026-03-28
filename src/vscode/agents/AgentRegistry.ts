@@ -91,6 +91,14 @@ export class AgentRegistry {
     this.availabilityCache.clear();
   }
 
+  getCapabilities(agentType: AgentType) {
+    return this.adapters.get(agentType)?.capabilities;
+  }
+
+  getAllAdapterNames(): { type: AgentType; name: string }[] {
+    return [...this.adapters.values()].map(a => ({ type: a.type, name: a.name }));
+  }
+
   getAllAdapters(): AgentAdapter[] {
     return [...this.adapters.values()];
   }

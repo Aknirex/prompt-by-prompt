@@ -2,7 +2,7 @@ import { AgentType } from './agent';
 import { EditorContext, PromptTemplate } from './prompt';
 import { EffectivePolicy, ResolvedRuleSet } from './rule';
 
-export type ExecutionBehavior = 'send' | 'append' | 'overwrite' | 'insert';
+export type ExecutionBehavior = 'append' | 'overwrite' | 'send' | 'clipboard';
 
 export type ExecutionTarget =
   | { kind: 'agent'; agentType: AgentType }
