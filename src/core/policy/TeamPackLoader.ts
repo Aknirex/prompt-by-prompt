@@ -116,12 +116,12 @@ export class TeamPackLoader {
     return identities;
   }
 
-  private async loadPrompts(sourcePath: string, manifest: PackManifest): Promise<PromptTemplate[]> {
+  private async loadPrompts(sourcePath: string, manifest: PackManifest): Promise<import('../../types/teamPolicy').SharedPromptTemplate[]> {
     const promptsDir = path.join(sourcePath, 'prompts');
     if (!fs.existsSync(promptsDir)) return [];
 
     const files = fs.readdirSync(promptsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-    const prompts: PromptTemplate[] = [];
+    const prompts: import('../../types/teamPolicy').SharedPromptTemplate[] = [];
 
     for (const file of files) {
       try {
@@ -134,10 +134,8 @@ export class TeamPackLoader {
           description: raw.description ?? '',
           category: raw.category ?? '',
           tags: raw.tags ?? [],
-          version: raw.version ?? manifest.version,
           template: raw.template ?? '',
           variables: raw.variables,
-          parameters: raw.parameters,
           source: 'team-pack',
           packId: manifest.id,
           packVersion: manifest.version,

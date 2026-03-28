@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 import { Services } from '../container';
 import { PromptTemplate } from '../types/prompt';
 import { ExecutionTarget } from '../types/execution';
+import { ResolvedPolicyBinding } from '../types/teamPolicy';
 import { PromptEditorPanel } from '../webview/promptEditor/PromptEditorPanel';
 import { t } from '../utils/i18n';
-import { GlobalStateKeys } from '../state/StateKeys';
 
 export function registerPromptCommands(ctx: vscode.ExtensionContext, svc: Services): void {
   ctx.subscriptions.push(
@@ -34,6 +34,13 @@ async function pickSaveTarget(): Promise<'workspace' | 'global' | undefined> {
   return pick?.value;
 }
 
+const IMPLICIT_BINDING: ResolvedPolicyBinding = {
+  source: 'implicit',
+  allowPersonalOverrides: true,
+  pinned: false,
+  reasons: [],
+};
+
 async function createPrompt(ctx: vscode.ExtensionContext, svc: Services): Promise<void> {
   const target = await pickSaveTarget();
   if (!target) return;
@@ -61,7 +68,9 @@ async function deletePrompt(svc: Services, prompt?: PromptTemplate): Promise<voi
     t('Delete')
   );
   if (answer !== t('Delete')) return;
-  await svc.promptRepo.delete(prompt.id, prompt.source === 'workspace' ? 'workspace' : 'global');
+  if (prompt.filePath) {
+    await svc.promptRepo.delete(prompt.filePath);
+  }
   vscode.window.showInformationMessage(t('Prompt "{0}" deleted.', prompt.name));
 }
 
@@ -70,18 +79,19 @@ async function runPrompt(svc: Services, prompt: PromptTemplate): Promise<void> {
   const editorCtx = await svc.contextExtractor.extractContext();
   const allRules = [
     ...(workspaceRoot ? await svc.ruleScanner.scanWorkspace(workspaceRoot) : []),
-    ...(await svc.ruleScanner.scanGlobalDir()),
+    ...(await svc.ruleScanner.scanGlobalDir(svc.stateStore.globalStoragePath)),
   ];
   const profile = svc.ruleResolver.buildDefaultProfile(allRules);
-  const resolved = svc.ruleResolver.resolveActiveRules(allRules, profile);
-  const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(resolved);
+  const { activeEntries, conflicts } = svc.ruleResolver.resolveActiveRules(allRules, profile);
+  const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(activeEntries, conflicts, IMPLICIT_BINDING);
 
   const variables: Record<string, string> = {};
   const renderedPrompt = svc.contextExtractor.renderPrompt(prompt, editorCtx, variables);
-  const envelope = svc.envelopeBuilder.build(prompt, renderedPrompt, variables, effectivePolicy, editorCtx, resolved);
+  const resolvedRuleSet = buildResolvedRuleSet(allRules, activeEntries, profile, conflicts);
+  const envelope = svc.envelopeBuilder.build(prompt, renderedPrompt, variables, effectivePolicy, editorCtx, resolvedRuleSet);
 
-  const dispatchText = svc.dispatchRouter.buildDispatchText(envelope, { kind: 'clipboard' });
   const target: ExecutionTarget = { kind: 'clipboard' };
+  const dispatchText = svc.dispatchRouter.buildDispatchText(envelope, target);
   const result = await svc.dispatchRouter.dispatch(dispatchText, target);
   if (!result.success) {
     vscode.window.showErrorMessage(t('Dispatch failed: {0}', result.message));
@@ -92,9 +102,10 @@ async function previewPrompt(svc: Services, prompt: PromptTemplate): Promise<voi
   const editorCtx = await svc.contextExtractor.extractContext();
   const variables: Record<string, string> = {};
   const renderedPrompt = svc.contextExtractor.renderPrompt(prompt, editorCtx, variables);
-  const resolved = svc.ruleResolver.resolveActiveRules([], svc.ruleResolver.buildDefaultProfile([]));
-  const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(resolved);
-  const envelope = svc.envelopeBuilder.build(prompt, renderedPrompt, variables, effectivePolicy, editorCtx, resolved);
+  const { activeEntries, conflicts } = svc.ruleResolver.resolveActiveRules([], svc.ruleResolver.buildDefaultProfile([]));
+  const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(activeEntries, conflicts, IMPLICIT_BINDING);
+  const resolvedRuleSet = buildResolvedRuleSet([], activeEntries, svc.ruleResolver.buildDefaultProfile([]), conflicts);
+  const envelope = svc.envelopeBuilder.build(prompt, renderedPrompt, variables, effectivePolicy, editorCtx, resolvedRuleSet);
   const target: ExecutionTarget = { kind: 'clipboard' };
   const previewText = svc.dispatchRouter.buildPreviewText(envelope, target);
   const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: previewText });
@@ -113,7 +124,26 @@ async function duplicatePrompt(ctx: vscode.ExtensionContext, svc: Services, prom
     filePath: undefined,
     readOnly: false,
   };
-  await svc.promptRepo.save(copy, target);
+  await svc.promptRepo.save({ ...copy, source: target });
   vscode.window.showInformationMessage(t('Prompt duplicated as "{0}".', copy.name));
   PromptEditorPanel.createOrShow(ctx, svc, copy, target);
+}
+
+function buildResolvedRuleSet(
+  allRules: import('../types/rule').RuleFile[],
+  activeEntries: import('../types/rule').ResolvedRuleEntry[],
+  profile: import('../types/rule').RuleProfile,
+  conflicts: import('../types/rule').ResolvedRuleConflict[]
+): import('../types/rule').ResolvedRuleSet {
+  return {
+    profile,
+    workspaceRules: allRules.filter(r => r.scope === 'workspace'),
+    globalRules: allRules.filter(r => r.scope === 'global'),
+    teamRules: allRules.filter(r => r.scope === 'team-pack'),
+    activeRules: activeEntries.map(e => e.rule),
+    activeEntries,
+    injectionMode: 'text-fallback' as import('../types/rule').RuleInjectionMode,
+    notes: [],
+    conflicts,
+  };
 }

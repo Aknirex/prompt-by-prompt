@@ -19,7 +19,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Tree providers
   const promptsTree = new PromptsTreeProvider(svc.promptRepo);
-  const rulesTree = new RulesTreeProvider(svc.ruleScanner, svc.ruleResolver, svc.stateStore);
+  const rulesTree = new RulesTreeProvider();
   const teamTree = new TeamPoliciesTreeProvider();
 
   context.subscriptions.push(
@@ -29,7 +29,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   await promptsTree.reload();
-  await rulesTree.reload();
 
   // Commands
   registerPromptCommands(context, svc);

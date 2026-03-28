@@ -15,7 +15,7 @@ export class AgentRegistry {
   private cacheExpiry = 0;
 
   constructor() {
-    this.adapters = new Map([
+    const entries: [AgentType, AgentAdapter][] = [
       ['clipboard', new ClipboardAdapter()],
       ['file', new FileAdapter()],
       ['cline', new ClineAdapter()],
@@ -27,7 +27,8 @@ export class AgentRegistry {
       ['tongyi', new TongyiAdapter()],
       ['kilo-code', new KiloCodeAdapter()],
       ['codex', new CodexAdapter()],
-    ]);
+    ];
+    this.adapters = new Map(entries);
   }
 
   getAdapter(type: AgentType): AgentAdapter | undefined {

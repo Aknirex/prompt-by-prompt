@@ -17,6 +17,12 @@ export class VscodeConfigReader {
 
   // Prompt storage
   get defaultSaveLocation(): string { return this.get('defaultSaveLocation', 'workspace'); }
+  get defaultTarget(): string { return this.get('defaultSaveLocation', 'workspace'); }
+
+  // UI
+  get uiLanguage(): string { return this.get('uiLanguage', 'en'); }
+  get ollamaEndpoint(): string { return this.get('ollamaEndpoint', 'http://localhost:11434'); }
+  get customProviderUrl(): string { return this.get('customProviderUrl', ''); }
 
   // Team policy
   get autoSyncTeamPolicies(): boolean { return this.get('autoSyncTeamPolicies', false); }

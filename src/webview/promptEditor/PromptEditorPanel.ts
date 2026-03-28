@@ -115,7 +115,7 @@ export class PromptEditorPanel {
         break;
 
       case 'save':
-        await this._handleSave(msg);
+        await this._handleSave(msg as unknown as { type: 'save' } & SavePayload);
         break;
 
       case 'requestAiDraft': {
@@ -135,9 +135,10 @@ export class PromptEditorPanel {
       }
 
       case 'requestPreview': {
-        const ctx = await this.svc.contextExtractor.extract();
+        const ctx = await this.svc.contextExtractor.extractContext();
         const vars: Record<string, string> = {};
-        const rendered = this.svc.promptRenderer.render(msg.template, ctx, vars);
+        const tempPrompt: PromptTemplate = { id: '', name: '', description: '', category: '', tags: [], version: '1.0.0', template: msg.template, variables: msg.variables };
+        const rendered = this.svc.contextExtractor.renderPrompt(tempPrompt, ctx, vars);
         const reply: HostToWebview = { type: 'previewReady', text: rendered };
         this._panel.webview.postMessage(reply);
         break;
@@ -153,7 +154,7 @@ export class PromptEditorPanel {
     }
   }
 
-  private async _handleSave(msg: SavePayload & { type: 'save' }): Promise<void> {
+  private async _handleSave(msg: { type: 'save' } & SavePayload): Promise<void> {
     const isNew = !this._prompt?.id;
     const id = this._prompt?.id || `prompt-${Date.now()}`;
     const prompt: PromptTemplate = {
@@ -167,7 +168,7 @@ export class PromptEditorPanel {
       version: this._prompt?.version ?? '1.0.0',
       source: msg.target,
     };
-    await this.svc.promptRepo.save(prompt, msg.target);
+    await this.svc.promptRepo.save({ ...prompt, source: msg.target });
     this._prompt = prompt;
     this._target = msg.target;
     vscode.window.showInformationMessage(

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { PromptRepository } from './core/prompt/PromptRepository';
 import { PromptRenderer } from './core/prompt/PromptRenderer';
-import { PromptMigration } from './core/prompt/PromptMigration';
 import { RuleScanner } from './core/rule/RuleScanner';
 import { RuleResolver } from './core/rule/RuleResolver';
 import { RuleProjector } from './core/rule/RuleProjector';

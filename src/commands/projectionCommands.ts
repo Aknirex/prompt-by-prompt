@@ -1,8 +1,15 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Services } from '../container';
-import { GlobalStateKeys } from '../state/StateKeys';
+import { ResolvedPolicyBinding } from '../types/teamPolicy';
 import { t } from '../utils/i18n';
+
+const IMPLICIT_BINDING: ResolvedPolicyBinding = {
+  source: 'implicit',
+  allowPersonalOverrides: true,
+  pinned: false,
+  reasons: [],
+};
 
 export function registerProjectionCommands(ctx: vscode.ExtensionContext, svc: Services): void {
   ctx.subscriptions.push(
@@ -19,11 +26,11 @@ async function rebuildProjection(svc: Services): Promise<void> {
   }
 
   const workspaceRules = await svc.ruleScanner.scanWorkspace(workspaceRoot);
-  const globalRules = await svc.ruleScanner.scanGlobalDir();
+  const globalRules = await svc.ruleScanner.scanGlobalDir(svc.stateStore.globalStoragePath);
   const allRules = [...workspaceRules, ...globalRules];
   const profile = svc.ruleResolver.buildDefaultProfile(allRules);
-  const resolved = svc.ruleResolver.resolveActiveRules(allRules, profile);
-  const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(resolved);
+  const { activeEntries, conflicts } = svc.ruleResolver.resolveActiveRules(allRules, profile);
+  const effectivePolicy = svc.ruleResolver.buildEffectivePolicy(activeEntries, conflicts, IMPLICIT_BINDING);
 
   const outputPath = path.join(workspaceRoot, '.pbp', 'compiled', 'AGENTS.md');
   await svc.ruleProjector.writeProjectedFile(outputPath, effectivePolicy, {
