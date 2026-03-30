@@ -59,6 +59,7 @@ cd prompt-by-prompt
 pnpm install
 pnpm run compile
 ```
+This repository is pinned with Volta, so `node` and `pnpm` versions are resolved automatically once Volta is installed and active.
 Then press F5 in VS Code to launch the extension.
 
 ## 🚀 Quick Start

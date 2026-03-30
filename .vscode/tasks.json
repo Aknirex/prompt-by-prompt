@@ -2,67 +2,47 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build",
+      "label": "build:extension",
       "type": "shell",
-      "command": "pnpm run build",
-      "problemMatcher": {
-        "owner": "esbuild",
-        "pattern": {
-          "regexp": "^([^\\\\s].*):(\\\\d+):(\\\\d+):\\\\s+(warning|error):\\\\s+(.*)$",
-          "file": 1,
-          "line": 2,
-          "column": 3,
-          "severity": 4,
-          "message": 5
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "esbuild",
-          "endsPattern": "build finished"
-        }
-      },
+      "command": "pnpm",
+      "args": [
+        "run",
+        "build"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
       }
     },
     {
-      "label": "watch",
+      "label": "compile",
       "type": "shell",
-      "command": "pnpm run watch",
-      "problemMatcher": {
-        "owner": "esbuild",
-        "pattern": {
-          "regexp": "^([^\\\\s].*):(\\\\d+):(\\\\d+):\\\\s+(warning|error):\\\\s+(.*)$",
-          "file": 1,
-          "line": 2,
-          "column": 3,
-          "severity": 4,
-          "message": 5
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "esbuild",
-          "endsPattern": "\\[watch\\] build finished"
-        }
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "never"
-      }
+      "command": "pnpm",
+      "args": [
+        "run",
+        "compile"
+      ],
+      "problemMatcher": "$tsc",
+      "group": "build"
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "pnpm",
+      "args": [
+        "test"
+      ],
+      "problemMatcher": []
     },
     {
       "label": "clean",
       "type": "shell",
-      "command": "pnpm run clean",
+      "command": "pnpm",
+      "args": [
+        "run",
+        "clean"
+      ],
       "problemMatcher": []
-    },
-    {
-      "label": "compile",
-      "type": "shell",
-      "command": "pnpm run compile",
-      "problemMatcher": "$tsc",
-      "group": "build"
     }
   ]
 }
