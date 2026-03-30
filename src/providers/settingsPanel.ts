@@ -3,10 +3,11 @@
  */
 
 import * as vscode from 'vscode';
-import { AI_PROVIDERS, AIProvider, DEFAULT_GENERATOR_SYSTEM_PROMPT } from '../services/aiService';
+import { AIProvider, DEFAULT_GENERATOR_SYSTEM_PROMPT } from '../services/aiService';
 import { AgentService, getSupportedExecutionBehaviors } from '../services/agentService';
 import { t } from '../utils/i18n';
 import { AgentType } from '../types/agent';
+import { AI_PROVIDERS } from '../services/aiProviders';
 
 /**
  * Settings configuration

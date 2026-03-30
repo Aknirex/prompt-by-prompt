@@ -1,0 +1,83 @@
+import type { ProviderInfo } from './aiService';
+
+export const AI_PROVIDERS: ProviderInfo[] = [
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307', 'claude-3-5-haiku-20241022'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://api.anthropic.com/v1/messages',
+  },
+  {
+    id: 'azure',
+    name: 'Azure OpenAI',
+    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-35-turbo'],
+    requiresApiKey: true,
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    models: ['deepseek-chat', 'deepseek-coder'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://api.deepseek.com/v1/chat/completions',
+  },
+  {
+    id: 'google',
+    name: 'Google AI',
+    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-pro-exp'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    models: ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://api.groq.com/openai/v1/chat/completions',
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral AI',
+    models: ['mistral-large-latest', 'mistral-medium', 'mistral-small-latest', 'codestral-latest', 'ministral-8b-latest'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://api.mistral.ai/v1/chat/completions',
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (Local)',
+    models: ['llama3.2', 'llama3.1', 'llama2', 'codellama', 'mistral', 'qwen2.5', 'deepseek-coder-v2', 'phi3'],
+    requiresApiKey: false,
+    apiBaseUrl: 'http://localhost:11434/api/generate',
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    models: [
+      'anthropic/claude-3.5-sonnet',
+      'anthropic/claude-3-opus',
+      'openai/gpt-4o',
+      'openai/gpt-4-turbo',
+      'google/gemini-2.0-flash-exp',
+      'meta-llama/llama-3.3-70b-instruct',
+      'deepseek/deepseek-chat',
+      'mistralai/mistral-large',
+      'x-ai/grok-beta',
+    ],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://openrouter.ai/api/v1/chat/completions',
+  },
+  {
+    id: 'xai',
+    name: 'xAI (Grok)',
+    models: ['grok-beta', 'grok-2-1212', 'grok-2-vision-1212'],
+    requiresApiKey: true,
+    apiBaseUrl: 'https://api.x.ai/v1/chat/completions',
+  },
+];
