@@ -185,6 +185,9 @@ export class PromptManager {
     const packs = this.teamPolicyService.getInstalledPacks();
     for (const pack of packs) {
       for (const teamPrompt of pack.prompts) {
+        const sourceFilePath = teamPrompt.sourceFile
+          ? path.join(pack.sourcePath, 'prompts', teamPrompt.sourceFile)
+          : undefined;
         this.prompts.set(teamPrompt.id, {
           id: teamPrompt.id,
           name: teamPrompt.name,
@@ -198,6 +201,7 @@ export class PromptManager {
           readOnly: teamPrompt.readOnly,
           packId: teamPrompt.packId,
           packVersion: teamPrompt.packVersion,
+          filePath: sourceFilePath,
         });
       }
     }

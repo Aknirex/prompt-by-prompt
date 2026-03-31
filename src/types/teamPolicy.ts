@@ -46,6 +46,7 @@ export interface RuleIdentity {
   canonicalKey: string;
   packId?: string;
   packVersion?: string;
+  sourceFile?: string;
 }
 
 export interface SharedPromptTemplate {
@@ -59,6 +60,7 @@ export interface SharedPromptTemplate {
   source: 'team-pack';
   packId: string;
   packVersion: string;
+  sourceFile?: string;
   recommendedTargets?: AgentType[];
   readOnly?: boolean;
 }

@@ -87,6 +87,7 @@ describe('TeamPolicyService', () => {
     expect(packs[0]?.resolvedVersion).toMatch(/^[0-9a-f]{40}$/);
     expect(packs[0]?.sourcePath).toContain(path.join(globalDir, 'team-policy-sources', 'acme-git'));
     expect(fs.existsSync(path.join(globalDir, 'team-policy-sources', 'acme-git', 'pack.json'))).toBe(true);
+    expect(packs[0]?.rules[0]?.sourceFile).toBe('secure-defaults.md');
   });
 
   it('pulls updated commits for git team policy sources on refresh', async () => {

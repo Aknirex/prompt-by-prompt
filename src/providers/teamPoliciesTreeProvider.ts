@@ -20,7 +20,8 @@ class SharedLibrarySectionItem extends vscode.TreeItem {
   constructor(
     label: string,
     public readonly kind: 'rules' | 'prompts',
-    public readonly entries: TeamPolicyPack['rules'] | TeamPolicyPack['prompts']
+    public readonly entries: TeamPolicyPack['rules'] | TeamPolicyPack['prompts'],
+    public readonly pack: TeamPolicyPack
   ) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = kind === 'rules'
@@ -73,8 +74,8 @@ class SharedLibrarySourceItem extends vscode.TreeItem {
 
 class SharedLibraryRuleItem extends vscode.TreeItem {
   constructor(
-    rule: TeamPolicyPack['rules'][number],
-    pack?: SharedLibrarySummary
+    public readonly rule: TeamPolicyPack['rules'][number],
+    public readonly pack?: TeamPolicyPack
   ) {
     super(rule.ruleId, vscode.TreeItemCollapsibleState.None);
     this.description = rule.canonicalKey;
@@ -85,13 +86,21 @@ class SharedLibraryRuleItem extends vscode.TreeItem {
     ].join('\n');
     this.contextValue = 'sharedLibraryRuleItem';
     this.iconPath = new vscode.ThemeIcon('file-code');
+    if (pack?.sourcePath) {
+      const sourceFile = rule.sourceFile ?? `${rule.ruleId}.md`;
+      this.command = {
+        command: 'vscode.open',
+        title: 'Open Shared Rule',
+        arguments: [vscode.Uri.file(path.join(pack.sourcePath, 'rules', sourceFile))],
+      };
+    }
   }
 }
 
 class SharedLibraryPromptItem extends vscode.TreeItem {
   constructor(
-    prompt: TeamPolicyPack['prompts'][number],
-    pack?: SharedLibrarySummary
+    public readonly prompt: TeamPolicyPack['prompts'][number],
+    public readonly pack?: TeamPolicyPack
   ) {
     super(prompt.name, vscode.TreeItemCollapsibleState.None);
     this.description = prompt.category || 'Shared Library';
@@ -102,6 +111,14 @@ class SharedLibraryPromptItem extends vscode.TreeItem {
     ].filter(Boolean).join('\n');
     this.contextValue = 'sharedLibraryPromptItem';
     this.iconPath = new vscode.ThemeIcon('comment-discussion');
+    if (pack?.sourcePath) {
+      const sourceFile = prompt.sourceFile ?? `${prompt.id}.yaml`;
+      this.command = {
+        command: 'vscode.open',
+        title: 'Open Shared Prompt',
+        arguments: [vscode.Uri.file(path.join(pack.sourcePath, 'prompts', sourceFile))],
+      };
+    }
   }
 }
 
@@ -200,10 +217,10 @@ export class TeamPoliciesTreeProvider implements vscode.TreeDataProvider<TeamPol
 
     if (element instanceof SharedLibrarySectionItem) {
       if (element.kind === 'rules') {
-        return Promise.resolve((element.entries as TeamPolicyPack['rules']).map((rule) => new SharedLibraryRuleItem(rule)));
+        return Promise.resolve((element.entries as TeamPolicyPack['rules']).map((rule) => new SharedLibraryRuleItem(rule, element.pack)));
       }
 
-      return Promise.resolve((element.entries as TeamPolicyPack['prompts']).map((prompt) => new SharedLibraryPromptItem(prompt)));
+      return Promise.resolve((element.entries as TeamPolicyPack['prompts']).map((prompt) => new SharedLibraryPromptItem(prompt, element.pack)));
     }
 
     return Promise.resolve([]);
@@ -256,11 +273,11 @@ export class TeamPoliciesTreeProvider implements vscode.TreeDataProvider<TeamPol
     ];
 
     if (pack.rules.length > 0) {
-      children.push(new SharedLibrarySectionItem(`Rules (${pack.rules.length})`, 'rules', pack.rules));
+      children.push(new SharedLibrarySectionItem(`Rules (${pack.rules.length})`, 'rules', pack.rules, pack));
     }
 
     if (pack.prompts.length > 0) {
-      children.push(new SharedLibrarySectionItem(`Prompts (${pack.prompts.length})`, 'prompts', pack.prompts));
+      children.push(new SharedLibrarySectionItem(`Prompts (${pack.prompts.length})`, 'prompts', pack.prompts, pack));
     }
 
     return children;

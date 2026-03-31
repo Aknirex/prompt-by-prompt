@@ -133,6 +133,14 @@
         "icon": "$(debug-restart)"
       },
       {
+        "command": "pbp.copySharedLibraryRuleToWorkspace",
+        "title": "Copy Shared Rule to Workspace"
+      },
+      {
+        "command": "pbp.copySharedLibraryPromptToWorkspace",
+        "title": "Copy Shared Prompt to Workspace"
+      },
+      {
         "command": "pbp.rebuildProjectedRuleFile",
         "title": "Rebuild Project Rule File",
         "icon": "$(file-code)"
@@ -278,6 +286,16 @@
           "command": "pbp.reconnectTeamPolicySource",
           "when": "view == pbp.teamPoliciesView && viewItem == teamPolicySourceItem",
           "group": "2_sync"
+        },
+        {
+          "command": "pbp.copySharedLibraryRuleToWorkspace",
+          "when": "view == pbp.teamPoliciesView && viewItem == sharedLibraryRuleItem",
+          "group": "1_copy"
+        },
+        {
+          "command": "pbp.copySharedLibraryPromptToWorkspace",
+          "when": "view == pbp.teamPoliciesView && viewItem == sharedLibraryPromptItem",
+          "group": "1_copy"
         }
       ],
       "editor/context": [

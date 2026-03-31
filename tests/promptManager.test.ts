@@ -252,6 +252,7 @@ describe('PromptManager', () => {
     expect(prompt?.readOnly).toBe(true);
     expect(prompt?.packId).toBe('acme-engineering');
     expect(prompt?.template).toContain('Review this change carefully.');
+    expect(prompt?.filePath).toBe(path.join(packDir, 'prompts', 'code-review.yaml'));
   });
 
   it('loads workspace prompts from every workspace folder', async () => {

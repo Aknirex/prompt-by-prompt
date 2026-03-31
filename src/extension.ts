@@ -3,6 +3,8 @@
  */
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PromptManager } from './services/promptManager';
 import { ContextEngine } from './services/contextEngine';
 import { AgentService, initAgentService } from './services/agentService';
@@ -11,12 +13,13 @@ import { RulesTreeProvider } from './providers/rulesTreeProvider';
 import { TeamPoliciesTreeProvider } from './providers/teamPoliciesTreeProvider';
 import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
 import { SettingsPanel } from './providers/settingsPanel';
-import { ExtensionConfig, PromptTemplate } from './types/prompt';
+import { ExtensionConfig, PromptTemplate, PromptVariable } from './types/prompt';
 import { t } from './utils/i18n';
 import { RuleManager } from './services/ruleManager';
 import { ExecutionService } from './services/executionService';
 import { TeamPolicyService } from './services/teamPolicyService';
 import { RuleProjectionService } from './services/ruleProjectionService';
+import { getWorkspaceFolderForUri, getWorkspaceFolders } from './utils/workspace';
 
 async function showExecutionPreview(prompt: PromptTemplate, forcePicker = false): Promise<void> {
   const preview = await executionService.previewPrompt(prompt, { forcePicker });
@@ -201,6 +204,24 @@ function getSourceStateFromItem(value: unknown): { sourceState?: { sourceId?: st
   return value as { sourceState?: { sourceId?: string; type?: string } };
 }
 
+function resolveWorkspaceRootForCopy(): string | undefined {
+  return getWorkspaceFolderForUri(vscode.window.activeTextEditor?.document.uri)?.uri.fsPath
+    ?? getWorkspaceFolders()[0]?.uri.fsPath;
+}
+
+function resolveUniqueFilePath(rootPath: string, fileName: string): string {
+  const parsed = path.parse(fileName);
+  let candidate = fileName;
+  let suffix = 1;
+
+  while (fs.existsSync(path.join(rootPath, candidate))) {
+    candidate = `${parsed.name}-${suffix}${parsed.ext}`;
+    suffix += 1;
+  }
+
+  return path.join(rootPath, candidate);
+}
+
 function updateTeamPolicyStatusBar(): void {
   if (!teamPolicyStatusBarItem) {
     return;
@@ -296,6 +317,87 @@ async function connectTeamPolicySource(): Promise<void> {
   await config.update('teamPolicySources', nextSources, vscode.ConfigurationTarget.Global);
   await refreshTeamPolicies();
   vscode.window.showInformationMessage(`Shared library source "${sourceId}" connected.`);
+}
+
+async function copySharedLibraryRuleToWorkspace(value?: unknown): Promise<void> {
+  const candidate = value as {
+    rule?: { ruleId?: string; sourceFile?: string };
+    pack?: { name?: string; sourcePath?: string };
+  } | undefined;
+
+  if (!candidate?.rule?.ruleId || !candidate.pack?.sourcePath) {
+    vscode.window.showErrorMessage('Invalid shared library rule item.');
+    return;
+  }
+
+  const sourceFile = candidate.rule.sourceFile || `${candidate.rule.ruleId}.md`;
+  const sourcePath = path.join(candidate.pack.sourcePath, 'rules', sourceFile);
+  if (!fs.existsSync(sourcePath)) {
+    vscode.window.showWarningMessage(`Shared library rule source was not found at ${sourcePath}.`);
+    return;
+  }
+
+  const rootPath = resolveWorkspaceRootForCopy();
+  if (!rootPath) {
+    vscode.window.showWarningMessage('Open a workspace before copying a shared rule.');
+    return;
+  }
+
+  const content = await fs.promises.readFile(sourcePath, 'utf8');
+  const destinationPath = resolveUniqueFilePath(rootPath, sourceFile);
+  await fs.promises.writeFile(destinationPath, content, 'utf8');
+  await ruleManager.scanRuleFiles();
+  rulesTreeProvider.refresh();
+  teamPoliciesTreeProvider.refresh();
+  await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(destinationPath));
+  vscode.window.showInformationMessage(`Shared rule copied to ${destinationPath}`);
+}
+
+async function copySharedLibraryPromptToWorkspace(value?: unknown): Promise<void> {
+  const candidate = value as {
+    prompt?: {
+      id?: string;
+      name?: string;
+      description?: string;
+      category?: string;
+      tags?: string[];
+      template?: string;
+      variables?: unknown[];
+      author?: string;
+      version?: string;
+    };
+  } | undefined;
+
+  if (!candidate?.prompt?.id || !candidate.prompt.name || !candidate.prompt.template) {
+    vscode.window.showErrorMessage('Invalid shared library prompt item.');
+    return;
+  }
+
+  const rootPath = resolveWorkspaceRootForCopy();
+  if (!rootPath) {
+    vscode.window.showWarningMessage('Open a workspace before copying a shared prompt.');
+    return;
+  }
+
+  const created = await promptManager.createPrompt(
+    {
+      name: candidate.prompt.name,
+      description: candidate.prompt.description || '',
+      category: candidate.prompt.category || 'Shared Library',
+      tags: candidate.prompt.tags || [],
+      template: candidate.prompt.template,
+      variables: candidate.prompt.variables as PromptVariable[] | undefined,
+      author: candidate.prompt.author,
+      version: candidate.prompt.version || '1.0.0',
+    },
+    'workspace'
+  );
+
+  if (created.filePath) {
+    await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(created.filePath));
+  }
+
+  vscode.window.showInformationMessage(`Shared prompt copied as "${created.name}".`);
 }
 
 function configureTeamPolicySync(context: vscode.ExtensionContext): void {
@@ -446,6 +548,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.window.showInformationMessage(`Reconnected shared library source "${sourceId}".`);
     }),
 
+    vscode.commands.registerCommand('pbp.copySharedLibraryRuleToWorkspace', async (value?: unknown) => {
+      await copySharedLibraryRuleToWorkspace(value);
+    }),
+
+    vscode.commands.registerCommand('pbp.copySharedLibraryPromptToWorkspace', async (value?: unknown) => {
+      await copySharedLibraryPromptToWorkspace(value);
+    }),
+
     vscode.commands.registerCommand('pbp.showDiagnostics', async () => {
       logManifestDiagnostics();
       outputChannel.show(true);
@@ -576,6 +686,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       if (prompt.source === 'team-pack') {
+        if (prompt.filePath) {
+          const document = await vscode.workspace.openTextDocument(prompt.filePath);
+          await vscode.window.showTextDocument(document, { preview: true });
+          return;
+        }
+
         vscode.window.showInformationMessage(t('Shared library prompts are read-only right now. Run them directly or copy them into workspace/global later.'));
         return;
       }

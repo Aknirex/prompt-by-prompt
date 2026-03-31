@@ -288,6 +288,7 @@ export class TeamPolicyService {
         canonicalKey: parsed.metadata.canonicalKey ?? `team-pack:${packId}:${ruleId}`,
         packId,
         packVersion,
+        sourceFile: entry.name,
       });
     }
 
@@ -326,6 +327,7 @@ export class TeamPolicyService {
           source: 'team-pack',
           packId,
           packVersion,
+          sourceFile: entry.name,
           recommendedTargets: this.normalizeAgentList(parsed.recommendedTargets),
           readOnly: true,
         });
