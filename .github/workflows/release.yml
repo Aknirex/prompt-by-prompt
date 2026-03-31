@@ -50,7 +50,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Package extension
-        run: pnpm exec @vscode/vsce package --baseContentUrl https://github.com/Aknirex/prompt-by-prompt/raw/main --baseImagesUrl https://github.com/Aknirex/prompt-by-prompt/raw/main
+        run: pnpm exec vsce package --baseContentUrl https://github.com/Aknirex/prompt-by-prompt/raw/main --baseImagesUrl https://github.com/Aknirex/prompt-by-prompt/raw/main
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -117,7 +117,7 @@ jobs:
       - name: Publish to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: pnpm exec @vscode/vsce publish --packagePath *.vsix --pat "$VSCE_PAT" --skip-duplicate
+        run: pnpm exec vsce publish --packagePath *.vsix --pat "$VSCE_PAT" --skip-duplicate
 
   create-release:
     needs: [build, publish-marketplace, publish-openvsx]
