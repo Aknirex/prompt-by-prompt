@@ -78,7 +78,7 @@ export class SettingsPanel {
     context: vscode.ExtensionContext,
     agentService: AgentService
   ): SettingsPanel {
-    const column = vscode.window.activeTextEditor
+    const column = vscode.window?.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
 

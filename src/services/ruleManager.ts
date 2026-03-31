@@ -12,6 +12,7 @@ import { t } from '../utils/i18n';
 import { parseRuleDocument } from '../utils/ruleFrontmatter';
 import { TeamPolicyService } from './teamPolicyService';
 import { PolicyBindingService } from './policyBindingService';
+import { getWorkspaceFolderForUri, getWorkspaceFolders } from '../utils/workspace';
 
 export const KNOWN_RULE_FILES = [
   'AGENTS.md',
@@ -33,11 +34,16 @@ export class RuleManager {
   private isScanning = false;
   private readonly teamPolicyService: TeamPolicyService;
   private readonly policyBindingService: PolicyBindingService;
+  private readonly sharedTeamPolicyCacheOnly: boolean;
 
-  constructor(private readonly context: vscode.ExtensionContext) {
-    this.teamPolicyService = new TeamPolicyService(context);
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    teamPolicyService?: TeamPolicyService,
+    sharedTeamPolicyCacheOnly = false
+  ) {
+    this.teamPolicyService = teamPolicyService ?? new TeamPolicyService(context);
     this.policyBindingService = new PolicyBindingService(context);
-    this.initialize();
+    this.sharedTeamPolicyCacheOnly = sharedTeamPolicyCacheOnly;
   }
 
   public async initialize() {
@@ -54,9 +60,9 @@ export class RuleManager {
     try {
       const newRuleFiles: RuleFile[] = [];
 
-      if (vscode.workspace.workspaceFolders) {
-        const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-
+      const workspaceFolders = getWorkspaceFolders();
+      for (const workspaceFolder of workspaceFolders) {
+        const rootPath = workspaceFolder.uri.fsPath;
         for (const fileName of KNOWN_RULE_FILES) {
           const filePath = path.join(rootPath, fileName);
           if (!fs.existsSync(filePath)) {
@@ -103,7 +109,11 @@ export class RuleManager {
         }
       }
 
-      this.installedPacks = await this.teamPolicyService.refresh();
+      if (!this.sharedTeamPolicyCacheOnly) {
+        this.installedPacks = await this.teamPolicyService.refresh();
+      } else {
+        this.installedPacks = this.teamPolicyService.getInstalledPacks();
+      }
       for (const pack of this.installedPacks) {
         newRuleFiles.push(...await this.loadTeamPackRules(pack));
       }
@@ -341,12 +351,14 @@ export class RuleManager {
   }
 
   public async createRuleFile(fileName: string, template = ''): Promise<void> {
-    if (!vscode.workspace.workspaceFolders) {
+    const workspaceFolders = getWorkspaceFolders();
+    if (workspaceFolders.length === 0) {
       vscode.window.showErrorMessage(t('No workspace open to create rule file.'));
       return;
     }
 
-    const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+    const rootPath = getWorkspaceFolderForUri(vscode.window?.activeTextEditor?.document.uri)?.uri.fsPath
+      ?? workspaceFolders[0].uri.fsPath;
     const filePath = path.join(rootPath, fileName);
 
     if (fs.existsSync(filePath)) {

@@ -10,6 +10,7 @@ import * as yaml from 'js-yaml';
 import { v4 as uuidv4 } from 'uuid';
 import { PromptTemplate, ExtensionConfig } from '../types/prompt';
 import { TeamPolicyService } from './teamPolicyService';
+import { getWorkspaceFolderForUri, getWorkspaceFolders } from '../utils/workspace';
 
 const GLOBAL_STATE_KEY = 'pbp.globalPrompts';
 const GLOBAL_PROMPTS_DIR = 'prompts';
@@ -23,9 +24,11 @@ export class PromptManager {
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly config: ExtensionConfig
+    private readonly config: ExtensionConfig,
+    teamPolicyService?: TeamPolicyService,
+    private readonly sharedTeamPolicyCacheOnly = false
   ) {
-    this.teamPolicyService = new TeamPolicyService(context);
+    this.teamPolicyService = teamPolicyService ?? new TeamPolicyService(context);
   }
 
   /**
@@ -148,34 +151,38 @@ export class PromptManager {
    * Load prompts from workspace .prompts directory
    */
   private async loadWorkspacePrompts(): Promise<void> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceFolders = getWorkspaceFolders();
     if (!workspaceFolders || workspaceFolders.length === 0) {
       return;
     }
 
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const promptsDir = path.join(workspaceRoot, this.config.promptsDir, 'templates');
-    
-    if (!fs.existsSync(promptsDir)) {
-      return;
-    }
+    for (const workspaceFolder of workspaceFolders) {
+      const promptsDir = path.join(workspaceFolder.uri.fsPath, this.config.promptsDir, 'templates');
+      if (!fs.existsSync(promptsDir)) {
+        continue;
+      }
 
-    const files = this.findYamlFiles(promptsDir);
-    
-    for (const file of files) {
-      try {
-        const prompt = await this.loadPromptFromFile(file, 'workspace');
-        if (prompt) {
-          this.prompts.set(prompt.id, prompt);
+      const files = this.findYamlFiles(promptsDir);
+
+      for (const file of files) {
+        try {
+          const prompt = await this.loadPromptFromFile(file, 'workspace');
+          if (prompt) {
+            this.prompts.set(prompt.id, prompt);
+          }
+        } catch (error) {
+          console.error(`Failed to load workspace prompt ${file}:`, error);
         }
-      } catch (error) {
-        console.error(`Failed to load workspace prompt ${file}:`, error);
       }
     }
   }
 
   private async loadTeamPrompts(): Promise<void> {
-    const packs = await this.teamPolicyService.refresh();
+    if (!this.sharedTeamPolicyCacheOnly) {
+      await this.teamPolicyService.refresh();
+    }
+
+    const packs = this.teamPolicyService.getInstalledPacks();
     for (const pack of packs) {
       for (const teamPrompt of pack.prompts) {
         this.prompts.set(teamPrompt.id, {
@@ -318,7 +325,7 @@ export class PromptManager {
     };
 
     // If target is workspace but no workspace is open, fall back to global
-    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceFolders = getWorkspaceFolders();
     const hasWorkspace = workspaceFolders && workspaceFolders.length > 0;
     
     if (target === 'global' || !hasWorkspace) {
@@ -402,15 +409,14 @@ export class PromptManager {
       fs.mkdirSync(promptsDir, { recursive: true });
     }
 
-    const filename = this.sanitizeFilename(prompt.name) + '.yaml';
-    const filePath = path.join(promptsDir, filename);
+    const filePath = prompt.filePath ?? path.join(promptsDir, `${this.sanitizeFilename(prompt.id)}.yaml`);
+    const fileDir = path.dirname(filePath);
+    if (!fs.existsSync(fileDir)) {
+      fs.mkdirSync(fileDir, { recursive: true });
+    }
     const yamlContent = this.promptToYaml(prompt);
 
     await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
-
-    if (prompt.filePath && prompt.filePath !== filePath && fs.existsSync(prompt.filePath)) {
-      await fs.promises.unlink(prompt.filePath);
-    }
 
     prompt.filePath = filePath;
   }
@@ -433,31 +439,32 @@ export class PromptManager {
    * Save prompt to workspace
    */
   private async saveWorkspacePrompt(prompt: PromptTemplate, previousFilePath?: string): Promise<void> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspaceFolders = getWorkspaceFolders();
     if (!workspaceFolders || workspaceFolders.length === 0) {
       throw new Error('No workspace folder open');
     }
 
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const promptsDir = path.join(workspaceRoot, this.config.promptsDir, 'templates');
-    
-    // Ensure directory exists
-    if (!fs.existsSync(promptsDir)) {
-      fs.mkdirSync(promptsDir, { recursive: true });
+    let filePath: string;
+    if (previousFilePath) {
+      filePath = previousFilePath;
+      const existingDir = path.dirname(previousFilePath);
+      if (!fs.existsSync(existingDir)) {
+        fs.mkdirSync(existingDir, { recursive: true });
+      }
+    } else {
+      const targetRoot =
+        getWorkspaceFolderForUri()?.uri.fsPath
+        ?? workspaceFolders[0].uri.fsPath;
+      const promptsDir = path.join(targetRoot, this.config.promptsDir, 'templates');
+      if (!fs.existsSync(promptsDir)) {
+        fs.mkdirSync(promptsDir, { recursive: true });
+      }
+      filePath = path.join(promptsDir, `${this.sanitizeFilename(prompt.id)}.yaml`);
     }
 
-    // Generate filename from prompt name
-    const filename = this.sanitizeFilename(prompt.name) + '.yaml';
-    const filePath = path.join(promptsDir, filename);
-    
-    // Convert to YAML
     const yamlContent = this.promptToYaml(prompt);
     
     await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
-
-    if (previousFilePath && previousFilePath !== filePath && fs.existsSync(previousFilePath)) {
-      await fs.promises.unlink(previousFilePath);
-    }
 
     prompt.filePath = filePath;
   }

@@ -25,7 +25,7 @@ export class PromptEditorPanel {
   private readonly _aiService: AIService;
   private readonly _contextEngine: ContextEngine;
   private readonly _builtinVariables: string[];
-  private readonly _defaultTarget: 'workspace' | 'global';
+  private _defaultTarget: 'workspace' | 'global';
   private _existingPrompt: PromptTemplate | undefined;
   private _onSave: ((result: PromptEditorResult) => void) | undefined;
   private _disposables: vscode.Disposable[] = [];
@@ -37,12 +37,14 @@ export class PromptEditorPanel {
     defaultTarget: 'workspace' | 'global' = 'global',
     onSave?: (result: PromptEditorResult) => void
   ): PromptEditorPanel {
-    const column = vscode.window.activeTextEditor?.viewColumn;
+    const column = vscode.window?.activeTextEditor?.viewColumn;
 
     if (PromptEditorPanel.currentPanel) {
       PromptEditorPanel.currentPanel._panel.reveal(column);
       PromptEditorPanel.currentPanel._existingPrompt = existingPrompt;
+      PromptEditorPanel.currentPanel._defaultTarget = defaultTarget;
       PromptEditorPanel.currentPanel._onSave = onSave;
+      PromptEditorPanel.currentPanel._panel.title = existingPrompt ? t('Edit: {0}', existingPrompt.name) : t('New Prompt');
       PromptEditorPanel.currentPanel._update();
       return PromptEditorPanel.currentPanel;
     }
@@ -135,7 +137,7 @@ export class PromptEditorPanel {
     try {
       const template = data.template || '';
       const variables = data.variables || [];
-      const context = await this._contextEngine.extractContext();
+      const context = await this._contextEngine.extractContext({ includeGitDiff: false });
       const preview = await this._contextEngine.renderTemplate(
         { id: 'preview', name: 'Preview', description: '', category: '', tags: [], version: '1.0.0', template, variables },
         context,

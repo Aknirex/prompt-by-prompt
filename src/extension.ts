@@ -149,8 +149,8 @@ async function openPromptEditor(
 }
 
 async function refreshTeamPolicies(options?: { silent?: boolean }): Promise<void> {
-  await promptManager.refresh();
-  await ruleManager.scanRuleFiles();
+  await teamPolicyService.refresh();
+  await Promise.all([promptManager.refresh(), ruleManager.scanRuleFiles()]);
   treeProvider.setPrompts(promptManager.getAllPrompts());
   rulesTreeProvider.refresh();
   teamPoliciesTreeProvider.refresh();
@@ -334,19 +334,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   logManifestDiagnostics();
 
   const config = getConfig();
-  promptManager = new PromptManager(context, config);
+  teamPolicyService = new TeamPolicyService(context);
+  promptManager = new PromptManager(context, config, teamPolicyService, true);
   contextEngine = new ContextEngine();
   agentService = new AgentService();
-  teamPolicyService = new TeamPolicyService(context);
-  ruleManager = new RuleManager(context);
+  ruleManager = new RuleManager(context, teamPolicyService, true);
   executionService = new ExecutionService(context, contextEngine, agentService, ruleManager, log);
   ruleProjectionService = new RuleProjectionService(context, ruleManager);
   treeProvider = new PromptsTreeProvider();
   rulesTreeProvider = new RulesTreeProvider(ruleManager);
   teamPoliciesTreeProvider = new TeamPoliciesTreeProvider(ruleManager);
 
-  await promptManager.initialize();
-  await ruleManager.scanRuleFiles();
+  await teamPolicyService.refresh();
+  await Promise.all([promptManager.initialize(), ruleManager.initialize()]);
   await refreshProjectedRuleFile({ silent: true });
   configureTeamPolicySync(context);
   teamPolicyStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
@@ -504,10 +504,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
 
     vscode.commands.registerCommand('pbp.refreshRules', async () => {
-      await ruleManager.scanRuleFiles();
-      rulesTreeProvider.refresh();
-      teamPoliciesTreeProvider.refresh();
-      await refreshProjectedRuleFile({ silent: true });
+      await refreshTeamPolicies({ silent: true });
       vscode.window.showInformationMessage(t('Rules refreshed'));
     }),
 

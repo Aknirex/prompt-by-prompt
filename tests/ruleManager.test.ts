@@ -77,18 +77,6 @@ describe('RuleManager', () => {
   let workspaceDir: string;
   let globalDir: string;
 
-  async function waitForRuleScan(check: () => boolean): Promise<void> {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      if (check()) {
-        return;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-
-    throw new Error('Timed out waiting for rule scan');
-  }
-
   beforeEach(async () => {
     workspaceDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pbp-workspace-'));
     globalDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pbp-global-'));
@@ -124,7 +112,7 @@ describe('RuleManager', () => {
       },
     } as never);
 
-    await waitForRuleScan(() => manager.getRuleFiles().length > 0);
+    await manager.initialize();
 
     const profiles = manager.getRuleProfiles();
     expect(profiles.map((profile) => profile.name)).toContain('Workspace Only');
@@ -162,7 +150,7 @@ describe('RuleManager', () => {
       },
     } as never);
 
-    await waitForRuleScan(() => manager.getRuleFiles().length > 0);
+    await manager.initialize();
 
     const resolved = manager.resolveRuleSet();
     expect(resolved.conflicts).toHaveLength(1);
@@ -211,7 +199,7 @@ describe('RuleManager', () => {
       },
     } as never);
 
-    await waitForRuleScan(() => manager.getRuleFiles().some(rule => rule.scope === 'team-pack'));
+    await manager.initialize();
 
     const resolved = manager.resolveRuleSet({ agentType: 'codex', supportsStructuredContext: false });
     expect(resolved.profile.name).toBe('Frontend Standard');
@@ -261,7 +249,7 @@ Provide concise and direct solutions.
       },
     } as never);
 
-    await waitForRuleScan(() => manager.getRuleFiles().length > 0);
+    await manager.initialize();
 
     const policy = manager.resolvePolicy({ agentType: 'codex', supportsStructuredContext: false });
     expect(policy.guardrails.map((guardrail) => guardrail.text)).toContain('Ensure terminal commands are compatible with the current shell.');
@@ -281,6 +269,35 @@ Provide concise and direct solutions.
         title: 'Concise Responses',
         kind: 'preference',
       }),
-    ]));
+      ]));
+  });
+
+  it('loads workspace rules from every workspace folder', async () => {
+    const secondWorkspaceDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pbp-workspace-'));
+    await fs.promises.writeFile(path.join(workspaceDir, 'AGENTS.md'), '# workspace one', 'utf8');
+    await fs.promises.writeFile(path.join(secondWorkspaceDir, '.cursorrules'), '# workspace two', 'utf8');
+    mockState.workspaceFolders = [
+      { uri: { fsPath: workspaceDir } },
+      { uri: { fsPath: secondWorkspaceDir } },
+    ];
+
+    const { RuleManager } = await import('../src/services/ruleManager');
+    const manager = new RuleManager({
+      globalStorageUri: { fsPath: globalDir },
+      globalState: {
+        get: (key: string, defaultValue?: unknown) =>
+          mockState.globalStateStore.has(key) ? mockState.globalStateStore.get(key) : defaultValue,
+        update: async (key: string, value: unknown) => {
+          mockState.globalStateStore.set(key, value);
+        },
+      },
+    } as never);
+
+    await manager.initialize();
+
+    const workspaceRules = manager.getWorkspaceRules().map((rule) => rule.name);
+    expect(workspaceRules).toEqual(expect.arrayContaining(['AGENTS.md', '.cursorrules']));
+
+    await fs.promises.rm(secondWorkspaceDir, { recursive: true, force: true });
   });
 });

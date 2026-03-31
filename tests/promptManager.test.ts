@@ -106,11 +106,11 @@ describe('PromptManager', () => {
     expect(prompts[0]?.filePath).toBeTruthy();
 
     const globalPromptFiles = await fs.promises.readdir(path.join(globalDir, 'prompts'));
-    expect(globalPromptFiles).toContain('legacy-global-prompt.yaml');
+    expect(globalPromptFiles).toContain('legacy-global.yaml');
     expect(mockState.globalStateStore.get('pbp.globalPrompts')).toEqual([]);
   });
 
-  it('keeps workspace prompt storage consistent when prompt names change', async () => {
+  it('keeps workspace prompt storage stable when prompt names change', async () => {
     const { PromptManager } = await import('../src/services/promptManager');
     const manager = new PromptManager(createContext() as never, config as never);
 
@@ -134,12 +134,12 @@ describe('PromptManager', () => {
     });
 
     expect(updated?.filePath).toBeTruthy();
-    expect(updated?.filePath).not.toBe(originalPath);
+    expect(updated?.filePath).toBe(originalPath);
     expect(fs.existsSync(updated!.filePath!)).toBe(true);
-    expect(fs.existsSync(originalPath!)).toBe(false);
+    expect(fs.existsSync(originalPath!)).toBe(true);
   });
 
-  it('stores global prompts as files and removes stale files on rename', async () => {
+  it('stores global prompts as stable files and keeps the same path on rename', async () => {
     const { PromptManager } = await import('../src/services/promptManager');
     const manager = new PromptManager(createContext() as never, config as never);
 
@@ -164,9 +164,9 @@ describe('PromptManager', () => {
     });
 
     expect(updated?.filePath).toBeTruthy();
-    expect(updated?.filePath).not.toBe(originalPath);
+    expect(updated?.filePath).toBe(originalPath);
     expect(fs.existsSync(updated!.filePath!)).toBe(true);
-    expect(fs.existsSync(originalPath!)).toBe(false);
+    expect(fs.existsSync(originalPath!)).toBe(true);
   });
 
   it('deletes workspace prompt files when prompts are removed', async () => {
@@ -252,5 +252,38 @@ describe('PromptManager', () => {
     expect(prompt?.readOnly).toBe(true);
     expect(prompt?.packId).toBe('acme-engineering');
     expect(prompt?.template).toContain('Review this change carefully.');
+  });
+
+  it('loads workspace prompts from every workspace folder', async () => {
+    const secondWorkspaceDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'pbp-prompt-workspace-'));
+    mockState.workspaceFolders = [
+      { uri: { fsPath: workspaceDir } },
+      { uri: { fsPath: secondWorkspaceDir } },
+    ];
+
+    await fs.promises.mkdir(path.join(workspaceDir, '.prompts', 'templates'), { recursive: true });
+    await fs.promises.mkdir(path.join(secondWorkspaceDir, '.prompts', 'templates'), { recursive: true });
+    await fs.promises.writeFile(path.join(workspaceDir, '.prompts', 'templates', 'first.yaml'), [
+      'id: first-prompt',
+      'name: First Workspace Prompt',
+      'template: |',
+      '  first',
+    ].join('\n'), 'utf8');
+    await fs.promises.writeFile(path.join(secondWorkspaceDir, '.prompts', 'templates', 'second.yaml'), [
+      'id: second-prompt',
+      'name: Second Workspace Prompt',
+      'template: |',
+      '  second',
+    ].join('\n'), 'utf8');
+
+    const { PromptManager } = await import('../src/services/promptManager');
+    const manager = new PromptManager(createContext() as never, config as never);
+
+    await manager.initialize();
+
+    expect(manager.getPrompt('first-prompt')?.source).toBe('workspace');
+    expect(manager.getPrompt('second-prompt')?.source).toBe('workspace');
+
+    await fs.promises.rm(secondWorkspaceDir, { recursive: true, force: true });
   });
 });

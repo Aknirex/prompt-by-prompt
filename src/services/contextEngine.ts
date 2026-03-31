@@ -9,6 +9,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as Handlebars from 'handlebars';
 import { EditorContext, PromptTemplate, PromptVariable } from '../types/prompt';
+import { getWorkspaceRootForUri } from '../utils/workspace';
 
 const execAsync = promisify(exec);
 
@@ -36,8 +37,8 @@ export class ContextEngine {
   /**
    * Extract context from current VS Code editor state
    */
-  async extractContext(): Promise<EditorContext> {
-    const editor = vscode.window.activeTextEditor;
+  async extractContext(options?: { includeGitDiff?: boolean }): Promise<EditorContext> {
+    const editor = vscode.window?.activeTextEditor;
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     // Default context
@@ -68,8 +69,8 @@ export class ContextEngine {
     }
 
     // Extract file path (relative to workspace)
-    if (workspaceFolders && workspaceFolders.length > 0) {
-      const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const workspaceRoot = getWorkspaceRootForUri(document.uri) ?? workspaceFolders?.[0]?.uri.fsPath;
+    if (workspaceRoot) {
       context.filepath = path.relative(workspaceRoot, document.uri.fsPath);
       context.project_name = path.basename(workspaceRoot);
     } else {
@@ -88,10 +89,12 @@ export class ContextEngine {
     context.column_number = selection.active.character + 1; // 1-indexed
 
     // Extract git diff (optional)
-    try {
-      context.git_commit_diff = await this.getGitDiff();
-    } catch {
-      // Git diff is optional, ignore errors
+    if (options?.includeGitDiff !== false) {
+      try {
+        context.git_commit_diff = await this.getGitDiff(workspaceRoot);
+      } catch {
+        // Git diff is optional, ignore errors
+      }
     }
 
     return context;
@@ -139,13 +142,10 @@ export class ContextEngine {
   /**
    * Get git diff for current changes
    */
-  private async getGitDiff(): Promise<string> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
+  private async getGitDiff(workspaceRoot?: string): Promise<string> {
+    if (!workspaceRoot) {
       return '';
     }
-
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
     
     try {
       const { stdout } = await execAsync('git diff', {

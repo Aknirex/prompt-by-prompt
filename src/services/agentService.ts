@@ -17,6 +17,7 @@ import {
 } from '../types/agent';
 import { ExecutionBehavior } from '../types/execution';
 import { t } from '../utils/i18n';
+import { getWorkspaceFolderForUri, getWorkspaceFolders } from '../utils/workspace';
 
 // Output channel for logging
 let logChannel: vscode.OutputChannel;
@@ -123,12 +124,13 @@ export class FileAdapter implements AgentAdapter {
     const outputDir = config.get<string>('outputDirectory', '.prompts/');
     const fileName = `prompt-${new Date().getTime()}.txt`;
     
-    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+    if (getWorkspaceFolders().length === 0) {
       vscode.window.showErrorMessage(t('No workspace folder found.'));
       return { success: false, reason: 'command_failed', message: t('No workspace folder found.') };
     }
 
-    const folderUri = vscode.workspace.workspaceFolders[0].uri;
+    const folderUri = getWorkspaceFolderForUri(vscode.window?.activeTextEditor?.document.uri)?.uri
+      ?? getWorkspaceFolders()[0].uri;
     const outputUri = vscode.Uri.joinPath(folderUri, outputDir);
     const fileUri = vscode.Uri.joinPath(outputUri, fileName);
     
