@@ -6,6 +6,22 @@ export type TeamPolicySourceTrust = 'trusted' | 'untrusted' | 'revoked';
 export type TeamPolicyPackStatus = 'active' | 'outdated' | 'disabled' | 'tampered';
 export type TeamPolicySourceSyncStatus = 'synced' | 'error';
 
+export interface SharedLibrarySummary {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  sourceId: string;
+  sourcePath: string;
+  requestedVersion?: string;
+  resolvedVersion?: string;
+  updatedAt?: string;
+  ruleCount: number;
+  promptCount: number;
+  status: TeamPolicyPackStatus;
+  trust: TeamPolicySourceTrust;
+}
+
 export interface TeamPolicySourceConfig {
   id: string;
   type: TeamPolicySourceType;
@@ -47,20 +63,6 @@ export interface SharedPromptTemplate {
   readOnly?: boolean;
 }
 
-export interface ManagedRuleProfile {
-  id: string;
-  name: string;
-  enabledRuleIds: string[];
-  priority: number;
-  appliesTo?: AgentType[];
-  isActive?: boolean;
-  origin: 'built-in' | 'global' | 'team-pack' | 'user-local';
-  packId?: string;
-  locked?: boolean;
-  allowExtension?: boolean;
-  requiredRuleIds?: string[];
-}
-
 export interface TeamPolicyPack {
   id: string;
   name: string;
@@ -71,7 +73,6 @@ export interface TeamPolicyPack {
   requestedVersion?: string;
   resolvedVersion?: string;
   updatedAt?: string;
-  profiles: ManagedRuleProfile[];
   rules: RuleIdentity[];
   prompts: SharedPromptTemplate[];
   status: TeamPolicyPackStatus;

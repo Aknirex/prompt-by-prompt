@@ -56,7 +56,7 @@ export class PromptManager {
     // Load workspace prompts
     await this.loadWorkspacePrompts();
 
-    // Load team prompts from installed team policy packs
+    // Load prompts from installed shared libraries
     await this.loadTeamPrompts();
   }
 

@@ -583,7 +583,7 @@ describe('ExecutionService', () => {
                 format: 'markdown',
                 content: '# Follow team conventions',
               },
-              reason: 'Enabled by active profile "Global: team.md"',
+              reason: 'Enabled by active personal rule "Global: team.md"',
             },
           ],
         })),
@@ -599,7 +599,7 @@ describe('ExecutionService', () => {
               priority: 100,
               required: false,
               kind: 'instruction',
-              reason: 'Enabled by active profile "Global: team.md"',
+              reason: 'Enabled by active personal rule "Global: team.md"',
             },
           ],
         })),
@@ -627,7 +627,7 @@ describe('ExecutionService', () => {
     const [payload, agentType] = sendToAgent.mock.calls[0];
     expect(agentType).toBe('copilot');
     expect(payload).toContain('Policy:\n- profile: profile');
-    expect(payload).toContain('Rules:\n- team.md: Enabled by active profile "Global: team.md"');
+    expect(payload).toContain('Rules:\n- team.md: Enabled by active personal rule "Global: team.md"');
     expect(payload).toContain('Task:\nReview this change');
     expect(payload).toContain('Context:\n- project: prompt-by-prompt');
     expect(payload).not.toContain('[Dispatch Target]');
@@ -679,7 +679,7 @@ describe('ExecutionService', () => {
       },
       metadata: {
         injectionMode: 'segmented-text',
-        notes: ['Active profile: Workspace Only'],
+        notes: ['Activated rules profile: Workspace Only'],
         conflicts: ['Duplicate rule'],
       },
     };
@@ -748,7 +748,7 @@ describe('ExecutionService', () => {
             priority: 100,
             required: false,
             kind: 'instruction',
-            reason: 'Enabled by active profile "Global: team.md"',
+            reason: 'Enabled by active personal rule "Global: team.md"',
           },
         ],
       }),
@@ -780,7 +780,7 @@ describe('ExecutionService', () => {
     expect(dispatchText).toContain('[Dispatch Strategy]\nSegmented envelope bundle');
     expect(dispatchText).toContain('[Task]\nSummarize the selected code');
     expect(dispatchText).toContain('[Rules]');
-    expect(dispatchText).toContain('Why active: Enabled by active profile "Global: team.md"');
+    expect(dispatchText).toContain('Why active: Enabled by active personal rule "Global: team.md"');
     expect(dispatchText).toContain('[Policy Notes]\n- Resolved for target: clipboard');
     expect(dispatchText).toContain('[Policy Conflicts]\n- Duplicate rule name detected');
 

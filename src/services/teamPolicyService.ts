@@ -6,8 +6,8 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { AgentType } from '../types/agent';
 import {
-  ManagedRuleProfile,
   RuleIdentity,
+  SharedLibrarySummary,
   TeamPolicyPack,
   TeamPolicySourceConfig,
   TeamPolicySourceState,
@@ -24,15 +24,6 @@ interface TeamPolicyPackManifest {
   name: string;
   version: string;
   description?: string;
-}
-
-interface ProfileFile {
-  id: string;
-  name: string;
-  enabledRuleIds?: string[];
-  requiredRuleIds?: string[];
-  allowExtension?: boolean;
-  appliesTo?: string[];
 }
 
 interface PromptFile extends Partial<PromptTemplate> {
@@ -68,14 +59,35 @@ export class TeamPolicyService {
       }
     }
 
+    const dedupedSourceStates = Array.from(
+      new Map(sourceStates.map((state) => [state.sourceId, state])).values()
+    );
     this.packs = loadedPacks;
-    this.sourceStates = sourceStates;
-    await this.context.globalState.update(SOURCE_STATES_KEY, sourceStates);
+    this.sourceStates = dedupedSourceStates;
+    await this.context.globalState.update(SOURCE_STATES_KEY, dedupedSourceStates);
     return this.packs;
   }
 
   public getInstalledPacks(): TeamPolicyPack[] {
     return this.packs;
+  }
+
+  public getLibrarySummaries(): SharedLibrarySummary[] {
+    return this.packs.map((pack) => ({
+      id: pack.id,
+      name: pack.name,
+      version: pack.version,
+      description: pack.description,
+      sourceId: pack.sourceId,
+      sourcePath: pack.sourcePath,
+      requestedVersion: pack.requestedVersion,
+      resolvedVersion: pack.resolvedVersion,
+      updatedAt: pack.updatedAt,
+      ruleCount: pack.rules.length,
+      promptCount: pack.prompts.length,
+      status: pack.status,
+      trust: pack.trust,
+    }));
   }
 
   public getPackById(packId: string): TeamPolicyPack | undefined {
@@ -109,7 +121,7 @@ export class TeamPolicyService {
 
     const packJsonPath = path.join(sourcePath, 'pack.json');
     if (!fs.existsSync(packJsonPath)) {
-      return { ok: false, message: 'pack.json was not found at the team policy root.' };
+      return { ok: false, message: 'pack.json was not found at the shared library root.' };
     }
 
     try {
@@ -225,7 +237,6 @@ export class TeamPolicyService {
       }
 
       const rules = await this.loadRules(folderPath, manifest.id, manifest.version);
-      const profiles = await this.loadProfiles(folderPath, manifest.id);
       const prompts = await this.loadPrompts(folderPath, manifest.id, manifest.version);
       const stats = await fs.promises.stat(packJsonPath);
       const resolvedVersion = source.type === 'git'
@@ -242,14 +253,13 @@ export class TeamPolicyService {
         requestedVersion: source.requestedVersion,
         resolvedVersion,
         updatedAt: stats.mtime.toISOString(),
-        profiles,
         rules,
         prompts,
         status: source.trust === 'revoked' ? 'disabled' : 'active',
         trust: source.trust ?? 'trusted',
       };
     } catch (error) {
-      console.error(`Failed to load team policy pack from ${folderPath}`, error);
+      console.error(`Failed to load shared library pack from ${folderPath}`, error);
       return undefined;
     }
   }
@@ -284,47 +294,6 @@ export class TeamPolicyService {
     return rules;
   }
 
-  private async loadProfiles(folderPath: string, packId: string): Promise<ManagedRuleProfile[]> {
-    const profilesDir = path.join(folderPath, 'profiles');
-    if (!fs.existsSync(profilesDir)) {
-      return [];
-    }
-
-    const entries = await fs.promises.readdir(profilesDir, { withFileTypes: true });
-    const profiles: ManagedRuleProfile[] = [];
-
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.json')) {
-        continue;
-      }
-
-      try {
-        const profilePath = path.join(profilesDir, entry.name);
-        const parsed = JSON.parse(await fs.promises.readFile(profilePath, 'utf8')) as ProfileFile;
-        if (!parsed.id || !parsed.name) {
-          continue;
-        }
-
-        profiles.push({
-          id: parsed.id,
-          name: parsed.name,
-          enabledRuleIds: parsed.enabledRuleIds ?? [],
-          requiredRuleIds: parsed.requiredRuleIds ?? [],
-          priority: 200,
-          appliesTo: this.normalizeAgentList(parsed.appliesTo),
-          origin: 'team-pack',
-          packId,
-          locked: true,
-          allowExtension: parsed.allowExtension ?? true,
-        });
-      } catch (error) {
-        console.error(`Failed to load team policy profile ${entry.name}`, error);
-      }
-    }
-
-    return profiles;
-  }
-
   private async loadPrompts(folderPath: string, packId: string, packVersion: string): Promise<TeamPolicyPack['prompts']> {
     const promptsDir = path.join(folderPath, 'prompts');
     if (!fs.existsSync(promptsDir)) {
@@ -352,7 +321,7 @@ export class TeamPolicyService {
           description: parsed.description,
           template: parsed.template,
           variables: parsed.variables,
-          category: parsed.category || 'Team Library',
+          category: parsed.category || 'Shared Library',
           tags: parsed.tags || [],
           source: 'team-pack',
           packId,
@@ -361,7 +330,7 @@ export class TeamPolicyService {
           readOnly: true,
         });
       } catch (error) {
-        console.error(`Failed to load team policy prompt ${entry.name}`, error);
+        console.error(`Failed to load shared library prompt ${entry.name}`, error);
       }
     }
 
@@ -448,7 +417,7 @@ export class TeamPolicyService {
       await this.context.globalState.update(`${SOURCE_STATES_KEY}.lastError.${source.id}`, undefined);
       return checkoutPath;
     } catch (error) {
-      console.error(`Failed to sync git team policy source ${source.id}`, error);
+      console.error(`Failed to sync git shared library source ${source.id}`, error);
       await this.context.globalState.update(`${SOURCE_STATES_KEY}.lastError.${source.id}`, this.classifyGitSyncError(error));
       return undefined;
     }
@@ -493,7 +462,7 @@ export class TeamPolicyService {
     }
 
     if (message.includes('repository not found') || message.includes('not found')) {
-      return 'Repository not found. Check the team policy source URL.';
+      return 'Repository not found. Check the shared library source URL.';
     }
 
     if (message.includes('could not resolve host') || message.includes('failed to connect')) {

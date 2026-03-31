@@ -95,21 +95,12 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "pbp.selectRuleProfile",
-        "title": "Select Rule Profile",
-        "icon": "$(layers)"
-      },
-      {
         "command": "pbp.deleteRule",
         "title": "%command.pbp.deleteRule%"
       },
       {
         "command": "pbp.setActiveGlobalRule",
         "title": "%command.pbp.setActiveGlobalRule%"
-      },
-      {
-        "command": "pbp.setActiveRuleProfile",
-        "title": "Set Active Rule Profile"
       },
       {
         "command": "pbp.createWorkspaceRule",
@@ -123,22 +114,22 @@
       },
       {
         "command": "pbp.syncTeamPolicies",
-        "title": "Sync Team Policies",
+        "title": "Sync Shared Libraries",
         "icon": "$(sync)"
       },
       {
         "command": "pbp.connectTeamPolicySource",
-        "title": "Connect Team Policy Source",
+        "title": "Connect Shared Source",
         "icon": "$(plug)"
       },
       {
         "command": "pbp.retryTeamPolicySourceSync",
-        "title": "Retry Source Sync",
+        "title": "Retry Shared Source Sync",
         "icon": "$(refresh)"
       },
       {
         "command": "pbp.reconnectTeamPolicySource",
-        "title": "Reconnect Source",
+        "title": "Reconnect Shared Source",
         "icon": "$(debug-restart)"
       },
       {
@@ -175,7 +166,7 @@
         },
         {
           "id": "pbp.teamPoliciesView",
-          "name": "Team Policies",
+          "name": "Shared Libraries",
           "icon": "media/icon.svg"
         }
       ]
@@ -226,11 +217,6 @@
           "command": "pbp.openProjectedRuleFile",
           "when": "view == pbp.teamPoliciesView",
           "group": "navigation@5"
-        },
-        {
-          "command": "pbp.selectRuleProfile",
-          "when": "view == pbp.rulesView",
-          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -266,21 +252,17 @@
         },
         {
           "command": "pbp.createWorkspaceRule",
-          "when": "view == pbp.rulesView && viewItem == workspaceRuleGroup",
+          "when": "view == pbp.rulesView && viewItem == projectRuleGroup",
           "group": "inline"
         },
         {
           "command": "pbp.createGlobalRule",
-          "when": "view == pbp.rulesView && viewItem == globalRuleGroup",
+          "when": "view == pbp.rulesView && viewItem == personalRuleGroup",
           "group": "inline"
         },
         {
           "command": "pbp.setActiveGlobalRule",
           "when": "view == pbp.rulesView && viewItem == globalRuleItem"
-        },
-        {
-          "command": "pbp.setActiveRuleProfile",
-          "when": "view == pbp.rulesView && viewItem == ruleProfileItem"
         },
         {
           "command": "pbp.deleteRule",
@@ -510,36 +492,21 @@
         "pbp.teamPolicySources": {
           "type": "array",
           "default": [],
-          "description": "Team policy sources. Git sources are sync-only remote sources cached by the extension; local-folder sources read directly from disk.",
+          "description": "Shared library sources. Git sources are sync-only remote sources cached by the extension; local-folder sources read directly from disk.",
           "items": {
             "type": "object"
           }
         },
-        "pbp.defaultTeamPackId": {
-          "type": "string",
-          "default": "",
-          "description": "Default team policy pack ID used when no workspace policy binding is present."
-        },
-        "pbp.defaultTeamProfileId": {
-          "type": "string",
-          "default": "",
-          "description": "Default team policy profile ID used when no workspace policy binding is present."
-        },
-        "pbp.allowPersonalPolicyOverrides": {
-          "type": "boolean",
-          "default": true,
-          "description": "Whether personal policy overrides are allowed when resolving team policies."
-        },
         "pbp.autoSyncTeamPolicies": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically sync team policy sources in the background using the extension's simplified sync-only Git flow."
+          "description": "Automatically sync shared library sources in the background using the extension's sync-only Git flow."
         },
         "pbp.teamPolicySyncIntervalMinutes": {
           "type": "number",
           "default": 30,
           "minimum": 1,
-          "description": "Background sync interval for team policy sources in minutes."
+          "description": "Background sync interval for shared library sources in minutes."
         },
         "pbp.passiveRuleProjection.enabled": {
           "type": "boolean",
@@ -591,12 +558,12 @@
         "pbp.passiveRuleProjection.includeTeamMetadata": {
           "type": "boolean",
           "default": true,
-          "description": "Include team pack/profile/version metadata in the generated projected rule file."
+          "description": "Include shared library metadata in the generated projected rule file when available."
         },
         "pbp.passiveRuleProjection.autoRefresh": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically rebuild the projected rule file when team policies or active profiles change."
+          "description": "Automatically rebuild the projected rule file when local rules or shared libraries change."
         }
       }
     }

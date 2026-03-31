@@ -161,11 +161,11 @@ async function refreshTeamPolicies(options?: { silent?: boolean }): Promise<void
     const sourceStates = teamPolicyService.readPersistedSourceStates();
     const failedStates = sourceStates.filter((state) => state.status === 'error');
     if (failedStates.length > 0) {
-      const message = `Team policy sync finished with ${failedStates.length} issue(s): ${failedStates.map((state) => `${state.sourceId}: ${state.lastSyncError || 'unknown error'}`).join('; ')}`;
+      const message = `Shared library sync finished with ${failedStates.length} issue(s): ${failedStates.map((state) => `${state.sourceId}: ${state.lastSyncError || 'unknown error'}`).join('; ')}`;
       log(`[TeamPolicySync] ${message}`);
       vscode.window.showWarningMessage(message);
     } else {
-      vscode.window.showInformationMessage(t('Team policies synced'));
+      vscode.window.showInformationMessage(t('Shared libraries synced'));
     }
   } else {
     const failedStates = teamPolicyService.readPersistedSourceStates().filter((state) => state.status === 'error');
@@ -208,8 +208,8 @@ function updateTeamPolicyStatusBar(): void {
 
   const sourceStates = teamPolicyService.readPersistedSourceStates();
   if (sourceStates.length === 0) {
-    teamPolicyStatusBarItem.text = '$(sync-ignored) PBP Policies';
-    teamPolicyStatusBarItem.tooltip = 'No team policy sources configured';
+    teamPolicyStatusBarItem.text = '$(sync-ignored) Shared Libraries';
+    teamPolicyStatusBarItem.tooltip = 'No shared library sources configured';
     teamPolicyStatusBarItem.backgroundColor = undefined;
     return;
   }
@@ -217,7 +217,7 @@ function updateTeamPolicyStatusBar(): void {
   const failedStates = sourceStates.filter((state) => state.status === 'error');
   if (failedStates.length > 0) {
     const healthyCount = sourceStates.length - failedStates.length;
-    teamPolicyStatusBarItem.text = `$(warning) Policies ${healthyCount}/${sourceStates.length}`;
+    teamPolicyStatusBarItem.text = `$(warning) Shared Libraries ${healthyCount}/${sourceStates.length}`;
     teamPolicyStatusBarItem.tooltip = `Sync issues: ${failedStates.map((state) => `${state.sourceId}: ${state.lastSyncError || 'unknown error'}`).join('; ')}`;
     teamPolicyStatusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     return;
@@ -228,20 +228,20 @@ function updateTeamPolicyStatusBar(): void {
     .filter((value): value is string => typeof value === 'string')
     .sort();
   const latestSyncValue = latestSync.length > 0 ? latestSync[latestSync.length - 1] : undefined;
-  teamPolicyStatusBarItem.text = `$(sync) Policies ${sourceStates.length}`;
+  teamPolicyStatusBarItem.text = `$(sync) Shared Libraries ${sourceStates.length}`;
   teamPolicyStatusBarItem.tooltip = latestSyncValue
-    ? `Team policies synced. Last sync: ${latestSyncValue}`
-    : 'Team policies synced';
+    ? `Shared libraries synced. Last sync: ${latestSyncValue}`
+    : 'Shared libraries synced';
   teamPolicyStatusBarItem.backgroundColor = undefined;
 }
 
 async function connectTeamPolicySource(): Promise<void> {
   const type = await vscode.window.showQuickPick([
-    { label: 'Git Sync Source', value: 'git', description: 'Recommended for shared team policies across projects' },
-    { label: 'Local Folder', value: 'local-folder', description: 'Read a local pack folder directly' },
+    { label: 'Git Sync Source', value: 'git', description: 'Recommended for shared libraries that live in Git' },
+    { label: 'Local Folder', value: 'local-folder', description: 'Read a shared library folder directly from disk' },
   ], {
-    placeHolder: 'Select a team policy source type',
-    title: 'Connect Team Policy Source',
+    placeHolder: 'Select a shared library source type',
+    title: 'Connect Shared Source',
   });
 
   if (!type) {
@@ -249,11 +249,11 @@ async function connectTeamPolicySource(): Promise<void> {
   }
 
   const locationPrompt = type.value === 'git'
-    ? 'Enter the Git repository URL for the team policy pack'
-    : 'Enter the local folder path for the team policy pack';
+    ? 'Enter the Git repository URL for the shared library'
+    : 'Enter the local folder path for the shared library';
   const location = await vscode.window.showInputBox({
     prompt: locationPrompt,
-    placeHolder: type.value === 'git' ? 'https://git.example.com/team/policies.git' : 'C:\\team-policy-pack',
+    placeHolder: type.value === 'git' ? 'https://git.example.com/shared-libraries.git' : 'C:\\shared-library-pack',
     ignoreFocusOut: true,
   });
 
@@ -269,7 +269,7 @@ async function connectTeamPolicySource(): Promise<void> {
       .pop()
       ?.replace(/\.git$/i, '')
       ?.toLowerCase()
-      ?.replace(/[^a-z0-9]+/g, '-') || 'team-policy-source',
+      ?.replace(/[^a-z0-9]+/g, '-') || 'shared-library-source',
     ignoreFocusOut: true,
   });
 
@@ -282,7 +282,7 @@ async function connectTeamPolicySource(): Promise<void> {
     : { id: sourceId, type: 'local-folder' as const, path: location, trust: 'trusted' as const };
   const validation = await teamPolicyService.validateSource(candidateSource);
   if (!validation.ok) {
-    vscode.window.showWarningMessage(`Unable to connect team policy source: ${validation.message}`);
+    vscode.window.showWarningMessage(`Unable to connect shared library source: ${validation.message}`);
     return;
   }
 
@@ -295,7 +295,7 @@ async function connectTeamPolicySource(): Promise<void> {
 
   await config.update('teamPolicySources', nextSources, vscode.ConfigurationTarget.Global);
   await refreshTeamPolicies();
-  vscode.window.showInformationMessage(`Team policy source "${sourceId}" connected.`);
+  vscode.window.showInformationMessage(`Shared library source "${sourceId}" connected.`);
 }
 
 function configureTeamPolicySync(context: vscode.ExtensionContext): void {
@@ -385,9 +385,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         event.affectsConfiguration('pbp.teamPolicySources')
         || event.affectsConfiguration('pbp.autoSyncTeamPolicies')
         || event.affectsConfiguration('pbp.teamPolicySyncIntervalMinutes')
-        || event.affectsConfiguration('pbp.defaultTeamPackId')
-        || event.affectsConfiguration('pbp.defaultTeamProfileId')
-        || event.affectsConfiguration('pbp.allowPersonalPolicyOverrides')
         || event.affectsConfiguration('pbp.passiveRuleProjection')
       ) {
         configureTeamPolicySync(context);
@@ -424,19 +421,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const sourceId = getSourceStateFromItem(value)?.sourceState?.sourceId;
       await refreshTeamPolicies();
       if (sourceId) {
-        vscode.window.showInformationMessage(`Retried sync for team policy source "${sourceId}".`);
+        vscode.window.showInformationMessage(`Retried sync for shared library source "${sourceId}".`);
       }
     }),
 
     vscode.commands.registerCommand('pbp.reconnectTeamPolicySource', async (value?: unknown) => {
       const sourceId = getSourceStateFromItem(value)?.sourceState?.sourceId;
       if (!sourceId) {
-        vscode.window.showErrorMessage('Invalid team policy source item.');
+        vscode.window.showErrorMessage('Invalid shared library source item.');
         return;
       }
 
       const confirm = await vscode.window.showWarningMessage(
-        `Reconnect "${sourceId}"? This clears its local sync cache and downloads the team policy source again.`,
+        `Reconnect "${sourceId}"? This clears its local sync cache and downloads the shared library source again.`,
         { modal: true },
         'Reconnect'
       );
@@ -446,7 +443,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       await teamPolicyService.reconnectSource(sourceId);
       await refreshTeamPolicies();
-      vscode.window.showInformationMessage(`Reconnected team policy source "${sourceId}".`);
+      vscode.window.showInformationMessage(`Reconnected shared library source "${sourceId}".`);
     }),
 
     vscode.commands.registerCommand('pbp.showDiagnostics', async () => {
@@ -544,35 +541,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
 
-    vscode.commands.registerCommand('pbp.selectRuleProfile', async () => {
-      const profiles = ruleManager.getRuleProfiles();
-      if (profiles.length === 0) {
-        vscode.window.showWarningMessage(t('No rule profiles available.'));
-        return;
-      }
-
-      const items = profiles.map((profile) => ({
-        label: profile.name,
-        description: profile.isActive ? `(${t('Active')})` : t('{0} global rule(s)', profile.enabledRuleIds.length),
-        profile,
-      }));
-
-      const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: t('Select active rule profile'),
-        title: t('Prompt by Prompt'),
-      });
-
-      if (!selected || selected.profile.isActive) {
-        return;
-      }
-
-      await ruleManager.setActiveRuleProfile(selected.profile.id);
-      rulesTreeProvider.refresh();
-      teamPoliciesTreeProvider.refresh();
-      await refreshProjectedRuleFile({ silent: true });
-      vscode.window.showInformationMessage(`"${selected.profile.name}" ${t('set as active global rule.')}`);
-    }),
-
     vscode.commands.registerCommand('pbp.refreshPrompts', async () => {
       await promptManager.refresh();
       vscode.window.showInformationMessage(t('Prompts refreshed'));
@@ -608,7 +576,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       if (prompt.source === 'team-pack') {
-        vscode.window.showInformationMessage(t('Team library prompts are read-only right now. Run them directly or copy them into workspace/global later.'));
+        vscode.window.showInformationMessage(t('Shared library prompts are read-only right now. Run them directly or copy them into workspace/global later.'));
         return;
       }
 
@@ -643,7 +611,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       if (prompt.source === 'team-pack') {
-        vscode.window.showInformationMessage(t('Team library prompts cannot be deleted.'));
+        vscode.window.showInformationMessage(t('Shared library prompts cannot be deleted.'));
         return;
       }
 
@@ -707,19 +675,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await refreshProjectedRuleFile({ silent: true });
         vscode.window.showInformationMessage(`"${item.rule.name}" ${t('set as active global rule.')}`);
       }
-    }),
-
-    vscode.commands.registerCommand('pbp.setActiveRuleProfile', async (item: { profile?: { id?: string; name?: string } }) => {
-      if (!item?.profile?.id) {
-        vscode.window.showErrorMessage(t('Invalid rule item'));
-        return;
-      }
-
-      await ruleManager.setActiveRuleProfile(item.profile.id);
-      rulesTreeProvider.refresh();
-      teamPoliciesTreeProvider.refresh();
-      await refreshProjectedRuleFile({ silent: true });
-      vscode.window.showInformationMessage(`"${item.profile.name}" ${t('set as active global rule.')}`);
     }),
 
     vscode.commands.registerCommand('pbp.deleteRule', async (item: { rule?: { path?: string } }) => {
