@@ -27,16 +27,21 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 20.x
-          cache: 'npm'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Compile
-        run: npm run compile
+        run: pnpm run compile
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
         continue-on-error: true
 
       - name: Get version
@@ -46,7 +51,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Package extension
-        run: npx @vscode/vsce package --baseContentUrl https://github.com/Aknirex/prompt-by-prompt/raw/main --baseImagesUrl https://github.com/Aknirex/prompt-by-prompt/raw/main
+        run: pnpm exec @vscode/vsce package --baseContentUrl https://github.com/Aknirex/prompt-by-prompt/raw/main --baseImagesUrl https://github.com/Aknirex/prompt-by-prompt/raw/main
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -72,13 +77,18 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Publish to Open VSX Registry
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx ovsx publish *.vsix --pat "$OVSX_PAT" --skip-duplicate
+        run: pnpm exec ovsx publish *.vsix --pat "$OVSX_PAT" --skip-duplicate
 
   publish-marketplace:
     needs: build
@@ -97,13 +107,18 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Publish to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx @vscode/vsce publish --packagePath *.vsix --pat "$VSCE_PAT" --skip-duplicate
+        run: pnpm exec @vscode/vsce publish --packagePath *.vsix --pat "$VSCE_PAT" --skip-duplicate
 
   create-release:
     needs: [build, publish-marketplace, publish-openvsx]
