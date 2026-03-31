@@ -303,4 +303,31 @@ Provide concise and direct solutions.
 
     await fs.promises.rm(secondWorkspaceDir, { recursive: true, force: true });
   });
+
+  it('updates an existing workspace rule file and refreshes its path', async () => {
+    await fs.promises.writeFile(path.join(workspaceDir, 'AGENTS.md'), '# workspace rule', 'utf8');
+
+    const { RuleManager } = await import('../src/services/ruleManager');
+    const manager = new RuleManager({
+      globalStorageUri: { fsPath: globalDir },
+      globalState: {
+        get: (key: string, defaultValue?: unknown) =>
+          mockState.globalStateStore.has(key) ? mockState.globalStateStore.get(key) : defaultValue,
+        update: async (key: string, value: unknown) => {
+          mockState.globalStateStore.set(key, value);
+        },
+      },
+    } as never);
+
+    await manager.initialize();
+
+    const rule = manager.getWorkspaceRules()[0];
+    expect(rule).toBeDefined();
+
+    await manager.updateRuleFile(rule!, '.cursorrules', '# updated rule');
+
+    expect(fs.existsSync(path.join(workspaceDir, '.cursorrules'))).toBe(true);
+    expect(fs.existsSync(path.join(workspaceDir, 'AGENTS.md'))).toBe(false);
+    expect(manager.getWorkspaceRules().map((entry) => entry.name)).toContain('.cursorrules');
+  });
 });

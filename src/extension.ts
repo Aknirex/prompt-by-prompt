@@ -12,8 +12,10 @@ import { PromptsTreeProvider } from './providers/promptsTreeProvider';
 import { RulesTreeProvider } from './providers/rulesTreeProvider';
 import { TeamPoliciesTreeProvider } from './providers/teamPoliciesTreeProvider';
 import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
+import { RuleEditorPanel } from './providers/ruleEditorPanel';
 import { SettingsPanel } from './providers/settingsPanel';
 import { ExtensionConfig, PromptTemplate, PromptVariable } from './types/prompt';
+import { RuleFile } from './types/rule';
 import { t } from './utils/i18n';
 import { RuleManager } from './services/ruleManager';
 import { ExecutionService } from './services/executionService';
@@ -148,6 +150,21 @@ async function openPromptEditor(
     async (result) => {
       await onSave(result);
     }
+  );
+}
+
+async function openRuleEditor(
+  existingRule: RuleFile | undefined,
+  onSave: (result: { fileName: string; content: string }) => Promise<void>,
+  initialFileName?: string
+): Promise<void> {
+  RuleEditorPanel.createOrShow(
+    extensionContext.extensionUri,
+    existingRule,
+    async (result) => {
+      await onSave(result);
+    },
+    initialFileName ? { initialFileName } : undefined
   );
 }
 
@@ -752,35 +769,61 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('pbp.createWorkspaceRule', async () => {
       const config = vscode.workspace.getConfiguration('pbp');
       const defaultRuleFile = config.get<string>('defaultRuleFile') || 'ask';
-      const options = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules', '.aiderrules', '.codeiumrules'];
+      const knownRules = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules', '.aiderrules', '.codeiumrules'];
+      const initialFileName = defaultRuleFile !== 'ask' && knownRules.includes(defaultRuleFile)
+        ? defaultRuleFile
+        : undefined;
 
-      let selected: string | undefined;
-      if (defaultRuleFile === 'ask' || !options.includes(defaultRuleFile)) {
-        selected = await vscode.window.showQuickPick(options, { placeHolder: t('Select rule file to create') });
-      } else {
-        selected = defaultRuleFile;
-      }
-
-      if (selected) {
-        await ruleManager.createRuleFile(selected);
-        rulesTreeProvider.refresh();
-        teamPoliciesTreeProvider.refresh();
-        await refreshProjectedRuleFile({ silent: true });
-      }
+      await openRuleEditor(undefined, async (result) => {
+        try {
+          await ruleManager.createGlobalRule(result.fileName, result.content);
+          rulesTreeProvider.refresh();
+          teamPoliciesTreeProvider.refresh();
+          await refreshProjectedRuleFile({ silent: true });
+          vscode.window.showInformationMessage(t('Rule "{0}" created', result.fileName));
+        } catch (error) {
+          vscode.window.showErrorMessage(`${t('Failed to create rule')}: ${error}`);
+        }
+      }, initialFileName);
     }),
 
     vscode.commands.registerCommand('pbp.createGlobalRule', async () => {
-      const fileName = await vscode.window.showInputBox({
-        prompt: t('Enter global rule file name (e.g. general-rules)'),
-        placeHolder: t('my-global-rule'),
+      await openRuleEditor(undefined, async (result) => {
+        try {
+          await ruleManager.createGlobalRule(result.fileName, result.content);
+          rulesTreeProvider.refresh();
+          teamPoliciesTreeProvider.refresh();
+          await refreshProjectedRuleFile({ silent: true });
+          vscode.window.showInformationMessage(t('Rule "{0}" created', result.fileName));
+        } catch (error) {
+          vscode.window.showErrorMessage(`${t('Failed to create rule')}: ${error}`);
+        }
       });
+    }),
 
-      if (fileName) {
-        await ruleManager.createGlobalRule(fileName);
-        rulesTreeProvider.refresh();
-        teamPoliciesTreeProvider.refresh();
-        await refreshProjectedRuleFile({ silent: true });
+    vscode.commands.registerCommand('pbp.editRule', async (item: { rule?: RuleFile }) => {
+      const rule = item?.rule;
+      if (!rule?.path) {
+        vscode.window.showErrorMessage(t('Invalid rule item'));
+        return;
       }
+
+      if (rule.scope !== 'workspace' && rule.scope !== 'global') {
+        vscode.window.showInformationMessage(t('Shared library rules are read-only.'));
+        return;
+      }
+
+      await openRuleEditor(rule, async (result) => {
+        try {
+          await ruleManager.updateRuleFile(rule, result.fileName, result.content);
+          rulesTreeProvider.refresh();
+          teamPoliciesTreeProvider.refresh();
+          await refreshProjectedRuleFile({ silent: true });
+          vscode.window.showInformationMessage(t('Rule "{0}" updated', result.fileName));
+        } catch (error) {
+          vscode.window.showErrorMessage(`${t('Failed to update rule')}: ${error}`);
+        }
+      });
     }),
 
     vscode.commands.registerCommand('pbp.setActiveGlobalRule', async (item: { rule?: { isGlobal?: boolean; path?: string; name?: string } }) => {

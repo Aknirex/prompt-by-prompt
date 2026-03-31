@@ -300,10 +300,8 @@ export class RuleManager {
     await this.scanRuleFiles();
   }
 
-  public async createGlobalRule(fileName: string): Promise<void> {
-    if (!fileName.endsWith('.md')) {
-      fileName += '.md';
-    }
+  public async createGlobalRule(fileName: string, template = ''): Promise<void> {
+    fileName = this.normalizeRuleFileName(fileName);
 
     const globalRulesDir = path.join(this.context.globalStorageUri.fsPath, 'global-rules');
     fs.mkdirSync(globalRulesDir, { recursive: true });
@@ -314,13 +312,15 @@ export class RuleManager {
       return;
     }
 
-    await fs.promises.writeFile(filePath, `# ${fileName}\n\n`, 'utf-8');
+    await fs.promises.writeFile(filePath, template || `# ${fileName}\n\n`, 'utf-8');
     vscode.window.showInformationMessage(t('Global rule {0} created.', fileName));
     await this.setActiveGlobalRule(filePath);
     await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(filePath));
   }
 
   public async createRuleFile(fileName: string, template = ''): Promise<void> {
+    fileName = this.normalizeRuleFileName(fileName);
+
     const workspaceFolders = getWorkspaceFolders();
     if (workspaceFolders.length === 0) {
       vscode.window.showErrorMessage(t('No workspace open to create rule file.'));
@@ -345,6 +345,31 @@ export class RuleManager {
     }
   }
 
+  public async updateRuleFile(rule: RuleFile, fileName: string, content: string): Promise<void> {
+    const nextFileName = this.normalizeRuleFileName(fileName);
+    const previousPath = rule.path;
+    const nextPath = path.join(path.dirname(previousPath), nextFileName);
+
+    if (nextPath !== previousPath && fs.existsSync(nextPath)) {
+      throw new Error(`${nextFileName} already exists.`);
+    }
+
+    await fs.promises.writeFile(nextPath, content, 'utf-8');
+
+    if (nextPath !== previousPath && fs.existsSync(previousPath)) {
+      await fs.promises.unlink(previousPath);
+    }
+
+    if (rule.scope === 'global') {
+      const activeGlobalRule = this.context.globalState.get<string>('pbp.activeGlobalRule');
+      if (activeGlobalRule === previousPath) {
+        await this.context.globalState.update('pbp.activeGlobalRule', nextPath);
+      }
+    }
+
+    await this.scanRuleFiles();
+  }
+
   public async deleteRuleFile(uri: vscode.Uri): Promise<void> {
     const confirm = await vscode.window.showWarningMessage(
       `${t('Are you sure you want to delete')} ${path.basename(uri.fsPath)}?`,
@@ -363,6 +388,23 @@ export class RuleManager {
     } catch (error) {
       vscode.window.showErrorMessage(t('Failed to delete {0}: {1}', path.basename(uri.fsPath), String(error)));
     }
+  }
+
+  private normalizeRuleFileName(fileName: string): string {
+    const trimmed = fileName.trim();
+    if (!trimmed) {
+      return 'new-rule.md';
+    }
+
+    if (trimmed.startsWith('.') && !trimmed.includes('.', 1)) {
+      return trimmed;
+    }
+
+    if (!trimmed.includes('.')) {
+      return `${trimmed}.md`;
+    }
+
+    return trimmed;
   }
 
   private createRuleFileRecord(name: string, filePath: string, content: string, scope: 'workspace' | 'global'): RuleFile {

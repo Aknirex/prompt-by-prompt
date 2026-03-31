@@ -99,12 +99,16 @@
         "title": "%command.pbp.deleteRule%"
       },
       {
+        "command": "pbp.editRule",
+        "title": "%command.pbp.editRule%"
+      },
+      {
         "command": "pbp.setActiveGlobalRule",
         "title": "%command.pbp.setActiveGlobalRule%"
       },
       {
         "command": "pbp.createWorkspaceRule",
-        "title": "%command.pbp.createWorkspaceRule%",
+        "title": "New Rule",
         "icon": "$(add)"
       },
       {
@@ -207,6 +211,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "pbp.createWorkspaceRule",
+          "when": "view == pbp.rulesView",
+          "group": "navigation@1"
+        },
+        {
           "command": "pbp.syncTeamPolicies",
           "when": "view == pbp.teamPoliciesView",
           "group": "navigation@2"
@@ -271,6 +280,11 @@
         {
           "command": "pbp.setActiveGlobalRule",
           "when": "view == pbp.rulesView && viewItem == globalRuleItem"
+        },
+        {
+          "command": "pbp.editRule",
+          "when": "view == pbp.rulesView && (viewItem == workspaceRuleItem || viewItem == globalRuleItem)",
+          "group": "1_modification"
         },
         {
           "command": "pbp.deleteRule",

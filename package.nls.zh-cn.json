@@ -8,6 +8,7 @@
   "command.pbp.refreshRules": "刷新 Rules",
   "command.pbp.createWorkspaceRule": "新建工作区 Rule",
   "command.pbp.createGlobalRule": "新建全局 Rule",
+  "command.pbp.editRule": "编辑规则",
   "command.pbp.setActiveGlobalRule": "设为活动 Rule",
   "command.pbp.deleteRule": "删除 Rule",
   "viewContainer.pbp-explorer": "Prompt by Prompt",

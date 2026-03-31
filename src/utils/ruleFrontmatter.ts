@@ -20,6 +20,20 @@ export interface ParsedRuleDocument {
   metadata: ParsedRuleFrontmatter;
 }
 
+export interface RuleDocumentData {
+  ruleId?: string;
+  canonicalKey?: string;
+  title?: string;
+  category?: RuleCategory;
+  priority?: number;
+  required?: boolean;
+  kind?: RuleKind;
+  appliesTo?: AgentType[];
+  preferenceKey?: string;
+  preferenceValue?: string | boolean | number;
+  body: string;
+}
+
 export function parseRuleDocument(content: string): ParsedRuleDocument {
   const normalized = content.replace(/\r\n/g, '\n');
   if (!normalized.startsWith('---\n')) {
@@ -64,6 +78,35 @@ export function parseRuleDocument(content: string): ParsedRuleDocument {
       metadata: {},
     };
   }
+}
+
+export function serializeRuleDocument(data: RuleDocumentData): string {
+  const frontmatter: Record<string, unknown> = {};
+
+  if (data.ruleId) frontmatter.ruleId = data.ruleId;
+  if (data.canonicalKey) frontmatter.canonicalKey = data.canonicalKey;
+  if (data.title) frontmatter.title = data.title;
+  if (data.category) frontmatter.category = data.category;
+  if (typeof data.priority === 'number') frontmatter.priority = data.priority;
+  if (typeof data.required === 'boolean') frontmatter.required = data.required;
+  if (data.kind) frontmatter.kind = data.kind;
+  if (data.appliesTo && data.appliesTo.length > 0) frontmatter.appliesTo = data.appliesTo;
+  if (data.preferenceKey) frontmatter.preferenceKey = data.preferenceKey;
+  if (typeof data.preferenceValue !== 'undefined') frontmatter.preferenceValue = data.preferenceValue;
+
+  const body = data.body ?? '';
+  if (Object.keys(frontmatter).length === 0) {
+    return body.trimStart();
+  }
+
+  const frontmatterYaml = yaml.dump(frontmatter, {
+    indent: 2,
+    lineWidth: -1,
+    quotingType: '"',
+    forceQuotes: false,
+  }).trimEnd();
+
+  return `---\n${frontmatterYaml}\n---\n${body.trimStart()}`;
 }
 
 function toOptionalString(value: unknown): string | undefined {

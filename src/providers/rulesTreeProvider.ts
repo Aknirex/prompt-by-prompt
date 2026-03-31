@@ -58,15 +58,12 @@ class ConflictItem extends vscode.TreeItem {
 class RuleGroupItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
-    public readonly kind: 'activated' | 'workspace' | 'global'
+    public readonly kind: 'workspace' | 'global'
   ) {
     super(t(label), vscode.TreeItemCollapsibleState.Expanded);
-    this.contextValue =
-      kind === 'activated'
-        ? 'activatedRuleGroup'
-        : kind === 'workspace'
-          ? 'projectRuleGroup'
-          : 'personalRuleGroup';
+    this.contextValue = kind === 'workspace'
+      ? 'projectRuleGroup'
+      : 'personalRuleGroup';
   }
 }
 
@@ -98,8 +95,6 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
   getChildren(element?: TreeElement): Thenable<TreeElement[]> {
     if (element instanceof RuleGroupItem) {
       switch (element.kind) {
-        case 'activated':
-          return Promise.resolve(this.getActivatedItems());
         case 'workspace':
           return Promise.resolve(this.workspaceRules.map((rule) => new RuleItem(rule)));
         case 'global': {
@@ -115,24 +110,18 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
       return Promise.resolve([]);
     }
 
-    return Promise.resolve([
-      new RuleGroupItem('Activated Rules', 'activated'),
-      new RuleGroupItem('Project Rules', 'workspace'),
-      new RuleGroupItem('Personal Rules', 'global'),
-    ]);
+    return Promise.resolve(this.getRootItems());
   }
 
-  private getActivatedItems(): TreeElement[] {
+  private getRootItems(): TreeElement[] {
     const resolved = this.resolvedRuleSet;
     if (!resolved) {
       return [new InfoItem('No rules resolved yet', 'Open a file or refresh to evaluate the current rule set')];
     }
 
-    const items: TreeElement[] = [];
-
-    items.push(new InfoItem('Active rules', `${resolved.activeEntries.length} rule(s)`, 'pass'));
-    items.push(new InfoItem('Project rules', `${resolved.workspaceRules.length} file(s)`, 'workspace'));
-    items.push(new InfoItem('Personal rules', `${resolved.globalRules.length} file(s)`, 'account'));
+    const items: TreeElement[] = [
+      new InfoItem('Active rules', `${resolved.activeEntries.length} rule(s)`, 'pass'),
+    ];
 
     if ((resolved.conflicts ?? []).length > 0) {
       items.push(new InfoItem('Conflicts', `${resolved.conflicts.length} issue(s)`, 'warning'));
@@ -142,6 +131,16 @@ export class RulesTreeProvider implements vscode.TreeDataProvider<TreeElement> {
     }
 
     items.push(...resolved.activeEntries.map((entry) => new RuleItem(entry.rule, { active: true, description: entry.reason })));
+
+    if (this.workspaceRules.length > 0) {
+      items.push(new RuleGroupItem('Project Rules', 'workspace'));
+    }
+
+    if (this.globalRules.length > 0) {
+      items.push(new RuleGroupItem('Personal Rules', 'global'));
+    }
+
     return items;
   }
+
 }

@@ -8,6 +8,7 @@
   "command.pbp.refreshRules": "Refresh Rules",
   "command.pbp.createWorkspaceRule": "New Workspace Rule",
   "command.pbp.createGlobalRule": "New Global Rule",
+  "command.pbp.editRule": "Edit Rule",
   "command.pbp.setActiveGlobalRule": "Set as Active Rule",
   "command.pbp.deleteRule": "Delete Rule",
   "viewContainer.pbp-explorer": "Prompt by Prompt",

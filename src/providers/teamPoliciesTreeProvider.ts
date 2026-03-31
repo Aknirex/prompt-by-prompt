@@ -5,14 +5,10 @@ import { SharedLibrarySummary, TeamPolicyPack, TeamPolicySourceState } from '../
 
 class SharedLibrariesGroupItem extends vscode.TreeItem {
   constructor(
-    public readonly label: string,
-    public readonly kind: 'sources' | 'libraries'
+    public readonly label: string
   ) {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
-    this.contextValue =
-      kind === 'sources'
-        ? 'sharedLibrarySourceGroup'
-        : 'sharedLibraryLibraryGroup';
+    this.contextValue = 'sharedLibraryLibraryGroup';
   }
 }
 
@@ -47,28 +43,6 @@ class SharedLibraryInfoItem extends vscode.TreeItem {
     this.description = description;
     this.contextValue = 'sharedLibraryInfoItem';
     this.iconPath = new vscode.ThemeIcon(icon);
-  }
-}
-
-class SharedLibrarySourceItem extends vscode.TreeItem {
-  constructor(public readonly sourceState: TeamPolicySourceState) {
-    super(sourceState.sourceId, vscode.TreeItemCollapsibleState.None);
-    this.description = sourceState.status === 'synced'
-      ? (sourceState.lastSyncedAt ? `synced ${sourceState.lastSyncedAt}` : 'synced')
-      : 'sync issue';
-    this.tooltip = sourceState.lastSyncError || sourceState.lastSyncedAt || sourceState.type;
-    this.contextValue = 'sharedLibrarySourceItem';
-    this.iconPath = new vscode.ThemeIcon(
-      sourceState.status === 'synced' ? 'pass-filled' : 'warning',
-      sourceState.status === 'synced'
-        ? new vscode.ThemeColor('testing.iconPassed')
-        : new vscode.ThemeColor('problemsWarningIcon.foreground')
-    );
-    this.command = {
-      command: 'pbp.retryTeamPolicySourceSync',
-      title: 'Retry Shared Source Sync',
-      arguments: [this],
-    };
   }
 }
 
@@ -164,7 +138,6 @@ type TeamPoliciesElement =
   | SharedLibrarySectionItem
   | SharedLibraryInfoItem
   | SharedLibraryActionItem
-  | SharedLibrarySourceItem
   | SharedLibraryPackItem
   | SharedLibraryRuleItem
   | SharedLibraryPromptItem;
@@ -196,19 +169,11 @@ export class TeamPoliciesTreeProvider implements vscode.TreeDataProvider<TeamPol
 
   getChildren(element?: TeamPoliciesElement): Thenable<TeamPoliciesElement[]> {
     if (!element) {
-      return Promise.resolve([
-        new SharedLibrariesGroupItem('Sync Sources', 'sources'),
-        new SharedLibrariesGroupItem('Shared Libraries', 'libraries'),
-      ]);
+      return Promise.resolve(this.getRootItems());
     }
 
     if (element instanceof SharedLibrariesGroupItem) {
-      switch (element.kind) {
-        case 'sources':
-          return Promise.resolve(this.getSourceItems());
-        case 'libraries':
-          return Promise.resolve(this.getLibraryItems());
-      }
+      return Promise.resolve(this.getLibraryItems());
     }
 
     if (element instanceof SharedLibraryPackItem) {
@@ -226,14 +191,6 @@ export class TeamPoliciesTreeProvider implements vscode.TreeDataProvider<TeamPol
     return Promise.resolve([]);
   }
 
-  private getSourceItems(): TeamPoliciesElement[] {
-    if (this.sourceStates.length === 0) {
-      return [new SharedLibraryInfoItem('No shared library sources', 'Use Connect Shared Source to add one', 'plug')];
-    }
-
-    return this.sourceStates.map((state) => new SharedLibrarySourceItem(state));
-  }
-
   private getLibraryItems(): TeamPoliciesElement[] {
     if (this.installedLibraries.length === 0) {
       return [new SharedLibraryInfoItem('No shared libraries', 'Sync a source to load prompts and rules', 'package')];
@@ -243,6 +200,29 @@ export class TeamPoliciesTreeProvider implements vscode.TreeDataProvider<TeamPol
       const pack = this.installedPackMap.get(library.id);
       return new SharedLibraryPackItem(library, pack);
     });
+  }
+
+  private getRootItems(): TeamPoliciesElement[] {
+    const items: TeamPoliciesElement[] = [];
+
+    if (this.sourceStates.length > 0) {
+      const syncedCount = this.sourceStates.filter((state) => state.status === 'synced').length;
+      const errorCount = this.sourceStates.length - syncedCount;
+      const description = errorCount > 0
+        ? `${syncedCount} synced, ${errorCount} error(s)`
+        : `${syncedCount} synced`;
+      items.push(new SharedLibraryInfoItem('Source Status', description, errorCount > 0 ? 'warning' : 'pass-filled'));
+    } else {
+      items.push(new SharedLibraryInfoItem('Source Status', 'No shared library sources configured', 'plug'));
+    }
+
+    if (this.installedLibraries.length > 0) {
+      items.push(new SharedLibrariesGroupItem('Shared Libraries'));
+    } else {
+      items.push(new SharedLibraryInfoItem('No shared libraries', 'Use Connect Shared Source to add one', 'package'));
+    }
+
+    return items;
   }
 
   private getPackChildren(item: SharedLibraryPackItem): TeamPoliciesElement[] {

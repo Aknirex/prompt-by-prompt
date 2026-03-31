@@ -8,6 +8,7 @@
   "command.pbp.refreshRules": "ルールの更新",
   "command.pbp.createWorkspaceRule": "ワークスペースルールを作成",
   "command.pbp.createGlobalRule": "グローバルルールを作成",
+  "command.pbp.editRule": "ルールを編集",
   "command.pbp.setActiveGlobalRule": "アクティブルールとして設定",
   "command.pbp.deleteRule": "ルールを削除",
   "viewContainer.pbp-explorer": "Prompt by Prompt",
