@@ -106,6 +106,10 @@ Suggested tests:
 - Read-only shared prompt copy.
 - Multi-root workspace prompt loading.
 
+Progress:
+
+- 2026-04-25: Added `PromptRepository` boundaries, a pure `PromptLibraryService` for snapshots/search/favorites/recents/source grouping, and a file-backed prompt repository that reads current YAML files through the vNext codec.
+
 ## 5. Phase 3: Execution Plan And Payload Pipeline
 
 Goal:
