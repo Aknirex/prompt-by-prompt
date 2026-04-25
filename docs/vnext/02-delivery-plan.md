@@ -143,6 +143,12 @@ Suggested tests:
 - Variable collection cancellation.
 - Empty rendered prompt warning.
 
+Progress:
+
+- 2026-04-25: Extracted `PayloadComposer` from `ExecutionService`, keeping preview and dispatch payload formatting behavior stable behind compatibility wrappers and adding direct payload composer coverage for Copilot, task-oriented agents, chat agents, and fallback targets.
+- 2026-04-25: Added `ExecutionPlanner` as the shared plan builder for preview and dispatch, moving envelope metadata and `ResolvedExecution` construction out of `ExecutionService` while preserving the current command behavior.
+- 2026-04-25: Added `ExecutionRunner` with dispatch/history ports so successful dispatch is the single gate for execution history writes, backed by focused runner tests and the existing service-level failure coverage.
+
 ## 6. Phase 4: UI Simplification
 
 Goal:
