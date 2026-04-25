@@ -63,6 +63,9 @@ vi.mock('vscode', async () => {
     commands: {
       executeCommand: vi.fn(async () => undefined),
     },
+    env: {
+      language: 'en',
+    },
     Uri: {
       file: (fsPath: string) => ({ fsPath }),
       joinPath: (base: { fsPath: string }, ...segments: string[]) => ({
@@ -302,6 +305,26 @@ Provide concise and direct solutions.
     expect(workspaceRules).toEqual(expect.arrayContaining(['AGENTS.md', '.cursorrules']));
 
     await fs.promises.rm(secondWorkspaceDir, { recursive: true, force: true });
+  });
+
+  it('creates new workspace rule files in the active workspace, not global storage', async () => {
+    const { RuleManager } = await import('../src/services/ruleManager');
+    const manager = new RuleManager({
+      globalStorageUri: { fsPath: globalDir },
+      globalState: {
+        get: (key: string, defaultValue?: unknown) =>
+          mockState.globalStateStore.has(key) ? mockState.globalStateStore.get(key) : defaultValue,
+        update: async (key: string, value: unknown) => {
+          mockState.globalStateStore.set(key, value);
+        },
+      },
+    } as never);
+
+    await manager.createRuleFile('AGENTS.md', '# workspace rule');
+
+    expect(fs.existsSync(path.join(workspaceDir, 'AGENTS.md'))).toBe(true);
+    expect(fs.existsSync(path.join(globalDir, 'global-rules', 'AGENTS.md'))).toBe(false);
+    expect(manager.getWorkspaceRules().map((entry) => entry.name)).toContain('AGENTS.md');
   });
 
   it('updates an existing workspace rule file and refreshes its path', async () => {

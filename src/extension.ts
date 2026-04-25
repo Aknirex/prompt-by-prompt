@@ -776,7 +776,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       await openRuleEditor(undefined, async (result) => {
         try {
-          await ruleManager.createGlobalRule(result.fileName, result.content);
+          await ruleManager.createRuleFile(result.fileName, result.content);
           rulesTreeProvider.refresh();
           teamPoliciesTreeProvider.refresh();
           await refreshProjectedRuleFile({ silent: true });

@@ -29,5 +29,7 @@ coverage/
 .local/
 
 # Legacy docs drafts
-docs/
+docs/*
+!docs/vnext/
+!docs/vnext/**
 
