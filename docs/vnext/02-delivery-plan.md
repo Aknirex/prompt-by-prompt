@@ -70,6 +70,10 @@ Suggested tests:
 - `promptValidation.test.ts`
 - `settingsSchema.test.ts`
 
+Progress:
+
+- 2026-04-25: Added the first pure prompt domain model, prompt validation, a current-compatible prompt YAML codec, and a settings schema registry with package manifest consistency coverage.
+
 ## 4. Phase 2: Prompt Library Core
 
 Goal:
@@ -267,4 +271,3 @@ For every vNext slice:
 - `pnpm run compile` passes.
 - `pnpm run test` passes.
 - `pnpm run lint` passes before release branches.
-
