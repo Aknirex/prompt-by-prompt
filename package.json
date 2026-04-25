@@ -52,6 +52,15 @@
         "icon": "$(add)"
       },
       {
+        "command": "pbp.searchPrompts",
+        "title": "Search Prompts",
+        "icon": "$(search)"
+      },
+      {
+        "command": "pbp.toggleFavoritePrompt",
+        "title": "Toggle Favorite Prompt"
+      },
+      {
         "command": "pbp.editPrompt",
         "title": "%command.pbp.editPrompt%"
       },
@@ -201,6 +210,11 @@
           "group": "navigation@3"
         },
         {
+          "command": "pbp.searchPrompts",
+          "when": "view == pbp.promptsView",
+          "group": "navigation@4"
+        },
+        {
           "command": "pbp.connectTeamPolicySource",
           "when": "view == pbp.teamPoliciesView",
           "group": "navigation@1"
@@ -259,6 +273,11 @@
         },
         {
           "command": "pbp.editPrompt",
+          "when": "view == pbp.promptsView && viewItem == prompt",
+          "group": "1_modification"
+        },
+        {
+          "command": "pbp.toggleFavoritePrompt",
           "when": "view == pbp.promptsView && viewItem == prompt",
           "group": "1_modification"
         },

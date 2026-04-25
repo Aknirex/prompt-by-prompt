@@ -11,6 +11,7 @@ export interface FilePromptRepositoryOptions {
   source: PromptSource;
   readOnly?: boolean;
   recursive?: boolean;
+  strict?: boolean;
 }
 
 export class FilePromptRepository implements PromptRepository {
@@ -21,6 +22,7 @@ export class FilePromptRepository implements PromptRepository {
   private readonly source: PromptSource;
   private readonly readOnly: boolean;
   private readonly recursive: boolean;
+  private readonly strict: boolean;
 
   constructor(options: FilePromptRepositoryOptions) {
     this.id = options.id;
@@ -29,6 +31,7 @@ export class FilePromptRepository implements PromptRepository {
     this.source = options.source;
     this.readOnly = options.readOnly ?? false;
     this.recursive = options.recursive ?? true;
+    this.strict = options.strict ?? true;
   }
 
   async list(): Promise<PromptLibraryItem[]> {
@@ -46,6 +49,9 @@ export class FilePromptRepository implements PromptRepository {
       });
 
       if (!decoded.ok) {
+        if (!this.strict) {
+          continue;
+        }
         throw new Error(`Invalid prompt file ${filePath}: ${decoded.issues.map((issue) => issue.message).join('; ')}`);
       }
 
@@ -106,4 +112,3 @@ export class FilePromptRepository implements PromptRepository {
 function isPromptFile(fileName: string): boolean {
   return fileName.endsWith('.yaml') || fileName.endsWith('.yml');
 }
-

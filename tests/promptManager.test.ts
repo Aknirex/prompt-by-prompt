@@ -287,4 +287,56 @@ describe('PromptManager', () => {
 
     await fs.promises.rm(secondWorkspaceDir, { recursive: true, force: true });
   });
+
+  it('keeps usage metadata for read-only prompts outside prompt files', async () => {
+    await fs.promises.mkdir(path.join(extensionDir, 'builtins', 'templates'), { recursive: true });
+    await fs.promises.writeFile(path.join(extensionDir, 'builtins', 'templates', 'builtin.yaml'), [
+      'id: builtin-review',
+      'name: Builtin Review',
+      'template: Review {{selection}}.',
+    ].join('\n'), 'utf8');
+
+    const { PromptManager } = await import('../src/services/promptManager');
+    const manager = new PromptManager(createContext() as never, config as never);
+
+    await manager.initialize();
+    await manager.setPromptFavorite('builtin-review', true);
+    await manager.markPromptUsed('builtin-review', new Date('2026-04-25T12:00:00.000Z'));
+    await manager.refresh();
+
+    const prompt = manager.getPrompt('builtin-review');
+    expect(prompt?.favorite).toBe(true);
+    expect(prompt?.lastUsedAt).toBe('2026-04-25T12:00:00.000Z');
+    const entryPrompts = Array.from(manager.getPromptByLibraryEntryKeyMap().values());
+    expect(entryPrompts[0]?.favorite).toBe(true);
+    expect(entryPrompts[0]?.lastUsedAt).toBe('2026-04-25T12:00:00.000Z');
+    expect(mockState.globalStateStore.get('pbp.promptUsageMetadata')).toEqual({
+      'builtin-review': {
+        favorite: true,
+        lastUsedAt: '2026-04-25T12:00:00.000Z',
+      },
+    });
+  });
+
+  it('skips invalid prompt files without dropping the whole repository', async () => {
+    await fs.promises.mkdir(path.join(workspaceDir, '.prompts', 'templates'), { recursive: true });
+    await fs.promises.writeFile(path.join(workspaceDir, '.prompts', 'templates', 'valid.yaml'), [
+      'id: valid',
+      'name: Valid',
+      'template: Run.',
+    ].join('\n'), 'utf8');
+    await fs.promises.writeFile(path.join(workspaceDir, '.prompts', 'templates', 'broken.yaml'), [
+      'id: broken',
+      'name: Broken',
+      'template: ""',
+    ].join('\n'), 'utf8');
+
+    const { PromptManager } = await import('../src/services/promptManager');
+    const manager = new PromptManager(createContext() as never, config as never);
+
+    await manager.initialize();
+
+    expect(manager.getPrompt('valid')?.name).toBe('Valid');
+    expect(manager.getPrompt('broken')).toBeUndefined();
+  });
 });

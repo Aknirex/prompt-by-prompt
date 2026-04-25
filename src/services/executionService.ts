@@ -48,22 +48,23 @@ export class ExecutionService {
   async runPrompt(
     prompt: PromptTemplate,
     options: ExecutionServiceOptions = {}
-  ): Promise<void> {
+  ): Promise<boolean> {
     const resolvedExecution = await this.resolveExecution(prompt, options);
     if (!resolvedExecution) {
-      return;
+      return false;
     }
 
     const result = await this.dispatch(resolvedExecution);
     if (!result.success) {
       vscode.window.showErrorMessage(`${t('Failed to send prompt')}: ${result.message}`);
-      return;
+      return false;
     }
 
     await this.saveHistory(prompt.id, {
       target: resolvedExecution.target,
       behavior: resolvedExecution.behavior,
     });
+    return true;
   }
 
   async previewPrompt(
@@ -83,8 +84,8 @@ export class ExecutionService {
     return selection;
   }
 
-  async rerunLastTarget(prompt: PromptTemplate): Promise<void> {
-    await this.runPrompt(prompt);
+  async rerunLastTarget(prompt: PromptTemplate): Promise<boolean> {
+    return this.runPrompt(prompt);
   }
 
   private async resolveExecution(

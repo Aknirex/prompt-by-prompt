@@ -109,6 +109,8 @@ Suggested tests:
 Progress:
 
 - 2026-04-25: Added `PromptRepository` boundaries, a pure `PromptLibraryService` for snapshots/search/favorites/recents/source grouping, and a file-backed prompt repository that reads current YAML files through the vNext codec.
+- 2026-04-25: Rewired the compatibility `PromptManager` onto the vNext library stack, added prompt usage metadata for favorites/recents, added prompt search/favorite commands, and surfaced Favorites/Recent sections in the prompt tree.
+- 2026-04-25: Rewired `PromptsTreeProvider` to consume `PromptLibrarySnapshot` directly instead of rebuilding source/favorite/recent logic from a flat `PromptTemplate[]`.
 
 ## 5. Phase 3: Execution Plan And Payload Pipeline
 

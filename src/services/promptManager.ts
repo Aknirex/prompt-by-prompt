@@ -1,25 +1,50 @@
 /**
  * Prompt Manager Service
- * Handles file system I/O, CRUD operations, and caching for prompts
+ *
+ * Compatibility facade for the current extension commands and providers.
+ * Internally this now loads prompts through the vNext prompt library stack:
+ * PromptRepository -> PromptLibraryService -> PromptTemplate adapter.
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as yaml from 'js-yaml';
 import { v4 as uuidv4 } from 'uuid';
-import { PromptTemplate, ExtensionConfig } from '../types/prompt';
+import { PromptLibraryEntry, PromptLibraryService, PromptLibrarySnapshot } from '../application/promptLibraryService';
+import { PromptRepository } from '../application/promptRepository';
+import {
+  PROMPT_SCHEMA_VERSION,
+  PromptDefinition,
+  PromptLibraryItem,
+  PromptMetadata,
+  PromptSource,
+  PromptVariableDefinition,
+} from '../domain/prompt';
+import { encodePromptYaml } from '../infrastructure/files/promptFileCodec';
+import { FilePromptRepository } from '../infrastructure/files/filePromptRepository';
+import { ExtensionConfig, PromptTemplate, PromptVariable } from '../types/prompt';
+import { SharedPromptTemplate } from '../types/teamPolicy';
 import { TeamPolicyService } from './teamPolicyService';
 import { getWorkspaceFolderForUri, getWorkspaceFolders } from '../utils/workspace';
 
 const GLOBAL_STATE_KEY = 'pbp.globalPrompts';
 const GLOBAL_PROMPTS_DIR = 'prompts';
+const PROMPT_USAGE_METADATA_KEY = 'pbp.promptUsageMetadata';
+
+interface PromptUsageMetadata {
+  favorite?: boolean;
+  lastUsedAt?: string;
+}
+
+type PromptUsageMetadataMap = Record<string, PromptUsageMetadata>;
 
 export class PromptManager {
   private prompts: Map<string, PromptTemplate> = new Map();
-  private onDidChangePrompts: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+  private promptByLibraryEntryKey: Map<string, PromptTemplate> = new Map();
+  private librarySnapshot: PromptLibrarySnapshot | undefined;
+  private readonly onDidChangePrompts: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   private readonly teamPolicyService: TeamPolicyService;
-  
+
   public readonly onDidChange = this.onDidChangePrompts.event;
 
   constructor(
@@ -31,288 +56,183 @@ export class PromptManager {
     this.teamPolicyService = teamPolicyService ?? new TeamPolicyService(context);
   }
 
-  /**
-   * Initialize the manager
-   */
   async initialize(): Promise<void> {
     await this.loadAllPrompts();
   }
 
-  /**
-   * Load prompts from all sources: workspace, global, and builtin
-   */
   private async loadAllPrompts(): Promise<void> {
-    this.prompts.clear();
-
-    // Load builtin prompts
-    await this.loadBuiltinPrompts();
-
-    // Migrate legacy global prompts before loading global storage files.
     await this.migrateLegacyGlobalPrompts();
 
-    // Load global prompts from extension global storage
-    await this.loadGlobalPrompts();
-
-    // Load workspace prompts
-    await this.loadWorkspacePrompts();
-
-    // Load prompts from installed shared libraries
-    await this.loadTeamPrompts();
-  }
-
-  /**
-   * Load builtin prompts (embedded in extension)
-   */
-  private async loadBuiltinPrompts(): Promise<void> {
-    const builtinPrompts = await this.getBuiltinPrompts();
-    for (const prompt of builtinPrompts) {
-      prompt.source = 'builtin';
-      this.prompts.set(prompt.id, prompt);
-    }
-  }
-
-  /**
-   * Get builtin prompts - these are embedded in the extension
-   */
-  private async getBuiltinPrompts(): Promise<PromptTemplate[]> {
-    // Return a list of builtin prompts
-    // These will be loaded from extension's built-in templates
-    const builtinPath = path.join(this.context.extensionPath, 'builtins', 'templates');
-    
-    if (!fs.existsSync(builtinPath)) {
-      return [];
-    }
-
-    const prompts: PromptTemplate[] = [];
-    const files = this.findYamlFiles(builtinPath);
-    
-    for (const file of files) {
-      try {
-        const prompt = await this.loadPromptFromFile(file, 'builtin');
-        if (prompt) {
-          prompts.push(prompt);
-        }
-      } catch (error) {
-        console.error(`Failed to load builtin prompt ${file}:`, error);
-      }
-    }
-    
-    return prompts;
-  }
-
-  /**
-   * Load global prompts from extension global storage
-   */
-  private async loadGlobalPrompts(): Promise<void> {
-    const promptsDir = path.join(this.context.globalStorageUri.fsPath, GLOBAL_PROMPTS_DIR);
-    if (!fs.existsSync(promptsDir)) {
-      return;
-    }
-
-    const files = this.findYamlFiles(promptsDir);
-    for (const file of files) {
-      try {
-        const prompt = await this.loadPromptFromFile(file, 'global');
-        if (prompt) {
-          this.prompts.set(prompt.id, prompt);
-        }
-      } catch (error) {
-        console.error(`Failed to load global prompt ${file}:`, error);
-      }
-    }
-  }
-
-  private async migrateLegacyGlobalPrompts(): Promise<void> {
-    const legacyPrompts = this.context.globalState.get<PromptTemplate[]>(GLOBAL_STATE_KEY, []);
-    if (!Array.isArray(legacyPrompts) || legacyPrompts.length === 0) {
-      return;
-    }
-
-    for (const legacyPrompt of legacyPrompts) {
-      const prompt: PromptTemplate = {
-        ...legacyPrompt,
-        id: legacyPrompt.id || uuidv4(),
-        name: legacyPrompt.name || 'Untitled Prompt',
-        description: legacyPrompt.description || '',
-        category: legacyPrompt.category || 'General',
-        tags: legacyPrompt.tags || [],
-        version: legacyPrompt.version || '1.0.0',
-        template: legacyPrompt.template || '',
-        source: 'global',
-      };
-
-      await this.saveGlobalPrompt(prompt);
-    }
-
-    await this.context.globalState.update(GLOBAL_STATE_KEY, []);
-  }
-
-  /**
-   * Load prompts from workspace .prompts directory
-   */
-  private async loadWorkspacePrompts(): Promise<void> {
-    const workspaceFolders = getWorkspaceFolders();
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      return;
-    }
-
-    for (const workspaceFolder of workspaceFolders) {
-      const promptsDir = path.join(workspaceFolder.uri.fsPath, this.config.promptsDir, 'templates');
-      if (!fs.existsSync(promptsDir)) {
-        continue;
-      }
-
-      const files = this.findYamlFiles(promptsDir);
-
-      for (const file of files) {
-        try {
-          const prompt = await this.loadPromptFromFile(file, 'workspace');
-          if (prompt) {
-            this.prompts.set(prompt.id, prompt);
-          }
-        } catch (error) {
-          console.error(`Failed to load workspace prompt ${file}:`, error);
-        }
-      }
-    }
-  }
-
-  private async loadTeamPrompts(): Promise<void> {
     if (!this.sharedTeamPolicyCacheOnly) {
       await this.teamPolicyService.refresh();
     }
 
-    const packs = this.teamPolicyService.getInstalledPacks();
-    for (const pack of packs) {
-      for (const teamPrompt of pack.prompts) {
-        const sourceFilePath = teamPrompt.sourceFile
-          ? path.join(pack.sourcePath, 'prompts', teamPrompt.sourceFile)
-          : undefined;
-        this.prompts.set(teamPrompt.id, {
-          id: teamPrompt.id,
-          name: teamPrompt.name,
-          description: teamPrompt.description || '',
-          category: teamPrompt.category || 'Team Library',
-          tags: teamPrompt.tags || [],
-          version: teamPrompt.packVersion,
-          variables: teamPrompt.variables,
-          template: teamPrompt.template,
-          source: 'team-pack',
-          readOnly: teamPrompt.readOnly,
-          packId: teamPrompt.packId,
-          packVersion: teamPrompt.packVersion,
-          filePath: sourceFilePath,
-        });
-      }
-    }
-  }
-
-  /**
-   * Find all YAML files in a directory recursively
-   */
-  private findYamlFiles(dir: string): string[] {
-    const files: string[] = [];
-    
-    const traverse = (currentDir: string) => {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-      
-      for (const entry of entries) {
-        const fullPath = path.join(currentDir, entry.name);
-        
-        if (entry.isDirectory()) {
-          traverse(fullPath);
-        } else if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
-          files.push(fullPath);
-        }
-      }
+    const libraryService = new PromptLibraryService(this.createRepositories());
+    const snapshot = await libraryService.loadSnapshot();
+    const entries = this.applyUsageMetadata(snapshot.entries);
+    this.librarySnapshot = {
+      ...snapshot,
+      entries,
     };
-    
-    traverse(dir);
-    return files;
-  }
+    const entryPairs = entries.map((entry) => [entry.key, this.toPromptTemplate(entry.item)] as const);
+    this.promptByLibraryEntryKey = new Map(entryPairs);
+    this.prompts = this.createPromptMap(entryPairs.map(([, prompt]) => prompt));
 
-  /**
-   * Load a prompt from a YAML file
-   */
-  private async loadPromptFromFile(filePath: string, source: 'workspace' | 'global' | 'builtin'): Promise<PromptTemplate | null> {
-    try {
-      const content = await fs.promises.readFile(filePath, 'utf-8');
-      const parsed = yaml.load(content) as Partial<PromptTemplate>;
-      
-      if (!parsed.name || !parsed.template) {
-        console.warn(`Invalid prompt file ${filePath}: missing required fields`);
-        return null;
-      }
-      
-      const prompt: PromptTemplate = {
-        id: parsed.id || uuidv4(),
-        name: parsed.name,
-        description: parsed.description || '',
-        category: parsed.category || 'General',
-        tags: parsed.tags || [],
-        author: parsed.author,
-        version: parsed.version || '1.0.0',
-        parameters: parsed.parameters,
-        variables: parsed.variables,
-        template: parsed.template,
-        source,
-        filePath
-      };
-      
-      return prompt;
-    } catch (error) {
-      console.error(`Error loading prompt from ${filePath}:`, error);
-      return null;
+    for (const diagnostic of snapshot.diagnostics) {
+      console.warn(`[PromptManager] ${diagnostic.repositoryId}: ${diagnostic.message}`);
     }
   }
 
-  /**
-   * Get all prompts
-   */
+  private createRepositories(): PromptRepository[] {
+    const repositories: PromptRepository[] = [
+      new FilePromptRepository({
+        id: 'builtin',
+        label: 'Built-in',
+        rootDir: path.join(this.context.extensionPath, 'builtins', 'templates'),
+        source: { kind: 'builtin' },
+        readOnly: true,
+        strict: false,
+      }),
+      new FilePromptRepository({
+        id: 'personal',
+        label: 'Personal',
+        rootDir: this.getGlobalPromptsDir(),
+        source: { kind: 'personal' },
+        strict: false,
+      }),
+      ...getWorkspaceFolders().map((workspaceFolder, index) => new FilePromptRepository({
+        id: `workspace:${index}:${workspaceFolder.uri.fsPath}`,
+        label: workspaceFolder.name ?? path.basename(workspaceFolder.uri.fsPath),
+        rootDir: path.join(workspaceFolder.uri.fsPath, this.config.promptsDir, 'templates'),
+        source: { kind: 'workspace', workspaceFolder: workspaceFolder.uri.fsPath },
+        strict: false,
+      })),
+      this.createSharedPromptRepository(),
+    ];
+
+    return repositories;
+  }
+
+  private createSharedPromptRepository(): PromptRepository {
+    return {
+      id: 'shared',
+      label: 'Shared Libraries',
+      list: async () => this.teamPolicyService.getInstalledPacks().flatMap((pack) =>
+        pack.prompts.map((prompt) => this.toSharedPromptItem(prompt))
+      ),
+    };
+  }
+
+  private toSharedPromptItem(prompt: SharedPromptTemplate): PromptLibraryItem {
+    return {
+      prompt: {
+        id: prompt.id,
+        schemaVersion: PROMPT_SCHEMA_VERSION,
+        title: prompt.name,
+        description: prompt.description || '',
+        body: prompt.template,
+        tags: prompt.tags || [],
+        category: prompt.category || 'Shared Library',
+        variables: this.toPromptVariableDefinitions(prompt.variables),
+        metadata: {
+          version: prompt.packVersion,
+        },
+      },
+      source: {
+        kind: 'shared',
+        libraryId: prompt.packId,
+        libraryVersion: prompt.packVersion,
+      },
+      readOnly: true,
+      storage: {
+        kind: 'shared',
+        libraryId: prompt.packId,
+        sourceFile: prompt.sourceFile,
+      },
+    };
+  }
+
   getAllPrompts(): PromptTemplate[] {
     return Array.from(this.prompts.values());
   }
 
-  /**
-   * Get prompts grouped by category
-   */
+  getLibrarySnapshot(): PromptLibrarySnapshot | undefined {
+    return this.librarySnapshot;
+  }
+
+  getPromptByLibraryEntryKeyMap(): Map<string, PromptTemplate> {
+    return new Map(this.promptByLibraryEntryKey);
+  }
+
   getPromptsByCategory(): Map<string, PromptTemplate[]> {
     const grouped = new Map<string, PromptTemplate[]>();
-    
+
     for (const prompt of this.prompts.values()) {
       const category = prompt.category || 'General';
-      if (!grouped.has(category)) {
-        grouped.set(category, []);
-      }
-      grouped.get(category)!.push(prompt);
+      grouped.set(category, [...(grouped.get(category) ?? []), prompt]);
     }
-    
+
     return grouped;
   }
 
-  /**
-   * Get a single prompt by ID
-   */
   getPrompt(id: string): PromptTemplate | undefined {
     return this.prompts.get(id);
   }
 
-  /**
-   * Search prompts by name, description, or tags
-   */
   searchPrompts(query: string): PromptTemplate[] {
-    const lowerQuery = query.toLowerCase();
-    
-    return this.getAllPrompts().filter(prompt => 
-      prompt.name.toLowerCase().includes(lowerQuery) ||
-      prompt.description.toLowerCase().includes(lowerQuery) ||
-      prompt.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
-    );
+    const snapshot = this.librarySnapshot;
+    if (!snapshot) {
+      return [];
+    }
+
+    const libraryService = new PromptLibraryService([]);
+    return libraryService.search(snapshot, { query, includeBody: false })
+      .map((entry) => this.prompts.get(entry.item.prompt.id))
+      .filter((prompt): prompt is PromptTemplate => Boolean(prompt));
   }
 
-  /**
-   * Create a new prompt
-   */
+  async markPromptUsed(id: string, usedAt: Date = new Date()): Promise<boolean> {
+    const prompt = this.prompts.get(id);
+    if (!prompt) {
+      return false;
+    }
+
+    const usage = this.getUsageMetadata();
+    usage[id] = {
+      ...usage[id],
+      lastUsedAt: usedAt.toISOString(),
+    };
+    await this.context.globalState.update(PROMPT_USAGE_METADATA_KEY, usage);
+
+    prompt.lastUsedAt = usage[id].lastUsedAt;
+    this.prompts.set(id, prompt);
+    this.updateSnapshotUsage(id, usage[id]);
+    this.updateEntryPromptUsage(id, usage[id]);
+    this.onDidChangePrompts.fire();
+    return true;
+  }
+
+  async setPromptFavorite(id: string, favorite: boolean): Promise<boolean> {
+    const prompt = this.prompts.get(id);
+    if (!prompt) {
+      return false;
+    }
+
+    const usage = this.getUsageMetadata();
+    usage[id] = {
+      ...usage[id],
+      favorite,
+    };
+    await this.context.globalState.update(PROMPT_USAGE_METADATA_KEY, usage);
+
+    prompt.favorite = favorite;
+    this.prompts.set(id, prompt);
+    this.updateSnapshotUsage(id, usage[id]);
+    this.updateEntryPromptUsage(id, usage[id]);
+    this.onDidChangePrompts.fire();
+    return true;
+  }
+
   async createPrompt(prompt: Partial<PromptTemplate>, target: 'workspace' | 'global' = 'workspace'): Promise<PromptTemplate> {
     const newPrompt: PromptTemplate = {
       id: prompt.id || uuidv4(),
@@ -325,13 +245,12 @@ export class PromptManager {
       parameters: prompt.parameters,
       variables: prompt.variables,
       template: prompt.template || '',
-      source: target
+      source: target,
     };
 
-    // If target is workspace but no workspace is open, fall back to global
     const workspaceFolders = getWorkspaceFolders();
-    const hasWorkspace = workspaceFolders && workspaceFolders.length > 0;
-    
+    const hasWorkspace = workspaceFolders.length > 0;
+
     if (target === 'global' || !hasWorkspace) {
       newPrompt.source = 'global';
       await this.saveGlobalPrompt(newPrompt);
@@ -339,15 +258,10 @@ export class PromptManager {
       await this.saveWorkspacePrompt(newPrompt);
     }
 
-    this.prompts.set(newPrompt.id, newPrompt);
-    this.onDidChangePrompts.fire();
-    
-    return newPrompt;
+    await this.refresh();
+    return this.prompts.get(newPrompt.id) ?? newPrompt;
   }
 
-  /**
-   * Update an existing prompt
-   */
   async updatePrompt(id: string, updates: Partial<PromptTemplate>): Promise<PromptTemplate | null> {
     const existing = this.prompts.get(id);
     if (!existing) {
@@ -361,8 +275,9 @@ export class PromptManager {
     const updated: PromptTemplate = {
       ...existing,
       ...updates,
-      id: existing.id, // Preserve ID
-      source: existing.source
+      id: existing.id,
+      source: existing.source,
+      filePath: existing.filePath,
     };
 
     if (existing.source === 'global') {
@@ -371,15 +286,10 @@ export class PromptManager {
       await this.saveWorkspacePrompt(updated, existing.filePath);
     }
 
-    this.prompts.set(id, updated);
-    this.onDidChangePrompts.fire();
-    
-    return updated;
+    await this.refresh();
+    return this.prompts.get(id) ?? updated;
   }
 
-  /**
-   * Delete a prompt
-   */
   async deletePrompt(id: string): Promise<boolean> {
     const prompt = this.prompts.get(id);
     if (!prompt) {
@@ -390,145 +300,309 @@ export class PromptManager {
       return false;
     }
 
-    if (prompt.source === 'global') {
-      await this.deleteGlobalPrompt(id);
-    } else if (prompt.source === 'workspace' && prompt.filePath) {
-      await this.deleteWorkspacePrompt(prompt.filePath);
-    } else {
-      return false; // Cannot delete builtin prompts
+    if (!prompt.filePath || !fs.existsSync(prompt.filePath)) {
+      return false;
     }
 
-    this.prompts.delete(id);
-    this.onDidChangePrompts.fire();
-    
+    await fs.promises.unlink(prompt.filePath);
+    await this.refresh();
     return true;
   }
 
-  /**
-   * Save prompt to extension global storage
-   */
-  private async saveGlobalPrompt(prompt: PromptTemplate): Promise<void> {
-    const promptsDir = path.join(this.context.globalStorageUri.fsPath, GLOBAL_PROMPTS_DIR);
-    if (!fs.existsSync(promptsDir)) {
-      fs.mkdirSync(promptsDir, { recursive: true });
-    }
-
-    const filePath = prompt.filePath ?? path.join(promptsDir, `${this.sanitizeFilename(prompt.id)}.yaml`);
-    const fileDir = path.dirname(filePath);
-    if (!fs.existsSync(fileDir)) {
-      fs.mkdirSync(fileDir, { recursive: true });
-    }
-    const yamlContent = this.promptToYaml(prompt);
-
-    await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
-
-    prompt.filePath = filePath;
-  }
-
-  /**
-   * Delete prompt from extension global storage
-   */
-  private async deleteGlobalPrompt(id: string): Promise<void> {
-    const prompt = this.prompts.get(id);
-    if (!prompt?.filePath) {
-      return;
-    }
-
-    if (fs.existsSync(prompt.filePath)) {
-      await fs.promises.unlink(prompt.filePath);
-    }
-  }
-
-  /**
-   * Save prompt to workspace
-   */
-  private async saveWorkspacePrompt(prompt: PromptTemplate, previousFilePath?: string): Promise<void> {
-    const workspaceFolders = getWorkspaceFolders();
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      throw new Error('No workspace folder open');
-    }
-
-    let filePath: string;
-    if (previousFilePath) {
-      filePath = previousFilePath;
-      const existingDir = path.dirname(previousFilePath);
-      if (!fs.existsSync(existingDir)) {
-        fs.mkdirSync(existingDir, { recursive: true });
-      }
-    } else {
-      const targetRoot =
-        getWorkspaceFolderForUri()?.uri.fsPath
-        ?? workspaceFolders[0].uri.fsPath;
-      const promptsDir = path.join(targetRoot, this.config.promptsDir, 'templates');
-      if (!fs.existsSync(promptsDir)) {
-        fs.mkdirSync(promptsDir, { recursive: true });
-      }
-      filePath = path.join(promptsDir, `${this.sanitizeFilename(prompt.id)}.yaml`);
-    }
-
-    const yamlContent = this.promptToYaml(prompt);
-    
-    await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
-
-    prompt.filePath = filePath;
-  }
-
-  /**
-   * Delete workspace prompt file
-   */
-  private async deleteWorkspacePrompt(filePath: string): Promise<void> {
-    if (fs.existsSync(filePath)) {
-      await fs.promises.unlink(filePath);
-    }
-  }
-
-  /**
-   * Convert prompt to YAML string
-   */
-  private promptToYaml(prompt: PromptTemplate): string {
-    const obj: Partial<PromptTemplate> = {
-      id: prompt.id,
-      name: prompt.name,
-      description: prompt.description,
-      category: prompt.category,
-      tags: prompt.tags,
-      author: prompt.author,
-      version: prompt.version,
-      parameters: prompt.parameters,
-      variables: prompt.variables,
-      template: prompt.template
-    };
-    
-    return yaml.dump(obj, { 
-      indent: 2, 
-      lineWidth: -1,
-      quotingType: '"',
-      forceQuotes: false
-    });
-  }
-
-  /**
-   * Sanitize filename
-   */
-  private sanitizeFilename(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-  }
-
-  /**
-   * Refresh prompts from all sources
-   */
   async refresh(): Promise<void> {
     await this.loadAllPrompts();
     this.onDidChangePrompts.fire();
   }
 
-  /**
-   * Dispose resources
-   */
   dispose(): void {
     this.onDidChangePrompts.dispose();
+  }
+
+  private async migrateLegacyGlobalPrompts(): Promise<void> {
+    const legacyPrompts = this.context.globalState.get<PromptTemplate[]>(GLOBAL_STATE_KEY, []);
+    if (!Array.isArray(legacyPrompts) || legacyPrompts.length === 0) {
+      return;
+    }
+
+    for (const legacyPrompt of legacyPrompts) {
+      await this.saveGlobalPrompt({
+        ...legacyPrompt,
+        id: legacyPrompt.id || uuidv4(),
+        name: legacyPrompt.name || 'Untitled Prompt',
+        description: legacyPrompt.description || '',
+        category: legacyPrompt.category || 'General',
+        tags: legacyPrompt.tags || [],
+        version: legacyPrompt.version || '1.0.0',
+        template: legacyPrompt.template || '',
+        source: 'global',
+      });
+    }
+
+    await this.context.globalState.update(GLOBAL_STATE_KEY, []);
+  }
+
+  private async saveGlobalPrompt(prompt: PromptTemplate): Promise<void> {
+    const promptsDir = this.getGlobalPromptsDir();
+    await fs.promises.mkdir(promptsDir, { recursive: true });
+
+    const filePath = prompt.filePath ?? path.join(promptsDir, `${this.sanitizeFilename(prompt.id)}.yaml`);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, encodePromptYaml(this.toPromptDefinition(prompt)), 'utf8');
+    prompt.filePath = filePath;
+  }
+
+  private async saveWorkspacePrompt(prompt: PromptTemplate, previousFilePath?: string): Promise<void> {
+    const workspaceFolders = getWorkspaceFolders();
+    if (workspaceFolders.length === 0) {
+      throw new Error('No workspace folder open');
+    }
+
+    const filePath = previousFilePath ?? this.getNewWorkspacePromptPath(prompt);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, encodePromptYaml(this.toPromptDefinition(prompt)), 'utf8');
+    prompt.filePath = filePath;
+  }
+
+  private getNewWorkspacePromptPath(prompt: PromptTemplate): string {
+    const workspaceFolders = getWorkspaceFolders();
+    const targetRoot =
+      getWorkspaceFolderForUri()?.uri.fsPath
+      ?? workspaceFolders[0]?.uri.fsPath;
+
+    if (!targetRoot) {
+      throw new Error('No workspace folder open');
+    }
+
+    return path.join(targetRoot, this.config.promptsDir, 'templates', `${this.sanitizeFilename(prompt.id)}.yaml`);
+  }
+
+  private getGlobalPromptsDir(): string {
+    return path.join(this.context.globalStorageUri.fsPath, GLOBAL_PROMPTS_DIR);
+  }
+
+  private createPromptMap(prompts: PromptTemplate[]): Map<string, PromptTemplate> {
+    const sorted = [...prompts].sort((left, right) =>
+      this.sourcePrecedence(left.source) - this.sourcePrecedence(right.source)
+    );
+    return new Map(sorted.map((prompt) => [prompt.id, prompt]));
+  }
+
+  private applyUsageMetadata(entries: PromptLibraryEntry[]): PromptLibraryEntry[] {
+    const usage = this.getUsageMetadata();
+    return entries.map((entry) => {
+      const promptUsage = usage[entry.item.prompt.id];
+      if (!promptUsage) {
+        return entry;
+      }
+
+      return {
+        ...entry,
+        item: {
+          ...entry.item,
+          prompt: {
+            ...entry.item.prompt,
+            metadata: {
+              ...entry.item.prompt.metadata,
+              ...promptUsage,
+            },
+          },
+        },
+      };
+    });
+  }
+
+  private updateSnapshotUsage(id: string, usage: PromptUsageMetadata): void {
+    if (!this.librarySnapshot) {
+      return;
+    }
+
+    const entries = this.librarySnapshot.entries.map((entry) => {
+      if (entry.item.prompt.id !== id) {
+        return entry;
+      }
+
+      return {
+        ...entry,
+        item: {
+          ...entry.item,
+          prompt: {
+            ...entry.item.prompt,
+            metadata: {
+              ...entry.item.prompt.metadata,
+              ...usage,
+            },
+          },
+        },
+      };
+    });
+
+    this.librarySnapshot = {
+      ...this.librarySnapshot,
+      entries,
+    };
+  }
+
+  private updateEntryPromptUsage(id: string, usage: PromptUsageMetadata): void {
+    this.promptByLibraryEntryKey = new Map(
+      Array.from(this.promptByLibraryEntryKey.entries()).map(([key, prompt]) => [
+        key,
+        prompt.id === id
+          ? {
+              ...prompt,
+              favorite: usage.favorite ?? prompt.favorite,
+              lastUsedAt: usage.lastUsedAt ?? prompt.lastUsedAt,
+            }
+          : prompt,
+      ])
+    );
+  }
+
+  private sourcePrecedence(source: PromptTemplate['source']): number {
+    switch (source) {
+      case 'builtin':
+        return 0;
+      case 'team-pack':
+        return 1;
+      case 'global':
+        return 2;
+      case 'workspace':
+        return 3;
+      default:
+        return 0;
+    }
+  }
+
+  private toPromptTemplate(item: PromptLibraryItem): PromptTemplate {
+    const prompt = item.prompt;
+    const source = this.toLegacySource(item.source);
+    const usage = this.getUsageMetadata()[prompt.id];
+    const template: PromptTemplate = {
+      id: prompt.id,
+      name: prompt.title,
+      description: prompt.description,
+      category: prompt.category || 'General',
+      tags: prompt.tags,
+      author: prompt.metadata.author,
+      version: prompt.metadata.version || '1.0.0',
+      variables: this.toPromptVariables(prompt.variables),
+      template: prompt.body,
+      source,
+      readOnly: item.readOnly,
+      favorite: usage?.favorite ?? prompt.metadata.favorite,
+      lastUsedAt: usage?.lastUsedAt ?? prompt.metadata.lastUsedAt,
+      filePath: item.storage?.kind === 'file' || item.storage?.kind === 'builtin'
+        ? item.storage.path
+        : this.resolveSharedPromptFilePath(item),
+    };
+
+    if (item.source.kind === 'shared') {
+      template.packId = item.source.libraryId;
+      template.packVersion = item.source.libraryVersion;
+    }
+
+    return template;
+  }
+
+  private resolveSharedPromptFilePath(item: PromptLibraryItem): string | undefined {
+    if (item.source.kind !== 'shared' || item.storage?.kind !== 'shared' || !item.storage.sourceFile) {
+      return undefined;
+    }
+
+    const pack = this.teamPolicyService.getPackById(item.source.libraryId);
+    return pack ? path.join(pack.sourcePath, 'prompts', item.storage.sourceFile) : undefined;
+  }
+
+  private toLegacySource(source: PromptSource): PromptTemplate['source'] {
+    switch (source.kind) {
+      case 'personal':
+        return 'global';
+      case 'workspace':
+        return 'workspace';
+      case 'shared':
+        return 'team-pack';
+      case 'builtin':
+      default:
+        return 'builtin';
+    }
+  }
+
+  private toPromptDefinition(prompt: PromptTemplate): PromptDefinition {
+    const metadata: PromptMetadata = {
+      author: prompt.author,
+      version: prompt.version || '1.0.0',
+      favorite: prompt.favorite,
+      lastUsedAt: prompt.lastUsedAt,
+    };
+
+    return {
+      id: prompt.id || uuidv4(),
+      schemaVersion: PROMPT_SCHEMA_VERSION,
+      title: prompt.name || 'Untitled Prompt',
+      description: prompt.description || '',
+      body: prompt.template || '',
+      tags: prompt.tags || [],
+      category: prompt.category || 'General',
+      variables: this.toPromptVariableDefinitions(prompt.variables),
+      metadata,
+    };
+  }
+
+  private toPromptVariables(variables: PromptVariableDefinition[]): PromptVariable[] | undefined {
+    if (variables.length === 0) {
+      return undefined;
+    }
+
+    return variables.map((variable) => ({
+      name: variable.name,
+      description: variable.description,
+      type: variable.type,
+      required: variable.required,
+      values: variable.enumValues,
+      default: variable.defaultValue,
+      placeholder: variable.placeholder,
+      multiline: variable.multiline,
+    }));
+  }
+
+  private toPromptVariableDefinitions(variables: PromptVariable[] | undefined): PromptVariableDefinition[] {
+    if (!variables || variables.length === 0) {
+      return [];
+    }
+
+    return variables.map((variable) => ({
+      name: variable.name,
+      description: variable.description || variable.name,
+      type: variable.type,
+      required: variable.required ?? false,
+      enumValues: variable.type === 'enum' ? variable.values : undefined,
+      defaultValue: variable.default,
+      placeholder: variable.placeholder,
+      multiline: variable.multiline,
+      source: this.isEditorContextVariable(variable.name) ? 'editor-context' : 'manual',
+    }));
+  }
+
+  private isEditorContextVariable(name: string): boolean {
+    return [
+      'selection',
+      'filepath',
+      'file_content',
+      'lang',
+      'project_name',
+      'git_commit_diff',
+      'line_number',
+      'column_number',
+    ].includes(name);
+  }
+
+  private sanitizeFilename(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'prompt';
+  }
+
+  private getUsageMetadata(): PromptUsageMetadataMap {
+    return this.context.globalState.get<PromptUsageMetadataMap>(PROMPT_USAGE_METADATA_KEY, {});
   }
 }

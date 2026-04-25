@@ -55,6 +55,13 @@ function log(message: string): void {
   outputChannel?.appendLine(message);
 }
 
+function refreshPromptTree(): void {
+  treeProvider.setLibrary(
+    promptManager.getLibrarySnapshot(),
+    promptManager.getPromptByLibraryEntryKeyMap()
+  );
+}
+
 function logManifestDiagnostics(): void {
   const extension = vscode.extensions.getExtension('aknirex.prompt-by-prompt');
   const manifest = extension?.packageJSON as
@@ -153,6 +160,13 @@ async function openPromptEditor(
   );
 }
 
+async function runPromptAndRemember(prompt: PromptTemplate, options?: { forcePicker?: boolean }): Promise<void> {
+  const didRun = await executionService.runPrompt(prompt, options);
+  if (didRun) {
+    await promptManager.markPromptUsed(prompt.id);
+  }
+}
+
 async function openRuleEditor(
   existingRule: RuleFile | undefined,
   onSave: (result: { fileName: string; content: string }) => Promise<void>,
@@ -171,7 +185,7 @@ async function openRuleEditor(
 async function refreshTeamPolicies(options?: { silent?: boolean }): Promise<void> {
   await teamPolicyService.refresh();
   await Promise.all([promptManager.refresh(), ruleManager.scanRuleFiles()]);
-  treeProvider.setPrompts(promptManager.getAllPrompts());
+  refreshPromptTree();
   rulesTreeProvider.refresh();
   teamPoliciesTreeProvider.refresh();
   updateTeamPolicyStatusBar();
@@ -473,13 +487,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   teamPolicyStatusBarItem.name = 'Prompt by Prompt Team Policies';
   teamPolicyStatusBarItem.show();
 
-  treeProvider.setPrompts(promptManager.getAllPrompts());
+  refreshPromptTree();
   rulesTreeProvider.refresh();
   teamPoliciesTreeProvider.refresh();
   updateTeamPolicyStatusBar();
 
   promptManager.onDidChange(() => {
-    treeProvider.setPrompts(promptManager.getAllPrompts());
+    refreshPromptTree();
   });
 
   context.subscriptions.push(
@@ -582,15 +596,49 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('pbp.runPrompt', async (value?: unknown) => {
       const prompt = await pickPromptIfNeeded(value);
       if (prompt) {
-        await executionService.runPrompt(prompt);
+        await runPromptAndRemember(prompt);
       }
     }),
 
     vscode.commands.registerCommand('pbp.runPromptWithPicker', async (value?: unknown) => {
       const prompt = await pickPromptIfNeeded(value);
       if (prompt) {
-        await executionService.runPrompt(prompt, { forcePicker: true });
+        await runPromptAndRemember(prompt, { forcePicker: true });
       }
+    }),
+
+    vscode.commands.registerCommand('pbp.searchPrompts', async () => {
+      const prompts = promptManager.getAllPrompts();
+      const selected = await vscode.window.showQuickPick(prompts.map((prompt) => ({
+        label: prompt.favorite ? `$(star-full) ${prompt.name}` : prompt.name,
+        description: prompt.category,
+        detail: `${prompt.source || 'prompt'}${prompt.description ? ` - ${prompt.description}` : ''}`,
+        prompt,
+      })), {
+        title: t('Prompt by Prompt'),
+        placeHolder: t('Search prompts'),
+        matchOnDescription: true,
+        matchOnDetail: true,
+      });
+
+      if (selected?.prompt) {
+        await runPromptAndRemember(selected.prompt);
+      }
+    }),
+
+    vscode.commands.registerCommand('pbp.toggleFavoritePrompt', async (value?: unknown) => {
+      const prompt = await pickPromptIfNeeded(value);
+      if (!prompt) {
+        return;
+      }
+
+      const favorite = prompt.favorite !== true;
+      await promptManager.setPromptFavorite(prompt.id, favorite);
+      vscode.window.showInformationMessage(
+        favorite
+          ? t('Prompt "{0}" added to favorites', prompt.name)
+          : t('Prompt "{0}" removed from favorites', prompt.name)
+      );
     }),
 
     vscode.commands.registerCommand('pbp.previewPrompt', async (value?: unknown) => {
@@ -623,7 +671,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('pbp.rerunLastTarget', async (value?: unknown) => {
       const prompt = await pickPromptIfNeeded(value);
       if (prompt) {
-        await executionService.rerunLastTarget(prompt);
+        const didRun = await executionService.rerunLastTarget(prompt);
+        if (didRun) {
+          await promptManager.markPromptUsed(prompt.id);
+        }
       }
     }),
 

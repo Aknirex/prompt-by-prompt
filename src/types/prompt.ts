@@ -54,6 +54,8 @@ export interface PromptTemplate {
   readOnly?: boolean;
   packId?: string;
   packVersion?: string;
+  favorite?: boolean;
+  lastUsedAt?: string;
 }
 
 // ============================================================================
