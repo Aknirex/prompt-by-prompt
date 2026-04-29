@@ -2,7 +2,7 @@
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
   "description": "A focused prompt manager for VS Code: save, search, preview, and reuse prompts as files.",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "publisher": "aknirex",
   "repository": {
     "type": "git",
