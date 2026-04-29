@@ -8,6 +8,9 @@ scripts/
 tsconfig.json
 eslint.config.mjs
 vitest.config.ts
+pnpm-lock.yaml
+update_pkg.cjs
+package.nls*.json
 *.test.ts
 .debug.log/
 *.vsix

@@ -1,61 +1,84 @@
 export const PROMPT_SCHEMA_VERSION = 1;
 
-export type PromptSchemaVersion = typeof PROMPT_SCHEMA_VERSION;
+export type PromptSource = 'workspace' | 'user' | 'builtin';
 export type PromptVariableType = 'string' | 'number' | 'boolean' | 'enum';
-export type PromptVariableSource = 'manual' | 'editor-context' | 'system';
 
-export interface PromptVariableDefinition {
+export interface PromptVariable {
   name: string;
-  type: PromptVariableType;
   description: string;
+  type: PromptVariableType;
   required: boolean;
   defaultValue?: string | number | boolean;
-  enumValues?: string[];
-  placeholder?: string;
+  values?: string[];
   multiline?: boolean;
-  source: PromptVariableSource;
-}
-
-export interface PromptMetadata {
-  author?: string;
-  version?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  lastUsedAt?: string;
-  favorite?: boolean;
 }
 
 export interface PromptDefinition {
+  schemaVersion: number;
   id: string;
-  schemaVersion: PromptSchemaVersion;
   title: string;
   description: string;
-  body: string;
+  category: string;
   tags: string[];
-  category?: string;
-  variables: PromptVariableDefinition[];
-  metadata: PromptMetadata;
+  body: string;
+  variables: PromptVariable[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export type PromptSource =
-  | { kind: 'personal' }
-  | { kind: 'workspace'; workspaceFolder: string }
-  | { kind: 'builtin' }
-  | { kind: 'shared'; libraryId: string; libraryVersion: string };
-
-export type PromptStorageRef =
-  | { kind: 'file'; path: string; workspaceFolder?: string }
-  | { kind: 'builtin'; path?: string }
-  | { kind: 'shared'; libraryId: string; sourceFile?: string };
-
-export interface PromptLibraryItem {
+export interface PromptEntry {
   prompt: PromptDefinition;
   source: PromptSource;
+  filePath?: string;
   readOnly: boolean;
-  storage?: PromptStorageRef;
+  favorite: boolean;
+  lastUsedAt?: string;
 }
 
-export type PromptSaveTarget =
-  | { kind: 'personal' }
-  | { kind: 'workspace'; workspaceFolder: string };
+export interface PromptMetadata {
+  favorite?: boolean;
+  lastUsedAt?: string;
+}
+
+export type PromptMetadataMap = Record<string, PromptMetadata>;
+
+export interface PromptLibrarySummary {
+  total: number;
+  workspace: number;
+  user: number;
+  builtin: number;
+  favorites: number;
+}
+
+export function createEmptyPrompt(id: string, title: string, now = new Date()): PromptDefinition {
+  const timestamp = now.toISOString();
+  return {
+    schemaVersion: PROMPT_SCHEMA_VERSION,
+    id,
+    title,
+    description: '',
+    category: 'General',
+    tags: [],
+    body: [
+      `# ${title}`,
+      '',
+      'Use editor context variables like {{selection}}, {{filepath}}, {{lang}}, and {{file_content}}.',
+      '',
+      'Write the prompt body here.',
+    ].join('\n'),
+    variables: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export function summarizeLibrary(entries: PromptEntry[]): PromptLibrarySummary {
+  return {
+    total: entries.length,
+    workspace: entries.filter((entry) => entry.source === 'workspace').length,
+    user: entries.filter((entry) => entry.source === 'user').length,
+    builtin: entries.filter((entry) => entry.source === 'builtin').length,
+    favorites: entries.filter((entry) => entry.favorite).length,
+  };
+}
 

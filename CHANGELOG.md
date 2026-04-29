@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.0] - 2026-04-29
+
+### Changed
+
+- Rebuilt the extension as a focused prompt manager.
+- Removed rule management, team policy sync, AI prompt generation, and multi-agent dispatch from the core product.
+- Added a simpler file-based prompt library with search, favorites, preview, duplication, and clipboard rendering.
+- Preserved the extension identity and package/release scripts.
+
 # [1.13.0](https://github.com/Aknirex/prompt-by-prompt/compare/v1.12.0...v1.13.0) (2026-03-24)
 
 ### Features

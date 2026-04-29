@@ -1,7 +1,7 @@
 {
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
-  "description": "VS Code extension: treat prompts as first-class code (Prompt as Code)",
+  "description": "A focused prompt manager for VS Code: save, search, preview, and reuse prompts as files.",
   "version": "3.0.0",
   "publisher": "aknirex",
   "repository": {
@@ -21,34 +21,42 @@
     "pnpm": "10.33.0"
   },
   "categories": [
-    "Programming Languages",
     "Snippets",
     "Machine Learning",
     "Other"
   ],
   "keywords": [
     "prompt",
+    "prompt-manager",
+    "prompt-engineering",
     "ai",
-    "llm",
-    "ollama",
-    "openai",
-    "claude",
-    "prompt-engineering"
+    "llm"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onView:pbp.promptsView",
+    "onCommand:pbp.refreshPrompts",
+    "onCommand:pbp.createPrompt",
+    "onCommand:pbp.searchPrompts",
+    "onCommand:pbp.copyPrompt",
+    "onCommand:pbp.previewPrompt",
+    "onCommand:pbp.editPrompt",
+    "onCommand:pbp.duplicatePrompt",
+    "onCommand:pbp.deletePrompt",
+    "onCommand:pbp.toggleFavoritePrompt",
+    "onCommand:pbp.openPromptFile",
+    "onCommand:pbp.openPromptLibrary"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "pbp.refreshPrompts",
-        "title": "%command.pbp.refreshPrompts%",
+        "title": "Refresh Prompts",
         "icon": "$(refresh)"
       },
       {
         "command": "pbp.createPrompt",
-        "title": "%command.pbp.createPrompt%",
+        "title": "New Prompt",
         "icon": "$(add)"
       },
       {
@@ -57,118 +65,51 @@
         "icon": "$(search)"
       },
       {
-        "command": "pbp.toggleFavoritePrompt",
-        "title": "Toggle Favorite Prompt"
-      },
-      {
-        "command": "pbp.editPrompt",
-        "title": "%command.pbp.editPrompt%"
-      },
-      {
-        "command": "pbp.deletePrompt",
-        "title": "%command.pbp.deletePrompt%"
-      },
-      {
-        "command": "pbp.runPrompt",
-        "title": "%command.pbp.runPrompt%",
-        "icon": "$(play)"
-      },
-      {
-        "command": "pbp.runPromptWithPicker",
-        "title": "Run Prompt (Choose Target/Behavior)"
+        "command": "pbp.copyPrompt",
+        "title": "Copy Rendered Prompt",
+        "icon": "$(clippy)"
       },
       {
         "command": "pbp.previewPrompt",
-        "title": "Preview Prompt"
+        "title": "Preview Rendered Prompt",
+        "icon": "$(preview)"
       },
       {
-        "command": "pbp.selectExecutionTarget",
-        "title": "Select Execution Target"
+        "command": "pbp.editPrompt",
+        "title": "Edit Prompt",
+        "icon": "$(edit)"
       },
       {
-        "command": "pbp.rerunLastTarget",
-        "title": "Rerun Prompt"
+        "command": "pbp.duplicatePrompt",
+        "title": "Duplicate Prompt",
+        "icon": "$(copy)"
       },
       {
-        "command": "pbp.showDiagnostics",
-        "title": "Show Diagnostics"
+        "command": "pbp.deletePrompt",
+        "title": "Delete Prompt",
+        "icon": "$(trash)"
       },
       {
-        "command": "pbp.openSettings",
-        "title": "%command.pbp.openSettings%",
-        "icon": "$(gear)"
+        "command": "pbp.toggleFavoritePrompt",
+        "title": "Toggle Favorite",
+        "icon": "$(star-full)"
       },
       {
-        "command": "pbp.refreshRules",
-        "title": "%command.pbp.refreshRules%",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "pbp.deleteRule",
-        "title": "%command.pbp.deleteRule%"
-      },
-      {
-        "command": "pbp.editRule",
-        "title": "%command.pbp.editRule%"
-      },
-      {
-        "command": "pbp.setActiveGlobalRule",
-        "title": "%command.pbp.setActiveGlobalRule%"
-      },
-      {
-        "command": "pbp.createWorkspaceRule",
-        "title": "New Rule",
-        "icon": "$(add)"
-      },
-      {
-        "command": "pbp.createGlobalRule",
-        "title": "%command.pbp.createGlobalRule%",
-        "icon": "$(add)"
-      },
-      {
-        "command": "pbp.syncTeamPolicies",
-        "title": "Sync Shared Libraries",
-        "icon": "$(sync)"
-      },
-      {
-        "command": "pbp.connectTeamPolicySource",
-        "title": "Connect Shared Source",
-        "icon": "$(plug)"
-      },
-      {
-        "command": "pbp.retryTeamPolicySourceSync",
-        "title": "Retry Shared Source Sync",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "pbp.reconnectTeamPolicySource",
-        "title": "Reconnect Shared Source",
-        "icon": "$(debug-restart)"
-      },
-      {
-        "command": "pbp.copySharedLibraryRuleToWorkspace",
-        "title": "Copy Shared Rule to Workspace"
-      },
-      {
-        "command": "pbp.copySharedLibraryPromptToWorkspace",
-        "title": "Copy Shared Prompt to Workspace"
-      },
-      {
-        "command": "pbp.rebuildProjectedRuleFile",
-        "title": "Rebuild Project Rule File",
-        "icon": "$(file-code)"
-      },
-      {
-        "command": "pbp.openProjectedRuleFile",
-        "title": "Open Projected Rule File",
+        "command": "pbp.openPromptFile",
+        "title": "Open Prompt File",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "pbp.openPromptLibrary",
+        "title": "Open Prompt Library",
+        "icon": "$(folder-opened)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "pbp-explorer",
-          "title": "%viewContainer.pbp-explorer%",
+          "title": "Prompt by Prompt",
           "icon": "media/icon.svg"
         }
       ]
@@ -177,17 +118,7 @@
       "pbp-explorer": [
         {
           "id": "pbp.promptsView",
-          "name": "%view.pbp.promptsView%",
-          "icon": "media/icon.svg"
-        },
-        {
-          "id": "pbp.rulesView",
-          "name": "%view.pbp.rulesView%",
-          "icon": "media/icon.svg"
-        },
-        {
-          "id": "pbp.teamPoliciesView",
-          "name": "Shared Libraries",
+          "name": "Prompts",
           "icon": "media/icon.svg"
         }
       ]
@@ -205,416 +136,87 @@
           "group": "navigation@2"
         },
         {
-          "command": "pbp.openSettings",
-          "when": "view == pbp.promptsView",
-          "group": "navigation@3"
-        },
-        {
           "command": "pbp.searchPrompts",
           "when": "view == pbp.promptsView",
-          "group": "navigation@4"
-        },
-        {
-          "command": "pbp.connectTeamPolicySource",
-          "when": "view == pbp.teamPoliciesView",
-          "group": "navigation@1"
-        },
-        {
-          "command": "pbp.refreshRules",
-          "when": "view == pbp.rulesView",
-          "group": "navigation@2"
-        },
-        {
-          "command": "pbp.createWorkspaceRule",
-          "when": "view == pbp.rulesView",
-          "group": "navigation@1"
-        },
-        {
-          "command": "pbp.syncTeamPolicies",
-          "when": "view == pbp.teamPoliciesView",
-          "group": "navigation@2"
-        },
-        {
-          "command": "pbp.openSettings",
-          "when": "view == pbp.teamPoliciesView",
           "group": "navigation@3"
         },
         {
-          "command": "pbp.rebuildProjectedRuleFile",
-          "when": "view == pbp.teamPoliciesView",
+          "command": "pbp.openPromptLibrary",
+          "when": "view == pbp.promptsView",
           "group": "navigation@4"
-        },
-        {
-          "command": "pbp.openProjectedRuleFile",
-          "when": "view == pbp.teamPoliciesView",
-          "group": "navigation@5"
         }
       ],
       "view/item/context": [
         {
-          "command": "pbp.runPrompt",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "inline"
-        },
-        {
-          "command": "pbp.runPromptWithPicker",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "2_execution"
+          "command": "pbp.copyPrompt",
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
+          "group": "inline@1"
         },
         {
           "command": "pbp.previewPrompt",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "2_execution"
-        },
-        {
-          "command": "pbp.selectExecutionTarget",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "2_execution"
-        },
-        {
-          "command": "pbp.editPrompt",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "1_modification"
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
+          "group": "1_run@1"
         },
         {
           "command": "pbp.toggleFavoritePrompt",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "1_modification"
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
+          "group": "1_run@2"
+        },
+        {
+          "command": "pbp.editPrompt",
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user)",
+          "group": "2_manage@1"
+        },
+        {
+          "command": "pbp.duplicatePrompt",
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
+          "group": "2_manage@2"
+        },
+        {
+          "command": "pbp.openPromptFile",
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
+          "group": "2_manage@3"
         },
         {
           "command": "pbp.deletePrompt",
-          "when": "view == pbp.promptsView && viewItem == prompt",
-          "group": "1_modification"
-        },
-        {
-          "command": "pbp.createWorkspaceRule",
-          "when": "view == pbp.rulesView && viewItem == projectRuleGroup",
-          "group": "inline"
-        },
-        {
-          "command": "pbp.createGlobalRule",
-          "when": "view == pbp.rulesView && viewItem == personalRuleGroup",
-          "group": "inline"
-        },
-        {
-          "command": "pbp.setActiveGlobalRule",
-          "when": "view == pbp.rulesView && viewItem == globalRuleItem"
-        },
-        {
-          "command": "pbp.editRule",
-          "when": "view == pbp.rulesView && (viewItem == workspaceRuleItem || viewItem == globalRuleItem)",
-          "group": "1_modification"
-        },
-        {
-          "command": "pbp.deleteRule",
-          "when": "view == pbp.rulesView && viewItem =~ /RuleItem/",
-          "group": "1_modification"
-        },
-        {
-          "command": "pbp.retryTeamPolicySourceSync",
-          "when": "view == pbp.teamPoliciesView && viewItem == teamPolicySourceItem",
-          "group": "inline"
-        },
-        {
-          "command": "pbp.reconnectTeamPolicySource",
-          "when": "view == pbp.teamPoliciesView && viewItem == teamPolicySourceItem",
-          "group": "2_sync"
-        },
-        {
-          "command": "pbp.copySharedLibraryRuleToWorkspace",
-          "when": "view == pbp.teamPoliciesView && viewItem == sharedLibraryRuleItem",
-          "group": "1_copy"
-        },
-        {
-          "command": "pbp.copySharedLibraryPromptToWorkspace",
-          "when": "view == pbp.teamPoliciesView && viewItem == sharedLibraryPromptItem",
-          "group": "1_copy"
+          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user)",
+          "group": "2_manage@4"
         }
       ],
       "editor/context": [
         {
-          "command": "pbp.runPrompt",
+          "command": "pbp.searchPrompts",
+          "when": "editorTextFocus",
           "group": "pbp"
         }
       ]
     },
     "configuration": {
-      "title": "%config.title%",
+      "title": "Prompt by Prompt",
       "properties": {
-        "pbp.defaultModel": {
-          "type": "string",
-          "default": "ollama",
-          "enum": [
-            "anthropic",
-            "azure",
-            "deepseek",
-            "google",
-            "groq",
-            "mistral",
-            "ollama",
-            "openai",
-            "openrouter",
-            "xai"
-          ],
-          "description": "%config.pbp.defaultModel.description%"
-        },
-        "pbp.ollamaEndpoint": {
-          "type": "string",
-          "default": "http://localhost:11434",
-          "description": "%config.pbp.ollamaEndpoint.description%"
-        },
-        "pbp.ollamaModel": {
-          "type": "string",
-          "default": "llama3.2",
-          "description": "%config.pbp.ollamaModel.description%"
-        },
-        "pbp.openaiApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.openaiApiKey.description%"
-        },
-        "pbp.openaiModel": {
-          "type": "string",
-          "default": "gpt-4o-mini",
-          "description": "%config.pbp.openaiModel.description%"
-        },
-        "pbp.claudeApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.claudeApiKey.description%"
-        },
-        "pbp.claudeModel": {
-          "type": "string",
-          "default": "claude-3-5-sonnet-20241022",
-          "description": "%config.pbp.claudeModel.description%"
-        },
-        "pbp.groqApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.groqApiKey.description%"
-        },
-        "pbp.groqModel": {
-          "type": "string",
-          "default": "llama-3.3-70b-versatile",
-          "description": "%config.pbp.groqModel.description%"
-        },
-        "pbp.geminiApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.geminiApiKey.description%"
-        },
-        "pbp.geminiModel": {
-          "type": "string",
-          "default": "gemini-2.0-flash",
-          "description": "%config.pbp.geminiModel.description%"
-        },
-        "pbp.openrouterApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.openrouterApiKey.description%"
-        },
-        "pbp.openrouterModel": {
-          "type": "string",
-          "default": "anthropic/claude-3.5-sonnet",
-          "description": "%config.pbp.openrouterModel.description%"
-        },
-        "pbp.deepseekApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.deepseekApiKey.description%"
-        },
-        "pbp.deepseekModel": {
-          "type": "string",
-          "default": "deepseek-chat",
-          "description": "%config.pbp.deepseekModel.description%"
-        },
-        "pbp.mistralApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.mistralApiKey.description%"
-        },
-        "pbp.mistralModel": {
-          "type": "string",
-          "default": "mistral-large-latest",
-          "description": "%config.pbp.mistralModel.description%"
-        },
-        "pbp.xaiApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.xaiApiKey.description%"
-        },
-        "pbp.xaiModel": {
-          "type": "string",
-          "default": "grok-beta",
-          "description": "%config.pbp.xaiModel.description%"
-        },
-        "pbp.azureApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.azureApiKey.description%"
-        },
-        "pbp.azureEndpoint": {
-          "type": "string",
-          "default": "",
-          "description": "%config.pbp.azureEndpoint.description%"
-        },
-        "pbp.azureModel": {
-          "type": "string",
-          "default": "gpt-4o",
-          "description": "%config.pbp.azureModel.description%"
-        },
-        "pbp.promptsDir": {
+        "pbp.libraryPath": {
           "type": "string",
           "default": ".prompts",
-          "description": "%config.pbp.promptsDir.description%"
+          "description": "Workspace folder that stores prompt YAML files."
         },
-        "pbp.defaultAgent": {
-          "type": "string",
-          "enum": [
-            "cline",
-            "roo-code",
-            "copilot",
-            "continue",
-            "gemini",
-            "tongyi",
-            "cursor",
-            "kilo-code",
-            "codex",
-            "clipboard",
-            "file"
-          ],
-          "default": "clipboard",
-          "description": "%config.pbp.defaultAgent.description%"
-        },
-        "pbp.outputDirectory": {
-          "type": "string",
-          "default": ".prompts/",
-          "description": "%config.pbp.outputDirectory.description%"
-        },
-        "pbp.sendBehavior": {
-          "type": "string",
-          "enum": [
-            "send",
-            "append",
-            "overwrite"
-          ],
-          "default": "send",
-          "description": "%config.pbp.sendBehavior.description%"
-        },
-        "pbp.executionSelectionMode": {
-          "type": "string",
-          "enum": [
-            "last-execution",
-            "initial-recommendation",
-            "ask-every-time"
-          ],
-          "default": "last-execution",
-          "description": "How execution target and behavior are chosen: reuse per-prompt last execution, always use initial recommendations, or ask every run."
-        },
-        "pbp.rememberLastExecution": {
-          "type": "boolean",
-          "default": true,
-          "description": "Legacy compatibility flag for last execution reuse. Prefer pbp.executionSelectionMode."
-        },
-        "pbp.defaultTarget": {
+        "pbp.defaultPromptTarget": {
           "type": "string",
           "enum": [
             "workspace",
-            "global"
-          ],
-          "default": "global",
-          "description": "%config.pbp.defaultTarget.description%"
-        },
-        "pbp.defaultRuleFile": {
-          "type": "string",
-          "default": "ask",
-          "description": "%config.pbp.defaultRuleFile.description%"
-        },
-        "pbp.uiLanguage": {
-          "type": "string",
-          "default": "en",
-          "description": "UI Language"
-        },
-        "pbp.customProviderUrl": {
-          "type": "string",
-          "default": "",
-          "description": "Custom Provider URL"
-        },
-        "pbp.teamPolicySources": {
-          "type": "array",
-          "default": [],
-          "description": "Shared library sources. Git sources are sync-only remote sources cached by the extension; local-folder sources read directly from disk.",
-          "items": {
-            "type": "object"
-          }
-        },
-        "pbp.autoSyncTeamPolicies": {
-          "type": "boolean",
-          "default": false,
-          "description": "Automatically sync shared library sources in the background using the extension's sync-only Git flow."
-        },
-        "pbp.teamPolicySyncIntervalMinutes": {
-          "type": "number",
-          "default": 30,
-          "minimum": 1,
-          "description": "Background sync interval for shared library sources in minutes."
-        },
-        "pbp.passiveRuleProjection.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Generate a compatible rule file from the effective policy for agents that automatically read project rule files."
-        },
-        "pbp.passiveRuleProjection.scope": {
-          "type": "string",
-          "enum": [
-            "workspace",
-            "global"
+            "user"
           ],
           "default": "workspace",
-          "description": "Whether the projected rule file is written relative to the current workspace or extension global storage."
+          "description": "Where new and duplicated prompts are saved by default."
         },
-        "pbp.passiveRuleProjection.outputPath": {
-          "type": "string",
-          "default": ".pbp/compiled/AGENTS.md",
-          "description": "Output path for the generated projected rule file. Relative paths are resolved from the workspace root or global storage."
-        },
-        "pbp.passiveRuleProjection.format": {
-          "type": "string",
-          "enum": [
-            "agents-md",
-            "root-agents-md"
-          ],
-          "default": "agents-md",
-          "description": "Output format for the projected rule file."
-        },
-        "pbp.passiveRuleProjection.writeMode": {
-          "type": "string",
-          "enum": [
-            "safe-overwrite",
-            "overwrite"
-          ],
-          "default": "safe-overwrite",
-          "description": "Whether Prompt by Prompt only overwrites files it previously generated, or force-overwrites the target file."
-        },
-        "pbp.passiveRuleProjection.includeEditorContext": {
-          "type": "boolean",
-          "default": false,
-          "description": "Reserved for future compatibility. Editor context is not currently projected into static rule files."
-        },
-        "pbp.passiveRuleProjection.includePreferences": {
+        "pbp.includeFileContext": {
           "type": "boolean",
           "default": true,
-          "description": "Include resolved execution preferences in the generated projected rule file."
+          "description": "Include the active file content in the {{file_content}} render variable."
         },
-        "pbp.passiveRuleProjection.includeTeamMetadata": {
+        "pbp.showBuiltInPrompts": {
           "type": "boolean",
           "default": true,
-          "description": "Include shared library metadata in the generated projected rule file when available."
-        },
-        "pbp.passiveRuleProjection.autoRefresh": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically rebuild the projected rule file when local rules or shared libraries change."
+          "description": "Show bundled starter prompts in the prompt library."
         }
       }
     }
@@ -635,25 +237,28 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@release-it/conventional-changelog": "^10.0.6",
+    "@release-it/conventional-changelog": "^11.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.5.0",
-    "@types/uuid": "^10.0.0",
-    "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "^3.7.1",
+    "@types/node": "^25.6.0",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.27.4",
-    "eslint": "^10.0.3",
-    "ovsx": "^0.10.0",
-    "release-it": "^19.2.4",
+    "eslint": "^10.2.1",
+    "ovsx": "^0.10.11",
+    "release-it": "^20.0.1",
     "rimraf": "^6.1.3",
     "sharp": "^0.34.5",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0",
-    "vitest": "^4.1.0"
+    "typescript-eslint": "^8.59.1",
+    "vitest": "^4.1.5"
   },
   "dependencies": {
     "handlebars": "^4.7.8",
-    "js-yaml": "^4.1.1",
-    "uuid": "^13.0.0"
+    "js-yaml": "^4.1.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "8.0.10"
+    }
   }
 }

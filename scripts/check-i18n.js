@@ -8,7 +8,7 @@ const packageFiles = [
   'package.nls.ja.json',
   'package.nls.es.json',
   'package.nls.ko.json',
-].map((file) => path.join(__dirname, '..', file));
+].map((file) => path.join(__dirname, '..', file)).filter((file) => fs.existsSync(file));
 
 function parseRuntimeDictionaries(source) {
   const dictRegex = /const (\w+)_dict: Record<string, string> = \{([\s\S]*?)\n\};/g;
@@ -55,10 +55,14 @@ for (const [name, keys] of Object.entries(runtimeDicts)) {
   ok = assertNoMissing(`runtime:${name}`, runtimeBase, keys) && ok;
 }
 
-const packageBase = Object.keys(readJson(packageFiles[0]));
-for (const file of packageFiles.slice(1)) {
-  const keys = new Set(Object.keys(readJson(file)));
-  ok = assertNoMissing(`package:${path.basename(file)}`, packageBase, keys) && ok;
+if (packageFiles.length > 0) {
+  const packageBase = Object.keys(readJson(packageFiles[0]));
+  for (const file of packageFiles.slice(1)) {
+    const keys = new Set(Object.keys(readJson(file)));
+    ok = assertNoMissing(`package:${path.basename(file)}`, packageBase, keys) && ok;
+  }
+} else {
+  console.log('package:nls: skipped');
 }
 
 if (!ok) {

@@ -1,918 +1,528 @@
-/**
- * Prompt by Prompt - VS Code Extension Entry Point
- */
-
-import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { PromptManager } from './services/promptManager';
-import { ContextEngine } from './services/contextEngine';
-import { AgentService, initAgentService } from './services/agentService';
+import * as vscode from 'vscode';
+import { randomUUID } from 'crypto';
+import { collectEditorContext } from './application/editorContext';
+import { loadPromptCatalog, PromptCatalogSnapshot, searchPrompts } from './application/promptCatalog';
+import { createEmptyPrompt, PromptDefinition, PromptEntry, PromptMetadataMap } from './domain/prompt';
+import { getMissingVariables, PromptVariableValues, renderPrompt } from './domain/promptRenderer';
+import { deletePromptFile, PromptStoreDefinition, savePrompt } from './infrastructure/promptStore';
 import { PromptsTreeProvider } from './providers/promptsTreeProvider';
-import { RulesTreeProvider } from './providers/rulesTreeProvider';
-import { TeamPoliciesTreeProvider } from './providers/teamPoliciesTreeProvider';
-import { PromptEditorPanel, PromptEditorResult } from './providers/promptEditorPanel';
-import { RuleEditorPanel } from './providers/ruleEditorPanel';
-import { SettingsPanel } from './providers/settingsPanel';
-import { ExtensionConfig, PromptTemplate, PromptVariable } from './types/prompt';
-import { RuleFile } from './types/rule';
-import { t } from './utils/i18n';
-import { RuleManager } from './services/ruleManager';
-import { ExecutionService } from './services/executionService';
-import { TeamPolicyService } from './services/teamPolicyService';
-import { RuleProjectionService } from './services/ruleProjectionService';
-import { getWorkspaceFolderForUri, getWorkspaceFolders } from './utils/workspace';
 
-async function showExecutionPreview(prompt: PromptTemplate, forcePicker = false): Promise<void> {
-  const preview = await executionService.previewPrompt(prompt, { forcePicker });
-  if (!preview) {
-    return;
-  }
+const METADATA_KEY = 'pbp.promptMetadata';
 
-  const document = await vscode.workspace.openTextDocument({
-    language: 'markdown',
-    content: preview.previewText,
-  });
-  await vscode.window.showTextDocument(document, { preview: true });
-}
-
-let promptManager: PromptManager;
-let contextEngine: ContextEngine;
-let agentService: AgentService;
-let treeProvider: PromptsTreeProvider;
-let rulesTreeProvider: RulesTreeProvider;
-let teamPoliciesTreeProvider: TeamPoliciesTreeProvider;
-let ruleManager: RuleManager;
-let executionService: ExecutionService;
-let ruleProjectionService: RuleProjectionService;
-let extensionContext: vscode.ExtensionContext;
-let outputChannel: vscode.OutputChannel;
-let teamPolicySyncTimer: NodeJS.Timeout | undefined;
-let teamPolicyService: TeamPolicyService;
-let teamPolicyStatusBarItem: vscode.StatusBarItem | undefined;
-
-function log(message: string): void {
-  outputChannel?.appendLine(message);
-}
-
-function refreshPromptTree(): void {
-  treeProvider.setLibrary(
-    promptManager.getLibrarySnapshot(),
-    promptManager.getPromptByLibraryEntryKeyMap()
-  );
-}
-
-function logManifestDiagnostics(): void {
-  const extension = vscode.extensions.getExtension('aknirex.prompt-by-prompt');
-  const manifest = extension?.packageJSON as
-    | {
-        version?: string;
-        contributes?: {
-          viewsContainers?: unknown;
-          views?: unknown;
-          commands?: unknown;
-        };
-      }
-    | undefined;
-
-  log('[Diagnostics] activate() reached');
-  log(`[Diagnostics] extensionPath: ${extension?.extensionPath || extensionContext.extensionPath}`);
-  log(`[Diagnostics] extensionUri: ${extensionContext.extensionUri.toString()}`);
-  log(`[Diagnostics] package version: ${manifest?.version || 'unknown'}`);
-  log(`[Diagnostics] viewsContainers: ${JSON.stringify(manifest?.contributes?.viewsContainers ?? null)}`);
-  log(`[Diagnostics] views: ${JSON.stringify(manifest?.contributes?.views ?? null)}`);
-  log('[Diagnostics] custom activity bar container enabled');
-}
-
-function getConfig(): ExtensionConfig {
-  const config = vscode.workspace.getConfiguration('pbp');
-
-  return {
-    defaultModel: config.get('defaultModel') || 'ollama',
-    ollamaEndpoint: config.get('ollamaEndpoint') || 'http://localhost:11434',
-    ollamaModel: config.get('ollamaModel') || 'llama3.2',
-    openaiApiKey: config.get('openaiApiKey') || '',
-    openaiModel: config.get('openaiModel') || 'gpt-4o-mini',
-    claudeApiKey: config.get('claudeApiKey') || '',
-    claudeModel: config.get('claudeModel') || 'claude-3-5-sonnet-20241022',
-    groqApiKey: config.get('groqApiKey') || '',
-    groqModel: config.get('groqModel') || 'llama-3.3-70b-versatile',
-    promptsDir: config.get('promptsDir') || '.prompts',
-  };
-}
-
-function getDefaultPromptTarget(): 'workspace' | 'global' {
-  const config = vscode.workspace.getConfiguration('pbp');
-  return config.get<'workspace' | 'global'>('defaultTarget') || 'global';
-}
-
-function extractPromptFromArgument(value: unknown): PromptTemplate | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const candidate = value as PromptTemplate & { prompt?: PromptTemplate };
-  if (candidate.prompt?.id) {
-    return candidate.prompt;
-  }
-
-  return candidate.id ? candidate : undefined;
-}
-
-async function pickPromptIfNeeded(value?: unknown): Promise<PromptTemplate | undefined> {
-  const explicitPrompt = extractPromptFromArgument(value);
-  if (explicitPrompt) {
-    return explicitPrompt;
-  }
-
-  const prompts = promptManager.getAllPrompts();
-  if (prompts.length === 0) {
-    vscode.window.showWarningMessage(t('No prompts available.'));
-    return undefined;
-  }
-
-  const items = prompts.map((prompt) => ({
-    label: prompt.name,
-    description: prompt.description,
-    prompt,
-  }));
-
-  const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: t('Select a prompt to run'),
-    title: t('Prompt by Prompt'),
-  });
-
-  return selected?.prompt;
-}
-
-async function openPromptEditor(
-  existingPrompt: PromptTemplate | undefined,
-  onSave: (result: PromptEditorResult) => Promise<void>
-): Promise<void> {
-  PromptEditorPanel.createOrShow(
-    extensionContext.extensionUri,
-    extensionContext,
-    existingPrompt,
-    getDefaultPromptTarget(),
-    async (result) => {
-      await onSave(result);
-    }
-  );
-}
-
-async function runPromptAndRemember(prompt: PromptTemplate, options?: { forcePicker?: boolean }): Promise<void> {
-  const didRun = await executionService.runPrompt(prompt, options);
-  if (didRun) {
-    await promptManager.markPromptUsed(prompt.id);
-  }
-}
-
-async function openRuleEditor(
-  existingRule: RuleFile | undefined,
-  onSave: (result: { fileName: string; content: string }) => Promise<void>,
-  initialFileName?: string
-): Promise<void> {
-  RuleEditorPanel.createOrShow(
-    extensionContext.extensionUri,
-    existingRule,
-    async (result) => {
-      await onSave(result);
-    },
-    initialFileName ? { initialFileName } : undefined
-  );
-}
-
-async function refreshTeamPolicies(options?: { silent?: boolean }): Promise<void> {
-  await teamPolicyService.refresh();
-  await Promise.all([promptManager.refresh(), ruleManager.scanRuleFiles()]);
-  refreshPromptTree();
-  rulesTreeProvider.refresh();
-  teamPoliciesTreeProvider.refresh();
-  updateTeamPolicyStatusBar();
-  await refreshProjectedRuleFile({ silent: true });
-
-  if (!options?.silent) {
-    const sourceStates = teamPolicyService.readPersistedSourceStates();
-    const failedStates = sourceStates.filter((state) => state.status === 'error');
-    if (failedStates.length > 0) {
-      const message = `Shared library sync finished with ${failedStates.length} issue(s): ${failedStates.map((state) => `${state.sourceId}: ${state.lastSyncError || 'unknown error'}`).join('; ')}`;
-      log(`[TeamPolicySync] ${message}`);
-      vscode.window.showWarningMessage(message);
-    } else {
-      vscode.window.showInformationMessage(t('Shared libraries synced'));
-    }
-  } else {
-    const failedStates = teamPolicyService.readPersistedSourceStates().filter((state) => state.status === 'error');
-    if (failedStates.length > 0) {
-      log(`[TeamPolicySync] Background sync issues: ${failedStates.map((state) => `${state.sourceId}: ${state.lastSyncError || 'unknown error'}`).join('; ')}`);
-    }
-  }
-}
-
-async function refreshProjectedRuleFile(options?: { silent?: boolean }): Promise<void> {
-  if (!ruleProjectionService?.shouldAutoRefresh()) {
-    return;
-  }
-
-  try {
-    const result = await ruleProjectionService.rebuildProjectedRuleFile({ silent: options?.silent });
-    if (!options?.silent && result.written && result.path) {
-      vscode.window.showInformationMessage(`Projected rule file rebuilt at ${result.path}`);
-    }
-  } catch (error) {
-    log(`[RuleProjection] ${String(error)}`);
-    if (!options?.silent) {
-      vscode.window.showWarningMessage(`Failed to rebuild projected rule file: ${String(error)}`);
-    }
-  }
-}
-
-function getSourceStateFromItem(value: unknown): { sourceState?: { sourceId?: string; type?: string } } | undefined {
-  if (!value || typeof value !== 'object') {
-    return undefined;
-  }
-
-  return value as { sourceState?: { sourceId?: string; type?: string } };
-}
-
-function resolveWorkspaceRootForCopy(): string | undefined {
-  return getWorkspaceFolderForUri(vscode.window.activeTextEditor?.document.uri)?.uri.fsPath
-    ?? getWorkspaceFolders()[0]?.uri.fsPath;
-}
-
-function resolveUniqueFilePath(rootPath: string, fileName: string): string {
-  const parsed = path.parse(fileName);
-  let candidate = fileName;
-  let suffix = 1;
-
-  while (fs.existsSync(path.join(rootPath, candidate))) {
-    candidate = `${parsed.name}-${suffix}${parsed.ext}`;
-    suffix += 1;
-  }
-
-  return path.join(rootPath, candidate);
-}
-
-function updateTeamPolicyStatusBar(): void {
-  if (!teamPolicyStatusBarItem) {
-    return;
-  }
-
-  const sourceStates = teamPolicyService.readPersistedSourceStates();
-  if (sourceStates.length === 0) {
-    teamPolicyStatusBarItem.text = '$(sync-ignored) Shared Libraries';
-    teamPolicyStatusBarItem.tooltip = 'No shared library sources configured';
-    teamPolicyStatusBarItem.backgroundColor = undefined;
-    return;
-  }
-
-  const failedStates = sourceStates.filter((state) => state.status === 'error');
-  if (failedStates.length > 0) {
-    const healthyCount = sourceStates.length - failedStates.length;
-    teamPolicyStatusBarItem.text = `$(warning) Shared Libraries ${healthyCount}/${sourceStates.length}`;
-    teamPolicyStatusBarItem.tooltip = `Sync issues: ${failedStates.map((state) => `${state.sourceId}: ${state.lastSyncError || 'unknown error'}`).join('; ')}`;
-    teamPolicyStatusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-    return;
-  }
-
-  const latestSync = sourceStates
-    .map((state) => state.lastSyncedAt)
-    .filter((value): value is string => typeof value === 'string')
-    .sort();
-  const latestSyncValue = latestSync.length > 0 ? latestSync[latestSync.length - 1] : undefined;
-  teamPolicyStatusBarItem.text = `$(sync) Shared Libraries ${sourceStates.length}`;
-  teamPolicyStatusBarItem.tooltip = latestSyncValue
-    ? `Shared libraries synced. Last sync: ${latestSyncValue}`
-    : 'Shared libraries synced';
-  teamPolicyStatusBarItem.backgroundColor = undefined;
-}
-
-async function connectTeamPolicySource(): Promise<void> {
-  const type = await vscode.window.showQuickPick([
-    { label: 'Git Sync Source', value: 'git', description: 'Recommended for shared libraries that live in Git' },
-    { label: 'Local Folder', value: 'local-folder', description: 'Read a shared library folder directly from disk' },
-  ], {
-    placeHolder: 'Select a shared library source type',
-    title: 'Connect Shared Source',
-  });
-
-  if (!type) {
-    return;
-  }
-
-  const locationPrompt = type.value === 'git'
-    ? 'Enter the Git repository URL for the shared library'
-    : 'Enter the local folder path for the shared library';
-  const location = await vscode.window.showInputBox({
-    prompt: locationPrompt,
-    placeHolder: type.value === 'git' ? 'https://git.example.com/shared-libraries.git' : 'C:\\shared-library-pack',
-    ignoreFocusOut: true,
-  });
-
-  if (!location) {
-    return;
-  }
-
-  const sourceId = await vscode.window.showInputBox({
-    prompt: 'Choose a short source ID used for the local sync cache',
-    value: location
-      .split(/[\\/]/)
-      .filter(Boolean)
-      .pop()
-      ?.replace(/\.git$/i, '')
-      ?.toLowerCase()
-      ?.replace(/[^a-z0-9]+/g, '-') || 'shared-library-source',
-    ignoreFocusOut: true,
-  });
-
-  if (!sourceId) {
-    return;
-  }
-
-  const candidateSource = type.value === 'git'
-    ? { id: sourceId, type: 'git' as const, url: location, trust: 'trusted' as const }
-    : { id: sourceId, type: 'local-folder' as const, path: location, trust: 'trusted' as const };
-  const validation = await teamPolicyService.validateSource(candidateSource);
-  if (!validation.ok) {
-    vscode.window.showWarningMessage(`Unable to connect shared library source: ${validation.message}`);
-    return;
-  }
-
-  const config = vscode.workspace.getConfiguration('pbp');
-  const existingSources = config.get<unknown[]>('teamPolicySources', []);
-  const nextSources = [
-    ...existingSources.filter((entry) => !(entry && typeof entry === 'object' && (entry as { id?: string }).id === sourceId)),
-    candidateSource,
-  ];
-
-  await config.update('teamPolicySources', nextSources, vscode.ConfigurationTarget.Global);
-  await refreshTeamPolicies();
-  vscode.window.showInformationMessage(`Shared library source "${sourceId}" connected.`);
-}
-
-async function copySharedLibraryRuleToWorkspace(value?: unknown): Promise<void> {
-  const candidate = value as {
-    rule?: { ruleId?: string; sourceFile?: string };
-    pack?: { name?: string; sourcePath?: string };
-  } | undefined;
-
-  if (!candidate?.rule?.ruleId || !candidate.pack?.sourcePath) {
-    vscode.window.showErrorMessage('Invalid shared library rule item.');
-    return;
-  }
-
-  const sourceFile = candidate.rule.sourceFile || `${candidate.rule.ruleId}.md`;
-  const sourcePath = path.join(candidate.pack.sourcePath, 'rules', sourceFile);
-  if (!fs.existsSync(sourcePath)) {
-    vscode.window.showWarningMessage(`Shared library rule source was not found at ${sourcePath}.`);
-    return;
-  }
-
-  const rootPath = resolveWorkspaceRootForCopy();
-  if (!rootPath) {
-    vscode.window.showWarningMessage('Open a workspace before copying a shared rule.');
-    return;
-  }
-
-  const content = await fs.promises.readFile(sourcePath, 'utf8');
-  const destinationPath = resolveUniqueFilePath(rootPath, sourceFile);
-  await fs.promises.writeFile(destinationPath, content, 'utf8');
-  await ruleManager.scanRuleFiles();
-  rulesTreeProvider.refresh();
-  teamPoliciesTreeProvider.refresh();
-  await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(destinationPath));
-  vscode.window.showInformationMessage(`Shared rule copied to ${destinationPath}`);
-}
-
-async function copySharedLibraryPromptToWorkspace(value?: unknown): Promise<void> {
-  const candidate = value as {
-    prompt?: {
-      id?: string;
-      name?: string;
-      description?: string;
-      category?: string;
-      tags?: string[];
-      template?: string;
-      variables?: unknown[];
-      author?: string;
-      version?: string;
-    };
-  } | undefined;
-
-  if (!candidate?.prompt?.id || !candidate.prompt.name || !candidate.prompt.template) {
-    vscode.window.showErrorMessage('Invalid shared library prompt item.');
-    return;
-  }
-
-  const rootPath = resolveWorkspaceRootForCopy();
-  if (!rootPath) {
-    vscode.window.showWarningMessage('Open a workspace before copying a shared prompt.');
-    return;
-  }
-
-  const created = await promptManager.createPrompt(
-    {
-      name: candidate.prompt.name,
-      description: candidate.prompt.description || '',
-      category: candidate.prompt.category || 'Shared Library',
-      tags: candidate.prompt.tags || [],
-      template: candidate.prompt.template,
-      variables: candidate.prompt.variables as PromptVariable[] | undefined,
-      author: candidate.prompt.author,
-      version: candidate.prompt.version || '1.0.0',
-    },
-    'workspace'
-  );
-
-  if (created.filePath) {
-    await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(created.filePath));
-  }
-
-  vscode.window.showInformationMessage(`Shared prompt copied as "${created.name}".`);
-}
-
-function configureTeamPolicySync(context: vscode.ExtensionContext): void {
-  if (teamPolicySyncTimer) {
-    clearInterval(teamPolicySyncTimer);
-    teamPolicySyncTimer = undefined;
-  }
-
-  const config = vscode.workspace.getConfiguration('pbp');
-  const autoSync = config.get<boolean>('autoSyncTeamPolicies', false);
-  const intervalMinutes = Math.max(1, config.get<number>('teamPolicySyncIntervalMinutes', 30));
-
-  if (!autoSync) {
-    return;
-  }
-
-  teamPolicySyncTimer = setInterval(() => {
-    void refreshTeamPolicies({ silent: true });
-  }, intervalMinutes * 60 * 1000);
-
-  context.subscriptions.push({
-    dispose: () => {
-      if (teamPolicySyncTimer) {
-        clearInterval(teamPolicySyncTimer);
-        teamPolicySyncTimer = undefined;
-      }
-    },
-  });
+interface PromptByPromptSettings {
+  libraryPath: string;
+  defaultPromptTarget: 'workspace' | 'user';
+  includeFileContext: boolean;
+  showBuiltInPrompts: boolean;
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  outputChannel = vscode.window.createOutputChannel('Prompt by Prompt');
-  outputChannel.appendLine('Prompt by Prompt is activating...');
-  initAgentService(outputChannel);
-  extensionContext = context;
-  logManifestDiagnostics();
-
-  const config = getConfig();
-  teamPolicyService = new TeamPolicyService(context);
-  promptManager = new PromptManager(context, config, teamPolicyService, true);
-  contextEngine = new ContextEngine();
-  agentService = new AgentService();
-  ruleManager = new RuleManager(context, teamPolicyService, true);
-  executionService = new ExecutionService(context, contextEngine, agentService, ruleManager, log);
-  ruleProjectionService = new RuleProjectionService(context, ruleManager);
-  treeProvider = new PromptsTreeProvider();
-  rulesTreeProvider = new RulesTreeProvider(ruleManager);
-  teamPoliciesTreeProvider = new TeamPoliciesTreeProvider(ruleManager);
-
-  await teamPolicyService.refresh();
-  await Promise.all([promptManager.initialize(), ruleManager.initialize()]);
-  await refreshProjectedRuleFile({ silent: true });
-  configureTeamPolicySync(context);
-  teamPolicyStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 90);
-  teamPolicyStatusBarItem.command = 'pbp.syncTeamPolicies';
-  teamPolicyStatusBarItem.name = 'Prompt by Prompt Team Policies';
-  teamPolicyStatusBarItem.show();
-
-  refreshPromptTree();
-  rulesTreeProvider.refresh();
-  teamPoliciesTreeProvider.refresh();
-  updateTeamPolicyStatusBar();
-
-  promptManager.onDidChange(() => {
-    refreshPromptTree();
-  });
-
-  context.subscriptions.push(
-    vscode.extensions.onDidChange(() => {
-      agentService.invalidateCache();
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(async (event) => {
-      if (event.affectsConfiguration('pbp.uiLanguage')) {
-        treeProvider.refresh();
-        rulesTreeProvider.refresh();
-        teamPoliciesTreeProvider.refresh();
-      }
-
-      if (event.affectsConfiguration('pbp.promptsDir')) {
-        await promptManager.refresh();
-      }
-
-      if (
-        event.affectsConfiguration('pbp.teamPolicySources')
-        || event.affectsConfiguration('pbp.autoSyncTeamPolicies')
-        || event.affectsConfiguration('pbp.teamPolicySyncIntervalMinutes')
-        || event.affectsConfiguration('pbp.passiveRuleProjection')
-      ) {
-        configureTeamPolicySync(context);
-        await refreshTeamPolicies({ silent: true });
-      }
-    })
-  );
-
-  const treeView = vscode.window.createTreeView('pbp.promptsView', {
-    treeDataProvider: treeProvider,
-    showCollapseAll: true,
-  });
-
-  const rulesTreeView = vscode.window.createTreeView('pbp.rulesView', {
-    treeDataProvider: rulesTreeProvider,
-    showCollapseAll: true,
-  });
-
-  const teamPoliciesTreeView = vscode.window.createTreeView('pbp.teamPoliciesView', {
-    treeDataProvider: teamPoliciesTreeProvider,
-    showCollapseAll: true,
-  });
-
-  const commands = [
-    vscode.commands.registerCommand('pbp.openSettings', () => {
-      SettingsPanel.createOrShow(extensionContext.extensionUri, extensionContext, agentService);
-    }),
-
-    vscode.commands.registerCommand('pbp.connectTeamPolicySource', async () => {
-      await connectTeamPolicySource();
-    }),
-
-    vscode.commands.registerCommand('pbp.retryTeamPolicySourceSync', async (value?: unknown) => {
-      const sourceId = getSourceStateFromItem(value)?.sourceState?.sourceId;
-      await refreshTeamPolicies();
-      if (sourceId) {
-        vscode.window.showInformationMessage(`Retried sync for shared library source "${sourceId}".`);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.reconnectTeamPolicySource', async (value?: unknown) => {
-      const sourceId = getSourceStateFromItem(value)?.sourceState?.sourceId;
-      if (!sourceId) {
-        vscode.window.showErrorMessage('Invalid shared library source item.');
-        return;
-      }
-
-      const confirm = await vscode.window.showWarningMessage(
-        `Reconnect "${sourceId}"? This clears its local sync cache and downloads the shared library source again.`,
-        { modal: true },
-        'Reconnect'
-      );
-      if (confirm !== 'Reconnect') {
-        return;
-      }
-
-      await teamPolicyService.reconnectSource(sourceId);
-      await refreshTeamPolicies();
-      vscode.window.showInformationMessage(`Reconnected shared library source "${sourceId}".`);
-    }),
-
-    vscode.commands.registerCommand('pbp.copySharedLibraryRuleToWorkspace', async (value?: unknown) => {
-      await copySharedLibraryRuleToWorkspace(value);
-    }),
-
-    vscode.commands.registerCommand('pbp.copySharedLibraryPromptToWorkspace', async (value?: unknown) => {
-      await copySharedLibraryPromptToWorkspace(value);
-    }),
-
-    vscode.commands.registerCommand('pbp.showDiagnostics', async () => {
-      logManifestDiagnostics();
-      outputChannel.show(true);
-      void vscode.window.showInformationMessage(t('Prompt by Prompt diagnostics written to the output channel.'));
-    }),
-
-    vscode.commands.registerCommand('pbp.runPrompt', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (prompt) {
-        await runPromptAndRemember(prompt);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.runPromptWithPicker', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (prompt) {
-        await runPromptAndRemember(prompt, { forcePicker: true });
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.searchPrompts', async () => {
-      const prompts = promptManager.getAllPrompts();
-      const selected = await vscode.window.showQuickPick(prompts.map((prompt) => ({
-        label: prompt.favorite ? `$(star-full) ${prompt.name}` : prompt.name,
-        description: prompt.category,
-        detail: `${prompt.source || 'prompt'}${prompt.description ? ` - ${prompt.description}` : ''}`,
-        prompt,
-      })), {
-        title: t('Prompt by Prompt'),
-        placeHolder: t('Search prompts'),
-        matchOnDescription: true,
-        matchOnDetail: true,
-      });
-
-      if (selected?.prompt) {
-        await runPromptAndRemember(selected.prompt);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.toggleFavoritePrompt', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (!prompt) {
-        return;
-      }
-
-      const favorite = prompt.favorite !== true;
-      await promptManager.setPromptFavorite(prompt.id, favorite);
-      vscode.window.showInformationMessage(
-        favorite
-          ? t('Prompt "{0}" added to favorites', prompt.name)
-          : t('Prompt "{0}" removed from favorites', prompt.name)
-      );
-    }),
-
-    vscode.commands.registerCommand('pbp.previewPrompt', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (prompt) {
-        await showExecutionPreview(prompt);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.selectExecutionTarget', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (!prompt) {
-        return;
-      }
-
-      const preset = await executionService.selectExecutionTarget(prompt);
-      if (!preset) {
-        return;
-      }
-
-      vscode.window.showInformationMessage(
-        t(
-          'Execution target for "{0}" saved as {1}.',
-          prompt.name,
-          `${preset.target.kind === 'agent' ? preset.target.agentType : preset.target.kind}${preset.behavior ? ` (${preset.behavior})` : ''}`
-        )
-      );
-    }),
-
-    vscode.commands.registerCommand('pbp.rerunLastTarget', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (prompt) {
-        const didRun = await executionService.rerunLastTarget(prompt);
-        if (didRun) {
-          await promptManager.markPromptUsed(prompt.id);
-        }
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.refreshRules', async () => {
-      await refreshTeamPolicies({ silent: true });
-      vscode.window.showInformationMessage(t('Rules refreshed'));
-    }),
-
-    vscode.commands.registerCommand('pbp.syncTeamPolicies', async () => {
-      await refreshTeamPolicies();
-    }),
-
-    vscode.commands.registerCommand('pbp.rebuildProjectedRuleFile', async () => {
-      try {
-        const result = await ruleProjectionService.rebuildProjectedRuleFile();
-        if (!result.written) {
-          const reason = result.reason === 'disabled'
-            ? 'Passive rule projection is disabled in settings.'
-            : 'No rule file was generated.';
-          vscode.window.showInformationMessage(reason);
-          return;
-        }
-
-        vscode.window.showInformationMessage(`Projected rule file rebuilt at ${result.path}`);
-      } catch (error) {
-        vscode.window.showWarningMessage(`Failed to rebuild projected rule file: ${String(error)}`);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.openProjectedRuleFile', async () => {
-      const projectedPath = ruleProjectionService.getProjectedRuleFilePath();
-      if (!projectedPath) {
-        vscode.window.showInformationMessage('Passive rule projection is disabled in settings.');
-        return;
-      }
-
-      try {
-        const document = await vscode.workspace.openTextDocument(projectedPath);
-        await vscode.window.showTextDocument(document);
-      } catch {
-        vscode.window.showWarningMessage(`Projected rule file was not found at ${projectedPath}. Rebuild it first.`);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.refreshPrompts', async () => {
-      await promptManager.refresh();
-      vscode.window.showInformationMessage(t('Prompts refreshed'));
-    }),
-
-    vscode.commands.registerCommand('pbp.createPrompt', async () => {
-      await openPromptEditor(undefined, async (result) => {
-        try {
-          await promptManager.createPrompt(
-            {
-              name: result.name,
-              description: result.description,
-              category: result.category,
-              template: result.template,
-              tags: result.tags,
-              variables: result.variables,
-            },
-            result.target
-          );
-
-          vscode.window.showInformationMessage(t('Prompt "{0}" created', result.name));
-        } catch (error) {
-          vscode.window.showErrorMessage(`${t('Failed to create prompt')}: ${error}`);
-        }
-      });
-    }),
-
-    vscode.commands.registerCommand('pbp.editPrompt', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (!prompt) {
-        vscode.window.showErrorMessage(t('No prompt selected'));
-        return;
-      }
-
-      if (prompt.source === 'team-pack') {
-        if (prompt.filePath) {
-          const document = await vscode.workspace.openTextDocument(prompt.filePath);
-          await vscode.window.showTextDocument(document, { preview: true });
-          return;
-        }
-
-        vscode.window.showInformationMessage(t('Shared library prompts are read-only right now. Run them directly or copy them into workspace/global later.'));
-        return;
-      }
-
-      if (prompt.source === 'workspace' && prompt.filePath) {
-        const document = await vscode.workspace.openTextDocument(prompt.filePath);
-        await vscode.window.showTextDocument(document);
-        return;
-      }
-
-      await openPromptEditor(prompt, async (result) => {
-        try {
-          await promptManager.updatePrompt(prompt.id, {
-            name: result.name,
-            description: result.description,
-            category: result.category,
-            template: result.template,
-            tags: result.tags,
-            variables: result.variables,
-          });
-
-          vscode.window.showInformationMessage(t('Prompt "{0}" updated', result.name));
-        } catch (error) {
-          vscode.window.showErrorMessage(`${t('Failed to update prompt')}: ${error}`);
-        }
-      });
-    }),
-
-    vscode.commands.registerCommand('pbp.deletePrompt', async (value?: unknown) => {
-      const prompt = await pickPromptIfNeeded(value);
-      if (!prompt) {
-        return;
-      }
-
-      if (prompt.source === 'team-pack') {
-        vscode.window.showInformationMessage(t('Shared library prompts cannot be deleted.'));
-        return;
-      }
-
-      const confirm = await vscode.window.showWarningMessage(
-        `${t('Are you sure you want to delete')} "${prompt.name}"?`,
-        t('Delete'),
-        t('Cancel')
-      );
-
-      if (confirm !== t('Delete')) {
-        return;
-      }
-
-      const deleted = await promptManager.deletePrompt(prompt.id);
-      if (deleted) {
-        vscode.window.showInformationMessage(t('Prompt "{0}" deleted', prompt.name));
-      } else {
-        vscode.window.showErrorMessage(t('Failed to delete prompt'));
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.createWorkspaceRule', async () => {
-      const config = vscode.workspace.getConfiguration('pbp');
-      const defaultRuleFile = config.get<string>('defaultRuleFile') || 'ask';
-      const knownRules = ['AGENTS.md', '.clinerules', '.cursorrules', '.windsurfrules', '.aiderrules', '.codeiumrules'];
-      const initialFileName = defaultRuleFile !== 'ask' && knownRules.includes(defaultRuleFile)
-        ? defaultRuleFile
-        : undefined;
-
-      await openRuleEditor(undefined, async (result) => {
-        try {
-          await ruleManager.createRuleFile(result.fileName, result.content);
-          rulesTreeProvider.refresh();
-          teamPoliciesTreeProvider.refresh();
-          await refreshProjectedRuleFile({ silent: true });
-          vscode.window.showInformationMessage(t('Rule "{0}" created', result.fileName));
-        } catch (error) {
-          vscode.window.showErrorMessage(`${t('Failed to create rule')}: ${error}`);
-        }
-      }, initialFileName);
-    }),
-
-    vscode.commands.registerCommand('pbp.createGlobalRule', async () => {
-      await openRuleEditor(undefined, async (result) => {
-        try {
-          await ruleManager.createGlobalRule(result.fileName, result.content);
-          rulesTreeProvider.refresh();
-          teamPoliciesTreeProvider.refresh();
-          await refreshProjectedRuleFile({ silent: true });
-          vscode.window.showInformationMessage(t('Rule "{0}" created', result.fileName));
-        } catch (error) {
-          vscode.window.showErrorMessage(`${t('Failed to create rule')}: ${error}`);
-        }
-      });
-    }),
-
-    vscode.commands.registerCommand('pbp.editRule', async (item: { rule?: RuleFile }) => {
-      const rule = item?.rule;
-      if (!rule?.path) {
-        vscode.window.showErrorMessage(t('Invalid rule item'));
-        return;
-      }
-
-      if (rule.scope !== 'workspace' && rule.scope !== 'global') {
-        vscode.window.showInformationMessage(t('Shared library rules are read-only.'));
-        return;
-      }
-
-      await openRuleEditor(rule, async (result) => {
-        try {
-          await ruleManager.updateRuleFile(rule, result.fileName, result.content);
-          rulesTreeProvider.refresh();
-          teamPoliciesTreeProvider.refresh();
-          await refreshProjectedRuleFile({ silent: true });
-          vscode.window.showInformationMessage(t('Rule "{0}" updated', result.fileName));
-        } catch (error) {
-          vscode.window.showErrorMessage(`${t('Failed to update rule')}: ${error}`);
-        }
-      });
-    }),
-
-    vscode.commands.registerCommand('pbp.setActiveGlobalRule', async (item: { rule?: { isGlobal?: boolean; path?: string; name?: string } }) => {
-      if (item?.rule?.path) {
-        await ruleManager.setActiveGlobalRule(item.rule.path);
-        rulesTreeProvider.refresh();
-        teamPoliciesTreeProvider.refresh();
-        await refreshProjectedRuleFile({ silent: true });
-        vscode.window.showInformationMessage(`"${item.rule.name}" ${t('set as active global rule.')}`);
-      }
-    }),
-
-    vscode.commands.registerCommand('pbp.deleteRule', async (item: { rule?: { path?: string } }) => {
-      if (!item?.rule?.path) {
-        vscode.window.showErrorMessage(t('Invalid rule item'));
-        return;
-      }
-
-      await ruleManager.deleteRuleFile(vscode.Uri.file(item.rule.path));
-      rulesTreeProvider.refresh();
-      teamPoliciesTreeProvider.refresh();
-      await refreshProjectedRuleFile({ silent: true });
-    }),
-  ];
-
-  context.subscriptions.push(treeView, rulesTreeView, teamPoliciesTreeView, ...commands);
-  if (teamPolicyStatusBarItem) {
-    context.subscriptions.push(teamPolicyStatusBarItem);
-  }
-  outputChannel.appendLine('Prompt by Prompt is now active');
+  const controller = new PromptByPromptController(context);
+  await controller.activate();
 }
 
 export function deactivate(): void {
-  if (teamPolicySyncTimer) {
-    clearInterval(teamPolicySyncTimer);
-    teamPolicySyncTimer = undefined;
+  // VS Code disposes subscriptions registered during activation.
+}
+
+class PromptByPromptController {
+  private readonly treeProvider = new PromptsTreeProvider();
+  private readonly output = vscode.window.createOutputChannel('Prompt by Prompt');
+  private snapshot: PromptCatalogSnapshot = {
+    entries: [],
+    diagnostics: [],
+    summary: { total: 0, workspace: 0, user: 0, builtin: 0, favorites: 0 },
+  };
+
+  constructor(private readonly context: vscode.ExtensionContext) {}
+
+  public async activate(): Promise<void> {
+    this.context.subscriptions.push(this.output, this.treeProvider);
+
+    const treeView = vscode.window.createTreeView('pbp.promptsView', {
+      treeDataProvider: this.treeProvider,
+      showCollapseAll: true,
+    });
+    this.context.subscriptions.push(treeView);
+
+    this.registerCommands();
+    this.registerRefreshHooks();
+    await this.refresh();
   }
-  promptManager?.dispose();
-  teamPolicyStatusBarItem?.dispose();
-  outputChannel?.dispose();
+
+  private registerCommands(): void {
+    const commands: vscode.Disposable[] = [
+      vscode.commands.registerCommand('pbp.refreshPrompts', async () => this.refresh({ notify: true })),
+      vscode.commands.registerCommand('pbp.createPrompt', async () => this.createPrompt()),
+      vscode.commands.registerCommand('pbp.searchPrompts', async () => this.searchPrompts()),
+      vscode.commands.registerCommand('pbp.copyPrompt', async (value?: unknown) => this.copyPrompt(value)),
+      vscode.commands.registerCommand('pbp.previewPrompt', async (value?: unknown) => this.previewPrompt(value)),
+      vscode.commands.registerCommand('pbp.editPrompt', async (value?: unknown) => this.editPrompt(value)),
+      vscode.commands.registerCommand('pbp.duplicatePrompt', async (value?: unknown) => this.duplicatePrompt(value)),
+      vscode.commands.registerCommand('pbp.deletePrompt', async (value?: unknown) => this.deletePrompt(value)),
+      vscode.commands.registerCommand('pbp.toggleFavoritePrompt', async (value?: unknown) => this.toggleFavorite(value)),
+      vscode.commands.registerCommand('pbp.openPromptFile', async (value?: unknown) => this.openPromptFile(value)),
+      vscode.commands.registerCommand('pbp.openPromptLibrary', async () => this.openPromptLibrary()),
+    ];
+
+    this.context.subscriptions.push(...commands);
+  }
+
+  private registerRefreshHooks(): void {
+    const watcher = vscode.workspace.createFileSystemWatcher('**/.prompts/**/*.{yaml,yml}');
+    const refresh = () => void this.refresh();
+    watcher.onDidCreate(refresh, undefined, this.context.subscriptions);
+    watcher.onDidChange(refresh, undefined, this.context.subscriptions);
+    watcher.onDidDelete(refresh, undefined, this.context.subscriptions);
+
+    this.context.subscriptions.push(
+      watcher,
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('pbp')) {
+          void this.refresh();
+        }
+      }),
+      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        void this.refresh();
+      })
+    );
+  }
+
+  private async refresh(options: { notify?: boolean } = {}): Promise<void> {
+    const settings = this.getSettings();
+    const stores = this.createStoreDefinitions(settings);
+    const metadata = this.getMetadata();
+    this.snapshot = await loadPromptCatalog(stores, metadata);
+    this.treeProvider.setEntries(this.snapshot.entries);
+
+    this.output.clear();
+    this.output.appendLine(`Loaded ${this.snapshot.summary.total} prompts`);
+    for (const diagnostic of this.snapshot.diagnostics) {
+      this.output.appendLine(`[${diagnostic.storeId}] ${diagnostic.filePath}: ${diagnostic.message}`);
+    }
+
+    if (options.notify) {
+      vscode.window.showInformationMessage(`Loaded ${this.snapshot.summary.total} prompts.`);
+    }
+  }
+
+  private async createPrompt(): Promise<void> {
+    const title = await vscode.window.showInputBox({
+      title: 'New Prompt',
+      prompt: 'Prompt title',
+      placeHolder: 'Code review checklist',
+      ignoreFocusOut: true,
+      validateInput: (value) => value.trim() ? null : 'Title is required.',
+    });
+
+    if (!title) {
+      return;
+    }
+
+    const prompt = createEmptyPrompt(randomUUID(), title);
+    const description = await vscode.window.showInputBox({
+      title: 'New Prompt',
+      prompt: 'Short description',
+      placeHolder: 'Review selected code for correctness and maintainability',
+      ignoreFocusOut: true,
+    });
+
+    if (typeof description === 'undefined') {
+      return;
+    }
+
+    const category = await vscode.window.showInputBox({
+      title: 'New Prompt',
+      prompt: 'Category',
+      value: 'General',
+      ignoreFocusOut: true,
+    });
+
+    if (typeof category === 'undefined') {
+      return;
+    }
+
+    const rootDir = await this.getWritableRoot();
+    if (!rootDir) {
+      vscode.window.showWarningMessage('Open a workspace or switch the default prompt target to User.');
+      return;
+    }
+
+    const filePath = await savePrompt(rootDir, {
+      ...prompt,
+      description,
+      category: category.trim() || 'General',
+    });
+
+    await this.refresh();
+    await this.openFile(filePath);
+  }
+
+  private async searchPrompts(): Promise<void> {
+    const query = await vscode.window.showInputBox({
+      title: 'Search Prompts',
+      prompt: 'Search title, tag, category, description, or body',
+      ignoreFocusOut: true,
+    });
+
+    if (typeof query === 'undefined') {
+      return;
+    }
+
+    const entries = searchPrompts(this.snapshot.entries, query);
+    const selected = await vscode.window.showQuickPick(entries.map((entry) => ({
+      label: entry.favorite ? `$(star-full) ${entry.prompt.title}` : entry.prompt.title,
+      description: `${entry.prompt.category} - ${entry.source}`,
+      detail: entry.prompt.description,
+      entry,
+    })), {
+      title: 'Prompt by Prompt',
+      placeHolder: entries.length > 0 ? 'Choose a prompt to copy' : 'No prompts found',
+      matchOnDescription: true,
+      matchOnDetail: true,
+    });
+
+    if (selected?.entry) {
+      await this.copyPrompt(selected.entry);
+    }
+  }
+
+  private async copyPrompt(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry) {
+      return;
+    }
+
+    const rendered = await this.renderEntry(entry);
+    if (!rendered) {
+      return;
+    }
+
+    await vscode.env.clipboard.writeText(rendered);
+    await this.markUsed(entry.prompt.id);
+    vscode.window.showInformationMessage(`Copied "${entry.prompt.title}" to clipboard.`);
+  }
+
+  private async previewPrompt(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry) {
+      return;
+    }
+
+    const rendered = await this.renderEntry(entry);
+    if (!rendered) {
+      return;
+    }
+
+    const content = [
+      `# ${entry.prompt.title}`,
+      '',
+      entry.prompt.description,
+      '',
+      `Source: ${entry.source}`,
+      '',
+      '---',
+      '',
+      rendered,
+      '',
+    ].filter((line, index, lines) => line || lines[index - 1] !== '').join('\n');
+
+    const document = await vscode.workspace.openTextDocument({
+      language: 'markdown',
+      content,
+    });
+    await vscode.window.showTextDocument(document, { preview: true });
+  }
+
+  private async editPrompt(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry) {
+      return;
+    }
+
+    if (entry.readOnly) {
+      const action = await vscode.window.showInformationMessage(
+        'Built-in prompts are read-only. Duplicate it to edit your own copy.',
+        'Duplicate'
+      );
+      if (action === 'Duplicate') {
+        await this.duplicatePrompt(entry);
+      }
+      return;
+    }
+
+    await this.openPromptFile(entry);
+  }
+
+  private async duplicatePrompt(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry) {
+      return;
+    }
+
+    const rootDir = await this.getWritableRoot();
+    if (!rootDir) {
+      vscode.window.showWarningMessage('Open a workspace or switch the default prompt target to User.');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const prompt: PromptDefinition = {
+      ...entry.prompt,
+      id: randomUUID(),
+      title: `${entry.prompt.title} Copy`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const filePath = await savePrompt(rootDir, prompt);
+    await this.refresh();
+    await this.openFile(filePath);
+  }
+
+  private async deletePrompt(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry || !entry.filePath) {
+      return;
+    }
+
+    if (entry.readOnly) {
+      vscode.window.showInformationMessage('Built-in prompts cannot be deleted.');
+      return;
+    }
+
+    const confirm = await vscode.window.showWarningMessage(
+      `Delete "${entry.prompt.title}"?`,
+      { modal: true },
+      'Delete'
+    );
+
+    if (confirm !== 'Delete') {
+      return;
+    }
+
+    await deletePromptFile(entry.filePath);
+    await this.refresh();
+    vscode.window.showInformationMessage(`Deleted "${entry.prompt.title}".`);
+  }
+
+  private async toggleFavorite(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry) {
+      return;
+    }
+
+    const metadata = this.getMetadata();
+    metadata[entry.prompt.id] = {
+      ...metadata[entry.prompt.id],
+      favorite: !entry.favorite,
+    };
+    await this.context.globalState.update(METADATA_KEY, metadata);
+    await this.refresh();
+  }
+
+  private async openPromptFile(value?: unknown): Promise<void> {
+    const entry = await this.pickEntry(value);
+    if (!entry?.filePath) {
+      return;
+    }
+
+    await this.openFile(entry.filePath);
+  }
+
+  private async openPromptLibrary(): Promise<void> {
+    const rootDir = await this.getWritableRoot();
+    if (!rootDir) {
+      vscode.window.showWarningMessage('Open a workspace or switch the default prompt target to User.');
+      return;
+    }
+
+    await fs.promises.mkdir(rootDir, { recursive: true });
+    await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(rootDir));
+  }
+
+  private async renderEntry(entry: PromptEntry): Promise<string | undefined> {
+    const settings = this.getSettings();
+    const context = collectEditorContext({ includeFileContent: settings.includeFileContext });
+    const values = await this.collectVariableValues(entry.prompt, context);
+    if (!values) {
+      return undefined;
+    }
+
+    const rendered = renderPrompt(entry.prompt, context, values);
+    if (!rendered.trim()) {
+      vscode.window.showWarningMessage(`"${entry.prompt.title}" rendered to an empty prompt.`);
+      return undefined;
+    }
+
+    return rendered;
+  }
+
+  private async collectVariableValues(
+    prompt: PromptDefinition,
+    context: ReturnType<typeof collectEditorContext>
+  ): Promise<PromptVariableValues | undefined> {
+    const values: PromptVariableValues = {};
+    const missing = getMissingVariables(prompt, context, values);
+
+    for (const variable of missing) {
+      let value: string | undefined;
+      if (variable.type === 'enum' && variable.values && variable.values.length > 0) {
+        value = await vscode.window.showQuickPick(variable.values, {
+          title: prompt.title,
+          placeHolder: variable.description,
+        });
+      } else {
+        value = await vscode.window.showInputBox({
+          title: prompt.title,
+          prompt: variable.description,
+          value: typeof variable.defaultValue === 'undefined' ? '' : String(variable.defaultValue),
+          ignoreFocusOut: true,
+        });
+      }
+
+      if (typeof value === 'undefined') {
+        return undefined;
+      }
+
+      values[variable.name] = this.normalizeVariableValue(value, variable.type);
+    }
+
+    return values;
+  }
+
+  private normalizeVariableValue(value: string, type: string): string | number | boolean {
+    if (type === 'number') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : value;
+    }
+
+    if (type === 'boolean') {
+      return value.toLowerCase() === 'true';
+    }
+
+    return value;
+  }
+
+  private async markUsed(promptId: string): Promise<void> {
+    const metadata = this.getMetadata();
+    metadata[promptId] = {
+      ...metadata[promptId],
+      lastUsedAt: new Date().toISOString(),
+    };
+    await this.context.globalState.update(METADATA_KEY, metadata);
+    await this.refresh();
+  }
+
+  private async pickEntry(value?: unknown): Promise<PromptEntry | undefined> {
+    const explicitEntry = this.resolveEntry(value);
+    if (explicitEntry) {
+      return explicitEntry;
+    }
+
+    const selected = await vscode.window.showQuickPick(this.snapshot.entries.map((entry) => ({
+      label: entry.favorite ? `$(star-full) ${entry.prompt.title}` : entry.prompt.title,
+      description: `${entry.prompt.category} - ${entry.source}`,
+      detail: entry.prompt.description,
+      entry,
+    })), {
+      title: 'Prompt by Prompt',
+      placeHolder: 'Choose a prompt',
+      matchOnDescription: true,
+      matchOnDetail: true,
+    });
+
+    return selected?.entry;
+  }
+
+  private resolveEntry(value?: unknown): PromptEntry | undefined {
+    if (isPromptEntry(value)) {
+      return value;
+    }
+
+    if (value && typeof value === 'object' && isPromptEntry((value as { entry?: unknown }).entry)) {
+      return (value as { entry: PromptEntry }).entry;
+    }
+
+    return undefined;
+  }
+
+  private async getWritableRoot(): Promise<string | undefined> {
+    const settings = this.getSettings();
+    if (settings.defaultPromptTarget === 'user') {
+      return path.join(this.context.globalStorageUri.fsPath, 'prompts');
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      return path.join(workspaceFolder.uri.fsPath, settings.libraryPath);
+    }
+
+    return path.join(this.context.globalStorageUri.fsPath, 'prompts');
+  }
+
+  private createStoreDefinitions(settings: PromptByPromptSettings): PromptStoreDefinition[] {
+    const stores: PromptStoreDefinition[] = [
+      {
+        id: 'user',
+        label: 'User',
+        source: 'user' as const,
+        rootDir: path.join(this.context.globalStorageUri.fsPath, 'prompts'),
+        readOnly: false,
+      },
+      ...(vscode.workspace.workspaceFolders?.map((folder) => ({
+        id: `workspace:${folder.uri.fsPath}`,
+        label: folder.name,
+        source: 'workspace' as const,
+        rootDir: path.join(folder.uri.fsPath, settings.libraryPath),
+        readOnly: false,
+      })) ?? []),
+    ];
+
+    if (settings.showBuiltInPrompts) {
+      stores.push({
+        id: 'builtin',
+        label: 'Built-in',
+        source: 'builtin',
+        rootDir: path.join(this.context.extensionPath, 'builtins', 'templates'),
+        readOnly: true,
+      });
+    }
+
+    return stores;
+  }
+
+  private getSettings(): PromptByPromptSettings {
+    const config = vscode.workspace.getConfiguration('pbp');
+    const libraryPath = config.get<string>('libraryPath', '.prompts').trim() || '.prompts';
+    const defaultPromptTarget = config.get<string>('defaultPromptTarget', 'workspace') === 'user'
+      ? 'user'
+      : 'workspace';
+
+    return {
+      libraryPath,
+      defaultPromptTarget,
+      includeFileContext: config.get<boolean>('includeFileContext', true),
+      showBuiltInPrompts: config.get<boolean>('showBuiltInPrompts', true),
+    };
+  }
+
+  private getMetadata(): PromptMetadataMap {
+    return this.context.globalState.get<PromptMetadataMap>(METADATA_KEY, {});
+  }
+
+  private async openFile(filePath: string): Promise<void> {
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+    await vscode.window.showTextDocument(document);
+  }
+}
+
+function isPromptEntry(value: unknown): value is PromptEntry {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<PromptEntry>;
+  return Boolean(candidate.prompt?.id && candidate.prompt.title);
 }
