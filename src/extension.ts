@@ -1,21 +1,33 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { collectEditorContext } from './application/editorContext';
-import { loadPromptCatalog, PromptCatalogSnapshot, searchPrompts } from './application/promptCatalog';
-import { createEmptyPrompt, PromptDefinition, PromptEntry, PromptMetadataMap } from './domain/prompt';
-import { getMissingVariables, PromptVariableValues, renderPrompt } from './domain/promptRenderer';
-import { deletePromptFile, PromptStoreDefinition, savePrompt } from './infrastructure/promptStore';
-import { PromptsTreeProvider } from './providers/promptsTreeProvider';
-
-const METADATA_KEY = 'pbp.promptMetadata';
+import * as vscode from 'vscode';
+import { ContextCollector } from './application/contextCollector';
+import { renderAuditReport, scanCustomizations } from './application/customizationScanner';
+import { refineTaskPackWithLanguageModel } from './application/languageModelRefiner';
+import {
+  AdapterTarget,
+  createBootstrapFiles,
+  renderBootstrapPreview,
+  reservePromptFilePath,
+  writeBootstrapFiles,
+} from './application/workspaceBootstrap';
+import {
+  addContextItems,
+  createTaskPack,
+  removeContextItem,
+  TaskIntent,
+  TaskPack,
+} from './domain/taskPack';
+import { renderPromptFile, renderTaskPackMarkdown } from './domain/taskPackRenderer';
+import { WorkbenchProvider } from './providers/workbenchProvider';
 
 interface PromptByPromptSettings {
-  libraryPath: string;
-  defaultPromptTarget: 'workspace' | 'user';
-  includeFileContext: boolean;
-  showBuiltInPrompts: boolean;
+  contextBudgetChars: number;
+  includeDiagnostics: boolean;
+  includeGitDiff: boolean;
+  enableLanguageModelAssist: boolean;
+  promptFilesPath: string;
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -24,95 +36,67 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export function deactivate(): void {
-  // VS Code disposes subscriptions registered during activation.
+  // VS Code disposes registered subscriptions.
 }
 
 class PromptByPromptController {
-  private readonly treeProvider = new PromptsTreeProvider();
+  private readonly workbenchProvider = new WorkbenchProvider();
   private readonly output = vscode.window.createOutputChannel('Prompt by Prompt');
-  private snapshot: PromptCatalogSnapshot = {
-    entries: [],
-    diagnostics: [],
-    summary: { total: 0, workspace: 0, user: 0, builtin: 0, favorites: 0 },
-  };
+  private taskPack: TaskPack | undefined;
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  public constructor(private readonly context: vscode.ExtensionContext) {}
 
   public async activate(): Promise<void> {
-    this.context.subscriptions.push(this.output, this.treeProvider);
-
-    const treeView = vscode.window.createTreeView('pbp.promptsView', {
-      treeDataProvider: this.treeProvider,
+    const treeView = vscode.window.createTreeView('pbp.workbenchView', {
+      treeDataProvider: this.workbenchProvider,
       showCollapseAll: true,
     });
-    this.context.subscriptions.push(treeView);
 
+    this.context.subscriptions.push(this.output, this.workbenchProvider, treeView);
     this.registerCommands();
     this.registerRefreshHooks();
-    await this.refresh();
+    this.refreshWorkbench();
   }
 
   private registerCommands(): void {
     const commands: vscode.Disposable[] = [
-      vscode.commands.registerCommand('pbp.refreshPrompts', async () => this.refresh({ notify: true })),
-      vscode.commands.registerCommand('pbp.createPrompt', async () => this.createPrompt()),
-      vscode.commands.registerCommand('pbp.searchPrompts', async () => this.searchPrompts()),
-      vscode.commands.registerCommand('pbp.copyPrompt', async (value?: unknown) => this.copyPrompt(value)),
-      vscode.commands.registerCommand('pbp.previewPrompt', async (value?: unknown) => this.previewPrompt(value)),
-      vscode.commands.registerCommand('pbp.editPrompt', async (value?: unknown) => this.editPrompt(value)),
-      vscode.commands.registerCommand('pbp.duplicatePrompt', async (value?: unknown) => this.duplicatePrompt(value)),
-      vscode.commands.registerCommand('pbp.deletePrompt', async (value?: unknown) => this.deletePrompt(value)),
-      vscode.commands.registerCommand('pbp.toggleFavoritePrompt', async (value?: unknown) => this.toggleFavorite(value)),
-      vscode.commands.registerCommand('pbp.openPromptFile', async (value?: unknown) => this.openPromptFile(value)),
-      vscode.commands.registerCommand('pbp.openPromptLibrary', async () => this.openPromptLibrary()),
+      vscode.commands.registerCommand('pbp.refreshWorkbench', () => this.runCommand(() => this.refreshWorkbench())),
+      vscode.commands.registerCommand('pbp.newTaskPack', () => this.runCommand(() => this.newTaskPack())),
+      vscode.commands.registerCommand('pbp.addSelectionContext', () => this.runCommand(() => this.addSelectionContext())),
+      vscode.commands.registerCommand('pbp.addCurrentFileContext', () => this.runCommand(() => this.addCurrentFileContext())),
+      vscode.commands.registerCommand('pbp.addFilesContext', () => this.runCommand(() => this.addFilesContext())),
+      vscode.commands.registerCommand('pbp.addGitDiffContext', () => this.runCommand(() => this.addGitDiffContext())),
+      vscode.commands.registerCommand('pbp.addDiagnosticsContext', () => this.runCommand(() => this.addDiagnosticsContext())),
+      vscode.commands.registerCommand('pbp.addNoteContext', () => this.runCommand(() => this.addNoteContext())),
+      vscode.commands.registerCommand('pbp.copyTaskPack', () => this.runCommand(() => this.copyTaskPack())),
+      vscode.commands.registerCommand('pbp.previewTaskPack', () => this.runCommand(() => this.previewTaskPack())),
+      vscode.commands.registerCommand('pbp.savePromptFile', () => this.runCommand(() => this.savePromptFile())),
+      vscode.commands.registerCommand('pbp.bootstrapWorkspace', () => this.runCommand(() => this.bootstrapWorkspace())),
+      vscode.commands.registerCommand('pbp.auditCustomizations', () => this.runCommand(() => this.auditCustomizations())),
+      vscode.commands.registerCommand('pbp.refineTaskPack', () => this.runCommand(() => this.refineTaskPack())),
+      vscode.commands.registerCommand('pbp.clearTaskPack', () => this.runCommand(() => this.clearTaskPack())),
+      vscode.commands.registerCommand('pbp.removeContextItem', (itemId?: unknown) => this.runCommand(() => this.removeContextItem(itemId))),
     ];
 
     this.context.subscriptions.push(...commands);
   }
 
   private registerRefreshHooks(): void {
-    const watcher = vscode.workspace.createFileSystemWatcher('**/.prompts/**/*.{yaml,yml}');
-    const refresh = () => void this.refresh();
-    watcher.onDidCreate(refresh, undefined, this.context.subscriptions);
-    watcher.onDidChange(refresh, undefined, this.context.subscriptions);
-    watcher.onDidDelete(refresh, undefined, this.context.subscriptions);
-
     this.context.subscriptions.push(
-      watcher,
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('pbp')) {
-          void this.refresh();
+          this.refreshWorkbench();
         }
       }),
-      vscode.workspace.onDidChangeWorkspaceFolders(() => {
-        void this.refresh();
-      })
+      vscode.workspace.onDidChangeWorkspaceFolders(() => this.refreshWorkbench())
     );
   }
 
-  private async refresh(options: { notify?: boolean } = {}): Promise<void> {
-    const settings = this.getSettings();
-    const stores = this.createStoreDefinitions(settings);
-    const metadata = this.getMetadata();
-    this.snapshot = await loadPromptCatalog(stores, metadata);
-    this.treeProvider.setEntries(this.snapshot.entries);
-
-    this.output.clear();
-    this.output.appendLine(`Loaded ${this.snapshot.summary.total} prompts`);
-    for (const diagnostic of this.snapshot.diagnostics) {
-      this.output.appendLine(`[${diagnostic.storeId}] ${diagnostic.filePath}: ${diagnostic.message}`);
-    }
-
-    if (options.notify) {
-      vscode.window.showInformationMessage(`Loaded ${this.snapshot.summary.total} prompts.`);
-    }
-  }
-
-  private async createPrompt(): Promise<void> {
+  private async newTaskPack(): Promise<void> {
     const title = await vscode.window.showInputBox({
-      title: 'New Prompt',
-      prompt: 'Prompt title',
-      placeHolder: 'Code review checklist',
+      title: 'New Task Pack',
+      prompt: 'What should the agent do?',
+      placeHolder: 'Fix the failing auth tests',
       ignoreFocusOut: true,
       validateInput: (value) => value.trim() ? null : 'Title is required.',
     });
@@ -121,408 +105,418 @@ class PromptByPromptController {
       return;
     }
 
-    const prompt = createEmptyPrompt(randomUUID(), title);
-    const description = await vscode.window.showInputBox({
-      title: 'New Prompt',
-      prompt: 'Short description',
-      placeHolder: 'Review selected code for correctness and maintainability',
+    const intent = await vscode.window.showQuickPick(intentQuickPickItems(), {
+      title: 'New Task Pack',
+      placeHolder: 'Choose the closest task intent',
       ignoreFocusOut: true,
     });
 
-    if (typeof description === 'undefined') {
+    if (!intent) {
       return;
     }
 
-    const category = await vscode.window.showInputBox({
-      title: 'New Prompt',
-      prompt: 'Category',
-      value: 'General',
+    const goal = await vscode.window.showInputBox({
+      title: 'New Task Pack',
+      prompt: 'Goal',
+      value: title,
       ignoreFocusOut: true,
+      validateInput: (value) => value.trim() ? null : 'Goal is required.',
     });
 
-    if (typeof category === 'undefined') {
+    if (!goal) {
       return;
     }
 
-    const rootDir = await this.getWritableRoot();
-    if (!rootDir) {
-      vscode.window.showWarningMessage('Open a workspace or switch the default prompt target to User.');
-      return;
-    }
-
-    const filePath = await savePrompt(rootDir, {
-      ...prompt,
-      description,
-      category: category.trim() || 'General',
+    const pack = createTaskPack({
+      id: randomUUID(),
+      title,
+      intent: intent.value,
+      goal,
     });
 
-    await this.refresh();
-    await this.openFile(filePath);
+    this.taskPack = pack;
+    await this.addDefaultContext();
+    this.refreshWorkbench();
+    vscode.window.showInformationMessage(`Created task pack "${title}".`);
   }
 
-  private async searchPrompts(): Promise<void> {
-    const query = await vscode.window.showInputBox({
-      title: 'Search Prompts',
-      prompt: 'Search title, tag, category, description, or body',
-      ignoreFocusOut: true,
-    });
-
-    if (typeof query === 'undefined') {
+  private async addDefaultContext(): Promise<void> {
+    if (!this.taskPack) {
       return;
     }
 
-    const entries = searchPrompts(this.snapshot.entries, query);
-    const selected = await vscode.window.showQuickPick(entries.map((entry) => ({
-      label: entry.favorite ? `$(star-full) ${entry.prompt.title}` : entry.prompt.title,
-      description: `${entry.prompt.category} - ${entry.source}`,
-      detail: entry.prompt.description,
-      entry,
-    })), {
-      title: 'Prompt by Prompt',
-      placeHolder: entries.length > 0 ? 'Choose a prompt to copy' : 'No prompts found',
-      matchOnDescription: true,
-      matchOnDetail: true,
-    });
+    const settings = this.getSettings();
+    const collector = new ContextCollector(settings);
+    const workspaceFolder = this.getActiveWorkspaceFolder();
+    const items = [
+      ...collector.collectActiveSelection(),
+      ...(settings.includeDiagnostics ? collector.collectDiagnostics(workspaceFolder) : []),
+      ...(settings.includeGitDiff && workspaceFolder ? await collector.collectGitDiff(workspaceFolder) : []),
+    ];
 
-    if (selected?.entry) {
-      await this.copyPrompt(selected.entry);
-    }
+    this.taskPack = addContextItems(this.taskPack, items);
   }
 
-  private async copyPrompt(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry) {
+  private async addSelectionContext(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
       return;
     }
 
-    const rendered = await this.renderEntry(entry);
-    if (!rendered) {
+    const items = new ContextCollector(this.getSettings()).collectActiveSelection();
+    if (items.length === 0) {
+      vscode.window.showWarningMessage('No active selection or current line found.');
       return;
     }
 
-    await vscode.env.clipboard.writeText(rendered);
-    await this.markUsed(entry.prompt.id);
-    vscode.window.showInformationMessage(`Copied "${entry.prompt.title}" to clipboard.`);
+    this.taskPack = addContextItems(pack, items);
+    this.refreshWorkbench();
   }
 
-  private async previewPrompt(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry) {
+  private async addCurrentFileContext(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
       return;
     }
 
-    const rendered = await this.renderEntry(entry);
-    if (!rendered) {
+    const items = new ContextCollector(this.getSettings()).collectActiveFile();
+    if (items.length === 0) {
+      vscode.window.showWarningMessage('No active file found.');
       return;
     }
 
-    const content = [
-      `# ${entry.prompt.title}`,
-      '',
-      entry.prompt.description,
-      '',
-      `Source: ${entry.source}`,
-      '',
-      '---',
-      '',
-      rendered,
-      '',
-    ].filter((line, index, lines) => line || lines[index - 1] !== '').join('\n');
+    this.taskPack = addContextItems(pack, items);
+    this.refreshWorkbench();
+  }
 
-    const document = await vscode.workspace.openTextDocument({
-      language: 'markdown',
-      content,
+  private async addFilesContext(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
+      return;
+    }
+
+    const uris = await vscode.window.showOpenDialog({
+      title: 'Add Files to Task Pack',
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: true,
+      defaultUri: this.getActiveWorkspaceFolder()?.uri,
+      openLabel: 'Add Files',
     });
-    await vscode.window.showTextDocument(document, { preview: true });
-  }
 
-  private async editPrompt(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry) {
+    if (!uris || uris.length === 0) {
       return;
     }
 
-    if (entry.readOnly) {
-      const action = await vscode.window.showInformationMessage(
-        'Built-in prompts are read-only. Duplicate it to edit your own copy.',
-        'Duplicate'
-      );
-      if (action === 'Duplicate') {
-        await this.duplicatePrompt(entry);
+    const items = await new ContextCollector(this.getSettings()).collectFiles(uris);
+    this.taskPack = addContextItems(pack, items);
+    this.refreshWorkbench();
+  }
+
+  private async addGitDiffContext(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    const workspaceFolder = this.getActiveWorkspaceFolder();
+    if (!pack || !workspaceFolder) {
+      if (!workspaceFolder) {
+        vscode.window.showWarningMessage('Open a workspace folder before adding Git diff context.');
       }
       return;
     }
 
-    await this.openPromptFile(entry);
+    const items = await new ContextCollector(this.getSettings()).collectGitDiff(workspaceFolder);
+    if (items.length === 0) {
+      vscode.window.showInformationMessage('No Git diff found.');
+      return;
+    }
+
+    this.taskPack = addContextItems(pack, items);
+    this.refreshWorkbench();
   }
 
-  private async duplicatePrompt(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry) {
+  private async addDiagnosticsContext(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
       return;
     }
 
-    const rootDir = await this.getWritableRoot();
-    if (!rootDir) {
-      vscode.window.showWarningMessage('Open a workspace or switch the default prompt target to User.');
+    const items = new ContextCollector(this.getSettings()).collectDiagnostics(this.getActiveWorkspaceFolder());
+    if (items.length === 0) {
+      vscode.window.showInformationMessage('No VS Code diagnostics found.');
       return;
     }
 
-    const now = new Date().toISOString();
-    const prompt: PromptDefinition = {
-      ...entry.prompt,
-      id: randomUUID(),
-      title: `${entry.prompt.title} Copy`,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const filePath = await savePrompt(rootDir, prompt);
-    await this.refresh();
-    await this.openFile(filePath);
+    this.taskPack = addContextItems(pack, items);
+    this.refreshWorkbench();
   }
 
-  private async deletePrompt(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry || !entry.filePath) {
+  private async addNoteContext(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
       return;
     }
 
-    if (entry.readOnly) {
-      vscode.window.showInformationMessage('Built-in prompts cannot be deleted.');
+    const note = await vscode.window.showInputBox({
+      title: 'Add Note',
+      prompt: 'Add any extra context, constraint, or decision',
+      ignoreFocusOut: true,
+    });
+
+    if (typeof note === 'undefined') {
       return;
     }
 
-    const confirm = await vscode.window.showWarningMessage(
-      `Delete "${entry.prompt.title}"?`,
+    const items = new ContextCollector(this.getSettings()).collectNote(note);
+    this.taskPack = addContextItems(pack, items);
+    this.refreshWorkbench();
+  }
+
+  private async copyTaskPack(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
+      return;
+    }
+
+    await vscode.env.clipboard.writeText(renderTaskPackMarkdown(pack));
+    vscode.window.showInformationMessage(`Copied task pack "${pack.title}" to clipboard.`);
+  }
+
+  private async previewTaskPack(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
+      return;
+    }
+
+    await this.openMarkdownDocument(renderTaskPackMarkdown(pack), 'Prompt by Prompt Task Pack');
+  }
+
+  private async savePromptFile(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    const workspaceFolder = await this.pickWorkspaceFolder();
+    if (!pack || !workspaceFolder) {
+      return;
+    }
+
+    const settings = this.getSettings();
+    const filePath = reservePromptFilePath(workspaceFolder.uri.fsPath, settings.promptFilesPath, pack.title);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, renderPromptFile(pack), 'utf8');
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+    await vscode.window.showTextDocument(document);
+    vscode.window.showInformationMessage(`Saved ${path.relative(workspaceFolder.uri.fsPath, filePath).replace(/\\/g, '/')}.`);
+  }
+
+  private async bootstrapWorkspace(): Promise<void> {
+    const workspaceFolder = await this.pickWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
+    const adapterItems = await vscode.window.showQuickPick([
+      { label: 'Cursor', value: 'cursor' as AdapterTarget, description: '.cursor/rules/pbp-project.mdc' },
+      { label: 'Cline', value: 'cline' as AdapterTarget, description: '.clinerules/01-project.md' },
+      { label: 'Windsurf', value: 'windsurf' as AdapterTarget, description: '.windsurf/rules/pbp-project.md' },
+    ], {
+      title: 'Optional Agent Rule Adapters',
+      placeHolder: 'Choose adapters to generate, or press Enter to skip',
+      canPickMany: true,
+      ignoreFocusOut: true,
+    });
+
+    if (!adapterItems) {
+      return;
+    }
+
+    const adapters = adapterItems.map((item) => item.value);
+    const files = createBootstrapFiles(workspaceFolder.name, adapters);
+    const preview = renderBootstrapPreview(files, workspaceFolder.uri.fsPath);
+    await this.openMarkdownDocument(preview, 'Prompt by Prompt Bootstrap Preview');
+
+    const existingFiles = files.filter((file) => fs.existsSync(path.join(workspaceFolder.uri.fsPath, file.relativePath)));
+    const actions = existingFiles.length > 0
+      ? ['Create (Skip Existing)', 'Create (Overwrite Existing)']
+      : ['Create'];
+
+    const confirmation = await vscode.window.showWarningMessage(
+      `Create ${files.length} AI customization file(s) in ${workspaceFolder.name}?`,
       { modal: true },
-      'Delete'
+      ...actions
     );
 
-    if (confirm !== 'Delete') {
+    if (!confirmation) {
       return;
     }
 
-    await deletePromptFile(entry.filePath);
-    await this.refresh();
-    vscode.window.showInformationMessage(`Deleted "${entry.prompt.title}".`);
+    const policy = confirmation === 'Create (Overwrite Existing)' ? 'overwrite-existing' : 'skip-existing';
+    const result = await writeBootstrapFiles(workspaceFolder.uri.fsPath, files, policy);
+    this.output.appendLine('Workspace bootstrap complete.');
+    this.output.appendLine(`Created: ${result.created.join(', ') || 'none'}`);
+    this.output.appendLine(`Overwritten: ${result.overwritten.join(', ') || 'none'}`);
+    this.output.appendLine(`Skipped: ${result.skipped.join(', ') || 'none'}`);
+    vscode.window.showInformationMessage(
+      `Bootstrap complete: ${result.created.length} created, ${result.overwritten.length} overwritten, ${result.skipped.length} skipped.`
+    );
   }
 
-  private async toggleFavorite(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry) {
+  private async auditCustomizations(): Promise<void> {
+    const workspaceFolder = await this.pickWorkspaceFolder();
+    if (!workspaceFolder) {
       return;
     }
 
-    const metadata = this.getMetadata();
-    metadata[entry.prompt.id] = {
-      ...metadata[entry.prompt.id],
-      favorite: !entry.favorite,
-    };
-    await this.context.globalState.update(METADATA_KEY, metadata);
-    await this.refresh();
+    const audit = await scanCustomizations(workspaceFolder.uri.fsPath);
+    await this.openMarkdownDocument(renderAuditReport(audit), 'Prompt by Prompt Audit');
   }
 
-  private async openPromptFile(value?: unknown): Promise<void> {
-    const entry = await this.pickEntry(value);
-    if (!entry?.filePath) {
+  private async refineTaskPack(): Promise<void> {
+    const pack = await this.requireTaskPack();
+    if (!pack) {
       return;
     }
 
-    await this.openFile(entry.filePath);
-  }
-
-  private async openPromptLibrary(): Promise<void> {
-    const rootDir = await this.getWritableRoot();
-    if (!rootDir) {
-      vscode.window.showWarningMessage('Open a workspace or switch the default prompt target to User.');
-      return;
-    }
-
-    await fs.promises.mkdir(rootDir, { recursive: true });
-    await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(rootDir));
-  }
-
-  private async renderEntry(entry: PromptEntry): Promise<string | undefined> {
     const settings = this.getSettings();
-    const context = collectEditorContext({ includeFileContent: settings.includeFileContext });
-    const values = await this.collectVariableValues(entry.prompt, context);
-    if (!values) {
-      return undefined;
+    if (!settings.enableLanguageModelAssist) {
+      vscode.window.showInformationMessage('Language model assist is disabled in settings.');
+      return;
     }
 
-    const rendered = renderPrompt(entry.prompt, context, values);
-    if (!rendered.trim()) {
-      vscode.window.showWarningMessage(`"${entry.prompt.title}" rendered to an empty prompt.`);
-      return undefined;
+    const refined = await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: 'Refining task pack',
+      cancellable: true,
+    }, async (_progress, token) => refineTaskPackWithLanguageModel(pack, token));
+
+    if (!refined) {
+      vscode.window.showInformationMessage('No language model response was available. The current task pack was left unchanged.');
+      return;
     }
 
-    return rendered;
+    this.taskPack = refined;
+    this.refreshWorkbench();
+    vscode.window.showInformationMessage(`Refined task pack "${refined.title}".`);
   }
 
-  private async collectVariableValues(
-    prompt: PromptDefinition,
-    context: ReturnType<typeof collectEditorContext>
-  ): Promise<PromptVariableValues | undefined> {
-    const values: PromptVariableValues = {};
-    const missing = getMissingVariables(prompt, context, values);
-
-    for (const variable of missing) {
-      let value: string | undefined;
-      if (variable.type === 'enum' && variable.values && variable.values.length > 0) {
-        value = await vscode.window.showQuickPick(variable.values, {
-          title: prompt.title,
-          placeHolder: variable.description,
-        });
-      } else {
-        value = await vscode.window.showInputBox({
-          title: prompt.title,
-          prompt: variable.description,
-          value: typeof variable.defaultValue === 'undefined' ? '' : String(variable.defaultValue),
-          ignoreFocusOut: true,
-        });
-      }
-
-      if (typeof value === 'undefined') {
-        return undefined;
-      }
-
-      values[variable.name] = this.normalizeVariableValue(value, variable.type);
-    }
-
-    return values;
+  private clearTaskPack(): void {
+    this.taskPack = undefined;
+    this.refreshWorkbench();
   }
 
-  private normalizeVariableValue(value: string, type: string): string | number | boolean {
-    if (type === 'number') {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : value;
+  private async removeContextItem(value?: unknown): Promise<void> {
+    const itemId = resolveContextItemId(value);
+    if (!this.taskPack || !itemId) {
+      return;
     }
 
-    if (type === 'boolean') {
-      return value.toLowerCase() === 'true';
-    }
-
-    return value;
+    this.taskPack = removeContextItem(this.taskPack, itemId);
+    this.refreshWorkbench();
   }
 
-  private async markUsed(promptId: string): Promise<void> {
-    const metadata = this.getMetadata();
-    metadata[promptId] = {
-      ...metadata[promptId],
-      lastUsedAt: new Date().toISOString(),
-    };
-    await this.context.globalState.update(METADATA_KEY, metadata);
-    await this.refresh();
-  }
-
-  private async pickEntry(value?: unknown): Promise<PromptEntry | undefined> {
-    const explicitEntry = this.resolveEntry(value);
-    if (explicitEntry) {
-      return explicitEntry;
+  private async requireTaskPack(): Promise<TaskPack | undefined> {
+    if (this.taskPack) {
+      return this.taskPack;
     }
 
-    const selected = await vscode.window.showQuickPick(this.snapshot.entries.map((entry) => ({
-      label: entry.favorite ? `$(star-full) ${entry.prompt.title}` : entry.prompt.title,
-      description: `${entry.prompt.category} - ${entry.source}`,
-      detail: entry.prompt.description,
-      entry,
-    })), {
-      title: 'Prompt by Prompt',
-      placeHolder: 'Choose a prompt',
-      matchOnDescription: true,
-      matchOnDetail: true,
-    });
-
-    return selected?.entry;
-  }
-
-  private resolveEntry(value?: unknown): PromptEntry | undefined {
-    if (isPromptEntry(value)) {
-      return value;
-    }
-
-    if (value && typeof value === 'object' && isPromptEntry((value as { entry?: unknown }).entry)) {
-      return (value as { entry: PromptEntry }).entry;
+    const action = await vscode.window.showInformationMessage('Create a task pack first.', 'New Task Pack');
+    if (action === 'New Task Pack') {
+      await this.newTaskPack();
+      return this.taskPack;
     }
 
     return undefined;
   }
 
-  private async getWritableRoot(): Promise<string | undefined> {
-    const settings = this.getSettings();
-    if (settings.defaultPromptTarget === 'user') {
-      return path.join(this.context.globalStorageUri.fsPath, 'prompts');
+  private async pickWorkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined> {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      vscode.window.showWarningMessage('Open a workspace folder first.');
+      return undefined;
     }
 
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder) {
-      return path.join(workspaceFolder.uri.fsPath, settings.libraryPath);
+    if (folders.length === 1) {
+      return folders[0];
     }
 
-    return path.join(this.context.globalStorageUri.fsPath, 'prompts');
+    const selected = await vscode.window.showQuickPick(folders.map((folder) => ({
+      label: folder.name,
+      description: folder.uri.fsPath,
+      folder,
+    })), {
+      title: 'Choose Workspace Folder',
+      ignoreFocusOut: true,
+    });
+
+    return selected?.folder;
   }
 
-  private createStoreDefinitions(settings: PromptByPromptSettings): PromptStoreDefinition[] {
-    const stores: PromptStoreDefinition[] = [
-      {
-        id: 'user',
-        label: 'User',
-        source: 'user' as const,
-        rootDir: path.join(this.context.globalStorageUri.fsPath, 'prompts'),
-        readOnly: false,
-      },
-      ...(vscode.workspace.workspaceFolders?.map((folder) => ({
-        id: `workspace:${folder.uri.fsPath}`,
-        label: folder.name,
-        source: 'workspace' as const,
-        rootDir: path.join(folder.uri.fsPath, settings.libraryPath),
-        readOnly: false,
-      })) ?? []),
-    ];
-
-    if (settings.showBuiltInPrompts) {
-      stores.push({
-        id: 'builtin',
-        label: 'Built-in',
-        source: 'builtin',
-        rootDir: path.join(this.context.extensionPath, 'builtins', 'templates'),
-        readOnly: true,
-      });
+  private getActiveWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
+    const activeUri = vscode.window.activeTextEditor?.document.uri;
+    if (activeUri) {
+      return vscode.workspace.getWorkspaceFolder(activeUri);
     }
 
-    return stores;
+    return vscode.workspace.workspaceFolders?.[0];
   }
 
   private getSettings(): PromptByPromptSettings {
     const config = vscode.workspace.getConfiguration('pbp');
-    const libraryPath = config.get<string>('libraryPath', '.prompts').trim() || '.prompts';
-    const defaultPromptTarget = config.get<string>('defaultPromptTarget', 'workspace') === 'user'
-      ? 'user'
-      : 'workspace';
-
     return {
-      libraryPath,
-      defaultPromptTarget,
-      includeFileContext: config.get<boolean>('includeFileContext', true),
-      showBuiltInPrompts: config.get<boolean>('showBuiltInPrompts', true),
+      contextBudgetChars: Math.max(4000, config.get<number>('contextBudgetChars', 80000)),
+      includeDiagnostics: config.get<boolean>('includeDiagnostics', true),
+      includeGitDiff: config.get<boolean>('includeGitDiff', true),
+      enableLanguageModelAssist: config.get<boolean>('enableLanguageModelAssist', true),
+      promptFilesPath: normalizePromptFilesPath(config.get<string>('promptFilesPath', '.github/prompts')),
     };
   }
 
-  private getMetadata(): PromptMetadataMap {
-    return this.context.globalState.get<PromptMetadataMap>(METADATA_KEY, {});
+  private refreshWorkbench(): void {
+    this.workbenchProvider.setTaskPack(this.taskPack);
   }
 
-  private async openFile(filePath: string): Promise<void> {
-    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-    await vscode.window.showTextDocument(document);
+  private async openMarkdownDocument(content: string, title: string): Promise<void> {
+    const document = await vscode.workspace.openTextDocument({
+      language: 'markdown',
+      content,
+    });
+    await vscode.window.showTextDocument(document, { preview: true });
+    this.output.appendLine(title);
+  }
+
+  private async runCommand(action: () => void | Promise<void>): Promise<void> {
+    try {
+      await action();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.appendLine(`Error: ${message}`);
+      vscode.window.showErrorMessage(message);
+    }
   }
 }
 
-function isPromptEntry(value: unknown): value is PromptEntry {
-  if (!value || typeof value !== 'object') {
-    return false;
+function intentQuickPickItems(): Array<vscode.QuickPickItem & { value: TaskIntent }> {
+  return [
+    { label: 'Implement', value: 'implement', description: 'Build or change behavior' },
+    { label: 'Fix', value: 'fix', description: 'Resolve a bug or failure' },
+    { label: 'Refactor', value: 'refactor', description: 'Improve structure without changing behavior' },
+    { label: 'Review', value: 'review', description: 'Find issues and risks' },
+    { label: 'Test', value: 'test', description: 'Add or improve tests' },
+    { label: 'Docs', value: 'docs', description: 'Create or update documentation' },
+    { label: 'Custom', value: 'custom', description: 'Something else' },
+  ];
+}
+
+function normalizePromptFilesPath(value: string | undefined): string {
+  const normalized = (value ?? '.github/prompts').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  return normalized || '.github/prompts';
+}
+
+function resolveContextItemId(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value;
   }
 
-  const candidate = value as Partial<PromptEntry>;
-  return Boolean(candidate.prompt?.id && candidate.prompt.title);
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const candidate = value as { item?: { id?: unknown } };
+  return typeof candidate.item?.id === 'string' ? candidate.item.id : undefined;
 }

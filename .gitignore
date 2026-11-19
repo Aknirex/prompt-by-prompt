@@ -30,6 +30,7 @@ coverage/
 
 # Legacy docs drafts
 docs/*
+!docs/product.md
 !docs/vnext/
 !docs/vnext/**
 

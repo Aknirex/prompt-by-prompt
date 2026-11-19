@@ -1,8 +1,8 @@
 {
   "name": "prompt-by-prompt",
   "displayName": "Prompt by Prompt",
-  "description": "A focused prompt manager for VS Code: save, search, preview, and reuse prompts as files.",
-  "version": "3.1.0",
+  "description": "An AI task-pack workbench for VS Code: gather context, clarify agent work, save Copilot prompt files, and bootstrap workspace AI customizations.",
+  "version": "4.0.0",
   "publisher": "aknirex",
   "repository": {
     "type": "git",
@@ -12,7 +12,7 @@
   "license": "GPL-3.0",
   "icon": "media/icon.png",
   "engines": {
-    "vscode": "^1.85.0",
+    "vscode": "^1.105.0",
     "node": "^20.20.2"
   },
   "packageManager": "pnpm@10.33.0",
@@ -21,88 +21,119 @@
     "pnpm": "10.33.0"
   },
   "categories": [
-    "Snippets",
     "Machine Learning",
     "Other"
   ],
   "keywords": [
-    "prompt",
-    "prompt-manager",
-    "prompt-engineering",
     "ai",
-    "llm"
+    "agent",
+    "copilot",
+    "prompt",
+    "prompt-files",
+    "vibe-coding",
+    "context-engineering"
   ],
   "activationEvents": [
-    "onView:pbp.promptsView",
-    "onCommand:pbp.refreshPrompts",
-    "onCommand:pbp.createPrompt",
-    "onCommand:pbp.searchPrompts",
-    "onCommand:pbp.copyPrompt",
-    "onCommand:pbp.previewPrompt",
-    "onCommand:pbp.editPrompt",
-    "onCommand:pbp.duplicatePrompt",
-    "onCommand:pbp.deletePrompt",
-    "onCommand:pbp.toggleFavoritePrompt",
-    "onCommand:pbp.openPromptFile",
-    "onCommand:pbp.openPromptLibrary"
+    "onView:pbp.workbenchView",
+    "onCommand:pbp.refreshWorkbench",
+    "onCommand:pbp.newTaskPack",
+    "onCommand:pbp.addSelectionContext",
+    "onCommand:pbp.addCurrentFileContext",
+    "onCommand:pbp.addFilesContext",
+    "onCommand:pbp.addGitDiffContext",
+    "onCommand:pbp.addDiagnosticsContext",
+    "onCommand:pbp.addNoteContext",
+    "onCommand:pbp.copyTaskPack",
+    "onCommand:pbp.previewTaskPack",
+    "onCommand:pbp.savePromptFile",
+    "onCommand:pbp.bootstrapWorkspace",
+    "onCommand:pbp.auditCustomizations",
+    "onCommand:pbp.refineTaskPack",
+    "onCommand:pbp.clearTaskPack",
+    "onCommand:pbp.removeContextItem"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "pbp.refreshPrompts",
-        "title": "Refresh Prompts",
+        "command": "pbp.refreshWorkbench",
+        "title": "Prompt by Prompt: Refresh Workbench",
         "icon": "$(refresh)"
       },
       {
-        "command": "pbp.createPrompt",
-        "title": "New Prompt",
+        "command": "pbp.newTaskPack",
+        "title": "Prompt by Prompt: New Task Pack",
         "icon": "$(add)"
       },
       {
-        "command": "pbp.searchPrompts",
-        "title": "Search Prompts",
-        "icon": "$(search)"
+        "command": "pbp.addSelectionContext",
+        "title": "Prompt by Prompt: Add Selection or Current Line",
+        "icon": "$(selection)"
       },
       {
-        "command": "pbp.copyPrompt",
-        "title": "Copy Rendered Prompt",
+        "command": "pbp.addCurrentFileContext",
+        "title": "Prompt by Prompt: Add Current File",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "pbp.addFilesContext",
+        "title": "Prompt by Prompt: Add Files...",
+        "icon": "$(files)"
+      },
+      {
+        "command": "pbp.addGitDiffContext",
+        "title": "Prompt by Prompt: Add Git Diff",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "pbp.addDiagnosticsContext",
+        "title": "Prompt by Prompt: Add Diagnostics",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "pbp.addNoteContext",
+        "title": "Prompt by Prompt: Add Note",
+        "icon": "$(note)"
+      },
+      {
+        "command": "pbp.copyTaskPack",
+        "title": "Prompt by Prompt: Copy Task Pack",
         "icon": "$(clippy)"
       },
       {
-        "command": "pbp.previewPrompt",
-        "title": "Preview Rendered Prompt",
+        "command": "pbp.previewTaskPack",
+        "title": "Prompt by Prompt: Preview Task Pack",
         "icon": "$(preview)"
       },
       {
-        "command": "pbp.editPrompt",
-        "title": "Edit Prompt",
-        "icon": "$(edit)"
+        "command": "pbp.savePromptFile",
+        "title": "Prompt by Prompt: Save as Prompt File",
+        "icon": "$(save)"
       },
       {
-        "command": "pbp.duplicatePrompt",
-        "title": "Duplicate Prompt",
-        "icon": "$(copy)"
+        "command": "pbp.bootstrapWorkspace",
+        "title": "Prompt by Prompt: Bootstrap Workspace AI Setup",
+        "icon": "$(rocket)"
       },
       {
-        "command": "pbp.deletePrompt",
-        "title": "Delete Prompt",
+        "command": "pbp.auditCustomizations",
+        "title": "Prompt by Prompt: Audit AI Customizations",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "pbp.refineTaskPack",
+        "title": "Prompt by Prompt: Refine Task Pack",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "pbp.clearTaskPack",
+        "title": "Prompt by Prompt: Clear Task Pack",
         "icon": "$(trash)"
       },
       {
-        "command": "pbp.toggleFavoritePrompt",
-        "title": "Toggle Favorite",
-        "icon": "$(star-full)"
-      },
-      {
-        "command": "pbp.openPromptFile",
-        "title": "Open Prompt File",
-        "icon": "$(go-to-file)"
-      },
-      {
-        "command": "pbp.openPromptLibrary",
-        "title": "Open Prompt Library",
-        "icon": "$(folder-opened)"
+        "command": "pbp.removeContextItem",
+        "title": "Prompt by Prompt: Remove Context Item",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -117,8 +148,8 @@
     "views": {
       "pbp-explorer": [
         {
-          "id": "pbp.promptsView",
-          "name": "Prompts",
+          "id": "pbp.workbenchView",
+          "name": "Task Pack Workbench",
           "icon": "media/icon.svg"
         }
       ]
@@ -126,97 +157,74 @@
     "menus": {
       "view/title": [
         {
-          "command": "pbp.refreshPrompts",
-          "when": "view == pbp.promptsView",
+          "command": "pbp.refreshWorkbench",
+          "when": "view == pbp.workbenchView",
           "group": "navigation@1"
         },
         {
-          "command": "pbp.createPrompt",
-          "when": "view == pbp.promptsView",
+          "command": "pbp.newTaskPack",
+          "when": "view == pbp.workbenchView",
           "group": "navigation@2"
         },
         {
-          "command": "pbp.searchPrompts",
-          "when": "view == pbp.promptsView",
+          "command": "pbp.copyTaskPack",
+          "when": "view == pbp.workbenchView",
           "group": "navigation@3"
         },
         {
-          "command": "pbp.openPromptLibrary",
-          "when": "view == pbp.promptsView",
+          "command": "pbp.savePromptFile",
+          "when": "view == pbp.workbenchView",
           "group": "navigation@4"
         }
       ],
       "view/item/context": [
         {
-          "command": "pbp.copyPrompt",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
+          "command": "pbp.removeContextItem",
+          "when": "view == pbp.workbenchView && viewItem == pbp.contextItem",
           "group": "inline@1"
-        },
-        {
-          "command": "pbp.previewPrompt",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
-          "group": "1_run@1"
-        },
-        {
-          "command": "pbp.toggleFavoritePrompt",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
-          "group": "1_run@2"
-        },
-        {
-          "command": "pbp.editPrompt",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user)",
-          "group": "2_manage@1"
-        },
-        {
-          "command": "pbp.duplicatePrompt",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
-          "group": "2_manage@2"
-        },
-        {
-          "command": "pbp.openPromptFile",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user || viewItem == prompt.builtin)",
-          "group": "2_manage@3"
-        },
-        {
-          "command": "pbp.deletePrompt",
-          "when": "view == pbp.promptsView && (viewItem == prompt.workspace || viewItem == prompt.user)",
-          "group": "2_manage@4"
         }
       ],
       "editor/context": [
         {
-          "command": "pbp.searchPrompts",
+          "command": "pbp.newTaskPack",
           "when": "editorTextFocus",
-          "group": "pbp"
+          "group": "pbp@1"
+        },
+        {
+          "command": "pbp.addSelectionContext",
+          "when": "editorTextFocus",
+          "group": "pbp@2"
         }
       ]
     },
     "configuration": {
       "title": "Prompt by Prompt",
       "properties": {
-        "pbp.libraryPath": {
-          "type": "string",
-          "default": ".prompts",
-          "description": "Workspace folder that stores prompt YAML files."
+        "pbp.contextBudgetChars": {
+          "type": "number",
+          "default": 80000,
+          "minimum": 4000,
+          "description": "Maximum character budget for task-pack context collection."
         },
-        "pbp.defaultPromptTarget": {
-          "type": "string",
-          "enum": [
-            "workspace",
-            "user"
-          ],
-          "default": "workspace",
-          "description": "Where new and duplicated prompts are saved by default."
-        },
-        "pbp.includeFileContext": {
+        "pbp.includeDiagnostics": {
           "type": "boolean",
           "default": true,
-          "description": "Include the active file content in the {{file_content}} render variable."
+          "description": "Automatically attach VS Code diagnostics when creating a task pack."
         },
-        "pbp.showBuiltInPrompts": {
+        "pbp.includeGitDiff": {
           "type": "boolean",
           "default": true,
-          "description": "Show bundled starter prompts in the prompt library."
+          "description": "Automatically attach the current Git diff when creating a task pack."
+        },
+        "pbp.enableLanguageModelAssist": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow optional VS Code Language Model API assistance for refining task packs."
+        },
+        "pbp.promptFilesPath": {
+          "type": "string",
+          "default": ".github/prompts",
+          "description": "Workspace folder where saved task packs are written as VS Code prompt files."
         }
       }
     }
@@ -229,7 +237,6 @@
     "watch": "pnpm run esbuild-base --sourcemap --watch",
     "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
     "lint": "eslint src",
-    "check:i18n": "node scripts/check-i18n.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "package": "vsce package --no-dependencies",
@@ -240,7 +247,7 @@
     "@release-it/conventional-changelog": "^11.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
-    "@types/vscode": "1.85.0",
+    "@types/vscode": "1.105.0",
     "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.27.4",
     "eslint": "^10.2.1",
@@ -253,7 +260,6 @@
     "vitest": "^4.1.5"
   },
   "dependencies": {
-    "handlebars": "^4.7.8",
     "js-yaml": "^4.1.1"
   },
   "pnpm": {

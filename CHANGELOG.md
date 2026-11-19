@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.0.0] - 2026-05-13
+
+### Changed
+
+- Rebuilt the extension as an AI task-pack workbench.
+- Added task packs with context attachment, Markdown copy, VS Code prompt-file export, workspace AI bootstrap, customization audit, and optional Language Model API refinement.
+- Removed the legacy YAML prompt library, built-in YAML templates, and Handlebars rendering pipeline.
+
 ## [3.0.0] - 2026-04-29
 
 ### Changed
